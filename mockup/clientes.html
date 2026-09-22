@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Totem Climb Gym — Clientes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2B3210;
+    --cream:#FFFFFF;
+    --teal:#3395A0;
+    --gray-light:#CCCCCC;
+    --gray:#6A6A67;
+    --lime:#C2DD58;
+    --lime-soft:#DEFA73;
+    --ink-soft: rgba(43,50,16,0.65);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Clear Sans', 'Work Sans', -apple-system, sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .app{
+    display:grid;
+    grid-template-columns: 240px 1fr;
+    min-height:100vh;
+  }
+
+  /* SIDEBAR */
+  .sidebar{
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,0.04), transparent 40%),
+      radial-gradient(circle at 80% 85%, rgba(255,255,255,0.03), transparent 45%),
+      var(--ink);
+    color:var(--cream);
+    display:flex;
+    flex-direction:column;
+    padding:28px 22px;
+    position:sticky;
+    top:0;
+    height:100vh;
+  }
+  .brand{
+    display:flex;
+    justify-content:center;
+    margin-bottom:40px;
+    padding:4px 0;
+  }
+  .brand-logo-img{ width:100%; max-width:170px; height:auto; object-fit:contain; }
+  nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:11px 12px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:500;
+    color:rgba(251,248,239,0.65);
+    cursor:pointer;
+    transition:background .15s, color .15s;
+    border-left:3px solid transparent;
+  }
+  .nav-item svg{ width:17px; height:17px; opacity:.8; }
+  .nav-item:hover{ background:rgba(255,255,255,0.08); color:var(--cream); }
+  .nav-item.active{
+    background:rgba(51,149,160,0.18);
+    color:var(--cream);
+    border-left:3px solid var(--teal);
+  }
+  .sidebar-footer{
+    margin-top:auto;
+    padding-top:24px;
+    border-top:1px solid rgba(255,255,255,0.12);
+  }
+  .tagline{
+    font-family:'Shadows Into Light Two', cursive;
+    font-size:19px;
+    color:var(--lime);
+    line-height:1.1;
+  }
+  .tagline-sub{
+    font-size:11px;
+    color:rgba(255,255,255,0.45);
+    margin-top:6px;
+  }
+
+  /* MAIN */
+  main{ padding:36px 44px; max-width:1180px; }
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:26px;
+  }
+  .page-title{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:38px;
+    letter-spacing:0.5px;
+  }
+  .page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; }
+  .btn-primary{
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    padding:12px 20px;
+    border-radius:9px;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    box-shadow:0 4px 14px rgba(51,149,160,0.35);
+    transition:transform .12s, box-shadow .12s;
+    white-space:nowrap;
+  }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(51,149,160,0.42); }
+  .btn-primary:focus-visible, .nav-item:focus-visible, .btn-ghost:focus-visible{
+    outline:2px solid var(--teal); outline-offset:2px;
+  }
+  .btn-ghost{
+    background:none;
+    border:1px solid var(--gray-light);
+    color:var(--ink);
+    padding:7px 14px;
+    border-radius:7px;
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+
+  /* FILTER BAR */
+  .filter-bar{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+  }
+  .search-box{
+    flex:1 1 260px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:#fff;
+    border:1px solid var(--gray-light);
+    border-radius:9px;
+    padding:10px 14px;
+  }
+  .search-box svg{ flex-shrink:0; color:var(--ink-soft); }
+  .search-box input{
+    border:none;
+    outline:none;
+    font-family:'Clear Sans','Work Sans',sans-serif;
+    font-size:13.5px;
+    width:100%;
+    background:transparent;
+    color:var(--ink);
+  }
+  .search-box input::placeholder{ color:var(--ink-soft); }
+  select.filter-select{
+    border:1px solid var(--gray-light);
+    background:#fff;
+    color:var(--ink);
+    font-family:'Clear Sans','Work Sans',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    padding:10px 14px;
+    border-radius:9px;
+    cursor:pointer;
+  }
+  select.filter-select:focus-visible{ outline:2px solid var(--teal); }
+  .filter-chips{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{
+    font-size:12px;
+    font-weight:600;
+    padding:6px 13px;
+    border-radius:20px;
+    border:1px solid var(--gray-light);
+    color:var(--ink-soft);
+    cursor:pointer;
+    background:#fff;
+  }
+  .chip.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  /* CARD / TABLE */
+  .card{
+    background:#fff;
+    border:1px solid var(--gray-light);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:18px 24px;
+    border-bottom:1px solid var(--gray-light);
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  table{ width:100%; border-collapse:collapse; }
+  th{
+    text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.8px;
+    color:var(--ink-soft);
+    padding:12px 24px;
+    background:var(--cream);
+    font-weight:600;
+    border-bottom:1px solid var(--gray-light);
+  }
+  td{
+    padding:15px 24px;
+    border-top:1px solid var(--gray-light);
+    font-size:14px;
+    vertical-align:middle;
+  }
+  tr:hover td{ background:rgba(51,149,160,0.04); }
+  .client-name{ font-weight:600; }
+  .client-meta{ font-size:12px; color:var(--ink-soft); }
+
+  .tape{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:5px 12px 5px 10px;
+    border-radius:3px;
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:0.4px;
+    text-transform:uppercase;
+    color:#fff;
+  }
+  .tape::before{ content:''; width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.85); }
+  .tape.vigente{ background:var(--teal); }
+  .tape.por-vencer{ background:var(--lime); color:var(--ink); }
+  .tape.por-vencer::before{ background:rgba(43,50,16,0.55); }
+  .tape.vencido{ background:var(--gray); }
+
+  .due-relative{ font-weight:600; font-size:13.5px; }
+  .due-relative.overdue{ color:var(--gray); }
+  .due-date{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; }
+
+  .row-actions{ display:flex; gap:8px; }
+
+  .card-footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:16px 24px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+  .pager{ display:flex; gap:6px; }
+  .pager button{
+    width:28px; height:28px;
+    border-radius:7px;
+    border:1px solid var(--gray-light);
+    background:#fff;
+    color:var(--ink);
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .pager button.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .pager button:hover:not(.active){ border-color:var(--teal); color:var(--teal); }
+
+  @media (max-width: 860px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ position:relative; height:auto; }
+    main{ padding:24px; }
+    .topbar{ flex-direction:column; gap:14px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <img id="brand-logo" class="brand-logo-img" src="totem-logo.png" alt="Totem Climb Gym">
+    </div>
+
+    <nav>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel general
+      </div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Facturas
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        Productos
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="tagline">Totem = Familia</div>
+      <div class="tagline-sub">Cada miembro cuenta</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div>
+        <div class="page-title">Clientes</div>
+        <div class="page-sub">102 clientes registrados</div>
+      </div>
+      <button class="btn-primary">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Nuevo cliente
+      </button>
+    </div>
+
+    <div class="filter-bar">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" placeholder="Buscar por nombre, CI o correo...">
+      </div>
+      <select class="filter-select">
+        <option>Ordenar por: próximos a vencer</option>
+        <option>Ordenar por: nombre (A–Z)</option>
+        <option>Ordenar por: cliente más reciente</option>
+      </select>
+    </div>
+    <div class="filter-bar" style="margin-top:-8px;">
+      <div class="filter-chips">
+        <button class="chip active">Todos (102)</button>
+        <button class="chip">Vigentes (86)</button>
+        <button class="chip">Por vencer (11)</button>
+        <button class="chip">Vencidos (5)</button>
+        <button class="chip">Sin contrato (7)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span>Mostrando 5 de 102 clientes</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Cliente</th><th>Estado</th><th>Vence</th><th>Teléfono</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="client-name">Mariana Lopez</div>
+              <div class="client-meta">CI 0912345678</div>
+              <div class="client-meta">mariana.lopez@email.com</div>
+            </td>
+            <td><span class="tape por-vencer">Por vencer</span></td>
+            <td><div class="due-relative">en 3 días</div><div class="due-date">3 ago 2026</div></td>
+            <td>099 123 4567</td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost">Renovar</button>
+                <button class="btn-ghost">Editar</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-name">Carlos Rendon</div>
+              <div class="client-meta">CI 0923456789</div>
+              <div class="client-meta">carlos.rendon@email.com</div>
+            </td>
+            <td><span class="tape vigente">Vigente</span></td>
+            <td><div class="due-relative">en 18 días</div><div class="due-date">18 ago 2026</div></td>
+            <td>098 234 5678</td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost">Renovar</button>
+                <button class="btn-ghost">Editar</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-name">Sofia Andrade</div>
+              <div class="client-meta">CI 0934567890</div>
+              <div class="client-meta">sofia.andrade@email.com</div>
+            </td>
+            <td><span class="tape vencido">Vencido</span></td>
+            <td><div class="due-relative overdue">hace 6 días</div><div class="due-date">28 jul 2026</div></td>
+            <td>097 345 6789</td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost">Renovar</button>
+                <button class="btn-ghost">Editar</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-name">Jose Villar</div>
+              <div class="client-meta">CI 0945678901</div>
+              <div class="client-meta">jose.villar@email.com</div>
+            </td>
+            <td><span class="tape vigente">Vigente</span></td>
+            <td><div class="due-relative">en 29 días</div><div class="due-date">1 sep 2026</div></td>
+            <td>096 456 7890</td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost">Renovar</button>
+                <button class="btn-ghost">Editar</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-name">Andrea Salazar</div>
+              <div class="client-meta">CI 0956789012</div>
+              <div class="client-meta">andrea.salazar@email.com</div>
+            </td>
+            <td><span class="tape vigente">Vigente</span></td>
+            <td><div class="due-relative">en 24 días</div><div class="due-date">28 ago 2026</div></td>
+            <td>095 567 8901</td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost">Renovar</button>
+                <button class="btn-ghost">Editar</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="card-footer">
+        <span>Página 1 de 21</span>
+        <div class="pager">
+          <button class="active">1</button>
+          <button>2</button>
+          <button>3</button>
+          <button>…</button>
+          <button>21</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

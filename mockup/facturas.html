@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Totem Climb Gym — Facturas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2B3210;
+    --cream:#FFFFFF;
+    --teal:#3395A0;
+    --gray-light:#CCCCCC;
+    --gray:#6A6A67;
+    --lime:#C2DD58;
+    --lime-soft:#DEFA73;
+    --ink-soft: rgba(43,50,16,0.65);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Clear Sans', 'Work Sans', -apple-system, sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .app{ display:grid; grid-template-columns: 240px 1fr; min-height:100vh; }
+
+  /* SIDEBAR */
+  .sidebar{
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,0.04), transparent 40%),
+      radial-gradient(circle at 80% 85%, rgba(255,255,255,0.03), transparent 45%),
+      var(--ink);
+    color:var(--cream);
+    display:flex; flex-direction:column;
+    padding:28px 22px; position:sticky; top:0; height:100vh;
+  }
+  .brand{ display:flex; justify-content:center; margin-bottom:40px; padding:4px 0; }
+  .brand-logo-img{ width:100%; max-width:170px; height:auto; object-fit:contain; }
+  nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{
+    display:flex; align-items:center; gap:12px;
+    padding:11px 12px; border-radius:8px;
+    font-size:14px; font-weight:500;
+    color:rgba(251,248,239,0.65);
+    cursor:pointer; transition:background .15s, color .15s;
+    border-left:3px solid transparent;
+  }
+  .nav-item svg{ width:17px; height:17px; opacity:.8; }
+  .nav-item:hover{ background:rgba(255,255,255,0.08); color:var(--cream); }
+  .nav-item.active{ background:rgba(51,149,160,0.18); color:var(--cream); border-left:3px solid var(--teal); }
+  .sidebar-footer{ margin-top:auto; padding-top:24px; border-top:1px solid rgba(255,255,255,0.12); }
+  .tagline{ font-family:'Shadows Into Light Two', cursive; font-size:19px; color:var(--lime); line-height:1.1; }
+  .tagline-sub{ font-size:11px; color:rgba(255,255,255,0.45); margin-top:6px; }
+
+  /* MAIN */
+  main{ padding:36px 44px; max-width:1220px; }
+  .topbar{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; }
+  .page-title{ font-family:'Bebas Neue', sans-serif; font-size:38px; letter-spacing:0.5px; }
+  .page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; }
+  .topbar-actions{ display:flex; gap:10px; }
+
+  .btn-primary{
+    background:var(--teal); color:#fff; border:none;
+    padding:12px 20px; border-radius:9px;
+    font-weight:600; font-size:14px; cursor:pointer;
+    display:flex; align-items:center; gap:8px;
+    box-shadow:0 4px 14px rgba(51,149,160,0.35);
+    transition:transform .12s, box-shadow .12s;
+    white-space:nowrap;
+  }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(51,149,160,0.42); }
+  .btn-ghost{
+    background:none; border:1px solid var(--gray-light); color:var(--ink);
+    padding:11px 18px; border-radius:9px;
+    font-size:13.5px; font-weight:600; cursor:pointer;
+    display:flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+  .btn-ghost.small{ padding:7px 13px; font-size:12.5px; }
+  .btn-danger-ghost{
+    background:none; border:1px solid var(--gray-light); color:var(--gray);
+    padding:7px 13px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;
+  }
+  .btn-danger-ghost:hover{ border-color:var(--gray); background:rgba(106,106,103,0.08); }
+  .btn-primary:focus-visible, .nav-item:focus-visible, .btn-ghost:focus-visible, select:focus-visible, input:focus-visible{
+    outline:2px solid var(--teal); outline-offset:2px;
+  }
+
+  /* FILTER BAR */
+  .filter-panel{
+    background:#fff; border:1px solid var(--gray-light); border-radius:12px;
+    padding:16px 18px; margin-bottom:20px;
+  }
+  .filter-row{ display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+  .filter-field{ display:flex; flex-direction:column; gap:5px; }
+  .filter-field label{ font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.4px; }
+  .search-box{
+    flex:1 1 220px; display:flex; align-items:center; gap:8px;
+    background:#fff; border:1px solid var(--gray-light); border-radius:8px; padding:9px 12px;
+  }
+  .search-box svg{ flex-shrink:0; color:var(--ink-soft); }
+  .search-box input{
+    border:none; outline:none; font-family:'Clear Sans','Work Sans',sans-serif;
+    font-size:13px; width:100%; background:transparent; color:var(--ink);
+  }
+  .filter-field input[type="date"], .filter-field select{
+    border:1px solid var(--gray-light); border-radius:8px; padding:8px 10px;
+    font-family:'Clear Sans','Work Sans',sans-serif; font-size:12.5px; color:var(--ink); background:#fff;
+  }
+  .date-sep{ align-self:center; color:var(--ink-soft); font-size:12px; padding-bottom:8px; }
+
+  /* VIEW TOGGLE */
+  .view-toggle{
+    display:inline-flex; background:var(--cream); border:1px solid var(--gray-light);
+    border-radius:9px; padding:3px; margin-bottom:18px;
+  }
+  .view-toggle button{
+    border:none; background:none; padding:8px 16px; border-radius:7px;
+    font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer;
+  }
+  .view-toggle button.active{ background:var(--ink); color:#fff; }
+
+  /* SUMMARY CARDS */
+  .summary-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:22px; }
+  .summary-card{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:18px 20px; }
+  .summary-label{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-soft); font-weight:600; }
+  .summary-value{ font-family:'Bebas Neue', sans-serif; font-size:32px; margin-top:4px; line-height:1; }
+  .summary-note{ font-size:11.5px; color:var(--ink-soft); margin-top:5px; }
+
+  /* CARD / TABLE */
+  .card{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; overflow:hidden; }
+  .card-header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 22px; border-bottom:1px solid var(--gray-light);
+    font-size:13px; color:var(--ink-soft);
+  }
+  table{ width:100%; border-collapse:collapse; }
+  th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.8px;
+    color:var(--ink-soft); padding:12px 22px; background:var(--cream);
+    font-weight:600; border-bottom:1px solid var(--gray-light);
+  }
+  td{ padding:14px 22px; border-top:1px solid var(--gray-light); font-size:13.5px; vertical-align:middle; }
+  tr:hover td{ background:rgba(51,149,160,0.04); }
+  .inv-num{ font-weight:700; color:var(--ink-soft); font-size:12.5px; }
+  .inv-client{ font-weight:600; }
+  .inv-meta{ font-size:12px; color:var(--ink-soft); }
+  .amount{ font-weight:700; }
+  .item-count{
+    display:inline-block;
+    font-size:11px; font-weight:600;
+    color:var(--teal);
+    background:rgba(51,149,160,0.1);
+    padding:2px 8px;
+    border-radius:20px;
+    margin-left:4px;
+    cursor:default;
+  }
+
+  .badge{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:5px 12px; border-radius:20px;
+    font-size:11px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase;
+  }
+  .badge.pagada{ background:rgba(51,149,160,0.12); color:var(--teal); }
+  .badge.anulada{ background:rgba(106,106,103,0.14); color:var(--gray); text-decoration:line-through; }
+
+  .pay-method{ font-size:12.5px; color:var(--ink-soft); }
+  .row-actions{ display:flex; gap:8px; }
+
+  #view-cliente{ display:none; }
+
+  @media (max-width: 900px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ position:relative; height:auto; }
+    main{ padding:24px; }
+    .topbar{ flex-direction:column; gap:14px; }
+    .summary-row{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <img id="brand-logo" class="brand-logo-img" src="totem-logo.png" alt="Totem Climb Gym">
+    </div>
+    <nav>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel general
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Facturas
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        Productos
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="tagline">Totem = Familia</div>
+      <div class="tagline-sub">Cada miembro cuenta</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div>
+        <div class="page-title">Facturas</div>
+        <div class="page-sub">Historial de cobros, filtros y resumen del período</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-ghost">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M12 15l-4-4M12 15l4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Exportar CSV
+        </button>
+        <button class="btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Nueva factura
+        </button>
+      </div>
+    </div>
+
+    <div class="filter-panel">
+      <div class="filter-row">
+        <div class="search-box" style="flex:1 1 200px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" placeholder="Cliente (nombre o CI)...">
+        </div>
+        <div class="filter-field">
+          <label>Desde</label>
+          <input type="date" value="2026-07-06">
+        </div>
+        <div class="filter-field">
+          <label>Hasta</label>
+          <input type="date" value="2026-08-05">
+        </div>
+        <div class="filter-field">
+          <label>Tipo</label>
+          <select>
+            <option>Todos</option>
+            <option>Membresías</option>
+            <option>Clases</option>
+            <option>Alquiler</option>
+            <option>Tienda</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label>Método de pago</label>
+          <select>
+            <option>Todos</option>
+            <option>Efectivo</option>
+            <option>Tarjeta</option>
+            <option>Transferencia</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label>Estado</label>
+          <select>
+            <option>Todas</option>
+            <option>Pagadas</option>
+            <option>Anuladas</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="view-toggle">
+      <button class="active" id="btn-factura" onclick="showView('factura')">Por factura</button>
+      <button id="btn-cliente" onclick="showView('cliente')">Agrupado por cliente</button>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-card">
+        <div class="summary-label">Total facturado</div>
+        <div class="summary-value">$3,240</div>
+        <div class="summary-note">últimos 30 días · 42 facturas</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Facturas emitidas</div>
+        <div class="summary-value">42</div>
+        <div class="summary-note">3 anuladas en el período</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Ticket promedio</div>
+        <div class="summary-value">$77.14</div>
+        <div class="summary-note">por factura pagada</div>
+      </div>
+    </div>
+
+    <!-- VISTA POR FACTURA -->
+    <div id="view-factura" class="card">
+      <div class="card-header"><span>Mostrando 5 de 42 facturas</span></div>
+      <table>
+        <thead>
+          <tr><th>N° factura</th><th>Cliente</th><th>Fecha</th><th>Producto/Servicio</th><th>Método</th><th>Monto</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="inv-num">#001042</td>
+            <td class="inv-client">Mariana Lopez</td>
+            <td>3 ago 2026</td>
+            <td>Membresía mensual <span class="item-count" title="Magnesio (bolsa 56g) — $4.00 · Alquiler de casco — $1.50 · Cinta de agarre (tape) — $2.50">+3 más</span></td>
+            <td class="pay-method">Efectivo</td>
+            <td class="amount">$43.00</td>
+            <td><span class="badge pagada">Pagada</span></td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost small">Ver</button>
+                <button class="btn-danger-ghost">Anular</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="inv-num">#001041</td>
+            <td class="inv-client">Carlos Rendon</td>
+            <td>18 jul 2026</td>
+            <td>Membresía mensual</td>
+            <td class="pay-method">Tarjeta</td>
+            <td class="amount">$35.00</td>
+            <td><span class="badge pagada">Pagada</span></td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost small">Ver</button>
+                <button class="btn-danger-ghost">Anular</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="inv-num">#001040</td>
+            <td class="inv-client">Andrea Salazar</td>
+            <td>15 jul 2026</td>
+            <td>Clase particular</td>
+            <td class="pay-method">Transferencia</td>
+            <td class="amount">$25.00</td>
+            <td><span class="badge pagada">Pagada</span></td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost small">Ver</button>
+                <button class="btn-danger-ghost">Anular</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="inv-num">#001039</td>
+            <td class="inv-client">Jose Villar</td>
+            <td>12 jul 2026</td>
+            <td>Alquiler de arnés</td>
+            <td class="pay-method">Efectivo</td>
+            <td class="amount">$2.00</td>
+            <td><span class="badge anulada">Anulada</span></td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost small">Ver</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="inv-num">#001038</td>
+            <td class="inv-client">Sofia Andrade</td>
+            <td>28 jun 2026</td>
+            <td>Membresía mensual</td>
+            <td class="pay-method">Efectivo</td>
+            <td class="amount">$35.00</td>
+            <td><span class="badge pagada">Pagada</span></td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost small">Ver</button>
+                <button class="btn-danger-ghost">Anular</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- VISTA AGRUPADA POR CLIENTE -->
+    <div id="view-cliente" class="card">
+      <div class="card-header"><span>4 clientes con actividad en el período</span></div>
+      <table>
+        <thead>
+          <tr><th>Cliente</th><th>N° facturas</th><th>Total facturado</th><th>Última factura</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="inv-client">Mariana Lopez</td>
+            <td>3 facturas</td>
+            <td class="amount">$105.00</td>
+            <td class="inv-meta">3 ago 2026</td>
+            <td><button class="btn-ghost small">Ver detalle</button></td>
+          </tr>
+          <tr>
+            <td class="inv-client">Carlos Rendon</td>
+            <td>2 facturas</td>
+            <td class="amount">$70.00</td>
+            <td class="inv-meta">18 jul 2026</td>
+            <td><button class="btn-ghost small">Ver detalle</button></td>
+          </tr>
+          <tr>
+            <td class="inv-client">Andrea Salazar</td>
+            <td>1 factura</td>
+            <td class="amount">$25.00</td>
+            <td class="inv-meta">15 jul 2026</td>
+            <td><button class="btn-ghost small">Ver detalle</button></td>
+          </tr>
+          <tr>
+            <td class="inv-client">Sofia Andrade</td>
+            <td>1 factura</td>
+            <td class="amount">$35.00</td>
+            <td class="inv-meta">28 jun 2026</td>
+            <td><button class="btn-ghost small">Ver detalle</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function showView(view){
+    document.getElementById('view-factura').style.display = view === 'factura' ? 'block' : 'none';
+    document.getElementById('view-cliente').style.display = view === 'cliente' ? 'block' : 'none';
+    document.getElementById('btn-factura').classList.toggle('active', view === 'factura');
+    document.getElementById('btn-cliente').classList.toggle('active', view === 'cliente');
+  }
+</script>
+</body>
+</html>

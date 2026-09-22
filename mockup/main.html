@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Totem Climb Gym — Facturación</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2B3210;
+    --cream:#FFFFFF;
+    --teal:#3395A0;
+    --gray-light:#CCCCCC;
+    --gray:#6A6A67;
+    --lime:#C2DD58;
+    --lime-soft:#DEFA73;
+    --ink-soft: rgba(43,50,16,0.65);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Clear Sans', 'Work Sans', -apple-system, sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .app{
+    display:grid;
+    grid-template-columns: 240px 1fr 280px;
+    min-height:100vh;
+  }
+
+  /* SIDEBAR */
+  .sidebar{
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,0.04), transparent 40%),
+      radial-gradient(circle at 80% 85%, rgba(255,255,255,0.03), transparent 45%),
+      var(--ink);
+    color:var(--cream);
+    display:flex;
+    flex-direction:column;
+    padding:28px 22px;
+    position:sticky;
+    top:0;
+    height:100vh;
+  }
+  .brand{
+    display:flex;
+    justify-content:center;
+    margin-bottom:40px;
+    padding:4px 0;
+  }
+  .brand-logo-img{ width:100%; max-width:170px; height:auto; object-fit:contain; }
+  nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:11px 12px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:500;
+    color:rgba(251,248,239,0.65);
+    cursor:pointer;
+    transition:background .15s, color .15s;
+    border-left:3px solid transparent;
+  }
+  .nav-item svg{ width:17px; height:17px; opacity:.8; }
+  .nav-item:hover{ background:rgba(255,255,255,0.08); color:var(--cream); }
+  .nav-item.active{
+    background:rgba(51,149,160,0.18);
+    color:var(--cream);
+    border-left:3px solid var(--teal);
+  }
+  .sidebar-footer{
+    margin-top:auto;
+    padding-top:24px;
+    border-top:1px solid rgba(255,255,255,0.12);
+  }
+  .tagline{
+    font-family:'Shadows Into Light Two', cursive;
+    font-size:19px;
+    color:var(--lime);
+    line-height:1.1;
+  }
+  .tagline-sub{
+    font-size:11px;
+    color:rgba(255,255,255,0.45);
+    margin-top:6px;
+  }
+
+
+  /* QUICK ACTIONS */
+  .quick-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:30px;
+  }
+  .quick-card{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    background:#fff;
+    border:1px solid var(--gray-light);
+    border-radius:14px;
+    padding:22px 24px;
+    cursor:pointer;
+    color:var(--ink);
+    transition:transform .12s, box-shadow .12s, border-color .12s;
+  }
+  .quick-card:hover{ transform:translateY(-2px); box-shadow:0 8px 20px rgba(43,50,16,0.08); border-color:var(--teal); }
+  .quick-card.primary{ background:var(--teal); color:#fff; border-color:var(--teal); }
+  .quick-card.primary .quick-sub{ color:rgba(255,255,255,0.8); }
+  .quick-title{ font-family:'Bebas Neue', sans-serif; font-size:20px; letter-spacing:0.5px; }
+  .quick-sub{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+
+  /* MAIN */
+  main{ padding:36px 44px; max-width:1180px; }
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:32px;
+  }
+  .page-title{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:38px;
+    letter-spacing:0.5px;
+  }
+  .page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; }
+  .btn-primary{
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    padding:12px 20px;
+    border-radius:9px;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    box-shadow:0 4px 14px rgba(51,149,160,0.35);
+    transition:transform .12s, box-shadow .12s;
+  }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(51,149,160,0.42); }
+  .btn-primary:focus-visible, .nav-item:focus-visible, .btn-ghost:focus-visible{
+    outline:2px solid var(--teal); outline-offset:2px;
+  }
+
+  /* STATS */
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+    margin-bottom:34px;
+  }
+  .stat-card{
+    background:#fff;
+    border:1px solid var(--gray-light);
+    border-radius:14px;
+    padding:20px 22px;
+  }
+  .stat-label{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--ink-soft);
+    font-weight:600;
+  }
+  .stat-value{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:40px;
+    margin-top:6px;
+    line-height:1;
+  }
+  .stat-value.accent{ color:var(--teal); }
+  .stat-note{ font-size:12px; color:var(--ink-soft); margin-top:6px; }
+
+  /* TABLE CARD */
+  .card{
+    background:#fff;
+    border:1px solid var(--gray-light);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px 24px;
+    border-bottom:1px solid var(--gray-light);
+  }
+  .card-header h2{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:22px;
+    letter-spacing:0.5px;
+  }
+  table{ width:100%; border-collapse:collapse; }
+  th{
+    text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.8px;
+    color:var(--ink-soft);
+    padding:12px 24px;
+    background:var(--cream);
+    font-weight:600;
+  }
+  td{
+    padding:15px 24px;
+    border-top:1px solid var(--gray-light);
+    font-size:14px;
+  }
+  tr:hover td{ background:rgba(51,149,160,0.04); }
+  .client-name{ font-weight:600; }
+  .client-meta{ font-size:12px; color:var(--ink-soft); }
+  .due-relative{ font-weight:600; font-size:13.5px; }
+  .due-relative.overdue{ color:var(--gray); }
+  .due-date{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; }
+
+  /* tape-style status pill, evocando la cinta de graduación de rutas de escalada */
+  .tape{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:5px 12px 5px 10px;
+    border-radius:3px;
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:0.4px;
+    text-transform:uppercase;
+    position:relative;
+    color:#fff;
+  }
+  .tape::before{
+    content:'';
+    width:7px; height:7px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.85);
+  }
+  .tape.vigente{ background:var(--teal); }
+  .tape.por-vencer{ background:var(--lime); color:var(--ink); }
+  .tape.por-vencer::before{ background:rgba(43,50,16,0.55); }
+  .tape.vencido{ background:var(--gray); }
+
+  .btn-ghost{
+    background:none;
+    border:1px solid var(--gray-light);
+    color:var(--ink);
+    padding:7px 14px;
+    border-radius:7px;
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+
+  /* BIRTHDAY PANEL */
+  .right-panel{
+    padding:36px 28px 36px 0;
+  }
+  .bday-card{
+    background:#fff;
+    border:1px solid var(--gray-light);
+    border-radius:14px;
+    padding:20px;
+    position:sticky;
+    top:36px;
+  }
+  .bday-card h2{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:18px;
+    letter-spacing:0.5px;
+    margin-bottom:2px;
+  }
+  .bday-card .bday-sub{ font-size:11.5px; color:var(--ink-soft); margin-bottom:16px; }
+  .bday-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 0;
+    border-top:1px solid var(--gray-light);
+  }
+  .bday-item:first-of-type{ border-top:none; }
+  .bday-name{ font-size:13.5px; font-weight:600; }
+  .bday-date{ font-size:11.5px; color:var(--ink-soft); }
+  .bday-tag{
+    margin-left:auto;
+    font-size:10.5px;
+    font-weight:700;
+    color:#fff;
+    background:var(--teal);
+    padding:3px 8px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  .bday-tag.today{ background:var(--lime); color:var(--ink); }
+  .bday-empty{ font-size:12.5px; color:var(--ink-soft); padding:8px 0; }
+
+  @media (max-width: 860px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ position:relative; height:auto; }
+    .stats{ grid-template-columns:1fr; }
+    main{ padding:24px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <img id="brand-logo" class="brand-logo-img" src="totem-logo.png" alt="Totem Climb Gym">
+    </div>
+
+    <nav>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel general
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Facturas
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        Productos
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="tagline">Totem = Familia</div>
+      <div class="tagline-sub">Cada miembro cuenta</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="quick-actions" style="margin-top:6px;">
+      <div class="quick-card primary">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9h18M6 5h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M8 13h3"/></svg>
+        <div>
+          <div class="quick-title">Cobrar</div>
+          <div class="quick-sub">Registrar pago y generar factura</div>
+        </div>
+      </div>
+      <div class="quick-card">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/><path d="M19 8v6M22 11h-6"/></svg>
+        <div>
+          <div class="quick-title">Nuevo cliente</div>
+          <div class="quick-sub">Registrar cliente y contrato</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">Membresías activas</div>
+        <div class="stat-value">86</div>
+        <div class="stat-note">de 102 clientes registrados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Vencen esta semana</div>
+        <div class="stat-value accent">11</div>
+        <div class="stat-note">enviar recordatorio antes del viernes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Ingresos del mes</div>
+        <div class="stat-value">$3,240</div>
+        <div class="stat-note">42 facturas emitidas</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Vigencia de membresías</h2>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-ghost">Enviar recordatorios</button>
+          <button class="btn-ghost">Ver más →</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Cliente</th><th>Estado</th><th>Vence</th><th></th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="client-name">Mariana Lopez</div>
+              <div class="client-meta">CI 0912345678</div>
+              <div class="client-meta">mariana.lopez@email.com</div>
+            </td>
+            <td><span class="tape por-vencer">Por vencer</span></td>
+            <td><div class="due-relative">en 3 días</div><div class="due-date">3 ago 2026</div></td>
+            <td><button class="btn-ghost">Renovar</button></td>
+            <td><button class="btn-ghost">Editar</button></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-name">Carlos Rendon</div>
+              <div class="client-meta">CI 0923456789</div>
+              <div class="client-meta">carlos.rendon@email.com</div>
+            </td>
+            <td><span class="tape vigente">Vigente</span></td>
+            <td><div class="due-relative">en 18 días</div><div class="due-date">18 ago 2026</div></td>
+            <td><button class="btn-ghost">Renovar</button></td>
+            <td><button class="btn-ghost">Editar</button></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-name">Sofia Andrade</div>
+              <div class="client-meta">CI 0934567890</div>
+              <div class="client-meta">sofia.andrade@email.com</div>
+            </td>
+            <td><span class="tape vencido">Vencido</span></td>
+            <td><div class="due-relative overdue">hace 6 días</div><div class="due-date">28 jul 2026</div></td>
+            <td><button class="btn-ghost">Renovar</button></td>
+            <td><button class="btn-ghost">Editar</button></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-name">Jose Villar</div>
+              <div class="client-meta">CI 0945678901</div>
+              <div class="client-meta">jose.villar@email.com</div>
+            </td>
+            <td><span class="tape vigente">Vigente</span></td>
+            <td><div class="due-relative">en 29 días</div><div class="due-date">1 sep 2026</div></td>
+            <td><button class="btn-ghost">Renovar</button></td>
+            <td><button class="btn-ghost">Editar</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <aside class="right-panel">
+    <div class="bday-card">
+      <h2>Próximos cumpleaños</h2>
+      <div class="bday-sub">En los próximos 5 días</div>
+
+      <div class="bday-item">
+        <div>
+          <div class="bday-name">Jose Villar</div>
+          <div class="bday-date">Mañana · 6 ago</div>
+        </div>
+        <span class="bday-tag">Mañana</span>
+      </div>
+
+      <div class="bday-item">
+        <div>
+          <div class="bday-name">Sofia Andrade</div>
+          <div class="bday-date">Sábado · 8 ago</div>
+        </div>
+        <span class="bday-tag">en 3 días</span>
+      </div>
+
+      <div class="bday-item">
+        <div>
+          <div class="bday-name">Carlos Rendon</div>
+          <div class="bday-date">Domingo · 9 ago</div>
+        </div>
+        <span class="bday-tag">en 4 días</span>
+      </div>
+    </div>
+  </aside>
+</div>
+
+</body>
+</html>
