@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Totem Climb Gym — Facturación</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://jsdelivr.net" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 <style>
   :root{
     --ink:#2B3210;
@@ -332,6 +334,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
         Productos
       </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Contabilidad
+      </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -440,36 +446,20 @@
   </main>
 
   <aside class="right-panel">
-    <div class="bday-card">
-      <h2>Próximos cumpleaños</h2>
-      <div class="bday-sub">En los próximos 5 días</div>
-
-      <div class="bday-item">
-        <div>
-          <div class="bday-name">Jose Villar</div>
-          <div class="bday-date">Mañana · 6 ago</div>
-        </div>
-        <span class="bday-tag">Mañana</span>
-      </div>
-
-      <div class="bday-item">
-        <div>
-          <div class="bday-name">Sofia Andrade</div>
-          <div class="bday-date">Sábado · 8 ago</div>
-        </div>
-        <span class="bday-tag">en 3 días</span>
-      </div>
-
-      <div class="bday-item">
-        <div>
-          <div class="bday-name">Carlos Rendon</div>
-          <div class="bday-date">Domingo · 9 ago</div>
-        </div>
-        <span class="bday-tag">en 4 días</span>
+    
+    <div class="d-flex justify-content-center">
+      <div
+        class="border rounded"
+        data-coreui-locale="en-US"
+        data-coreui-start-date="2024/02/13"
+        data-coreui-toggle="calendar">
       </div>
     </div>
+
+
   </aside>
 </div>
-
+<script src="https://jsdelivr.net" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  
 </body>
 </html>

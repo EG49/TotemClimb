@@ -24,8 +24,12 @@ mermaid.initialize({
 });
 const src = `erDiagram
   USUARIOS ||--o{ FACTURA : genera
+  USUARIOS ||--o{ MEMBRESIAS : posee
   FACTURA ||--|{ DETALLE : contiene
+  FACTURA ||--o{ MEMBRESIAS : origina
   PRODUCTOS ||--o{ DETALLE : aparece_en
+  PRODUCTOS ||--o{ MEMBRESIAS : define
+  MEMBRESIAS |o--o| MEMBRESIAS : pareja_con
   USUARIOS {
     int Id_Usuario PK
     string Nombre
@@ -46,18 +50,22 @@ const src = `erDiagram
     string Categoria
     string Tipo
     float Precio
-    boolean Es_Membresia
     int Stock
+    boolean Es_Membresia
+    string Tipo_Membresia
+    int Dias_Incluidos
   }
   FACTURA {
     int Id_Factura PK
     int Id_Usuario FK
     date Fecha
     string Metodo_Pago
+    float Descuento_Porcentaje
     float Subtotal
     float IVA
     float Total
     string Estado
+    string Motivo_Anulacion
   }
   DETALLE {
     int Id_Detalle PK
@@ -66,6 +74,18 @@ const src = `erDiagram
     int Cantidad
     float Precio_Unitario
     float Subtotal
+  }
+  MEMBRESIAS {
+    int Id_Membresia PK
+    int Id_Usuario FK
+    int Id_Producto FK
+    int Id_Factura FK
+    date Fecha_Inicio
+    date Fecha_Fin
+    int Dias_Totales
+    int Dias_Restantes
+    string Estado
+    int Id_Membresia_Pareja FK
   }`;
 const { svg } = await mermaid.render('erd-svg', src);
 document.getElementById('erd').innerHTML = svg;
