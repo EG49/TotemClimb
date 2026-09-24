@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Totem Climb Gym — Contabilidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2B3210;
+    --cream:#FFFFFF;
+    --teal:#3395A0;
+    --gray-light:#CCCCCC;
+    --gray:#6A6A67;
+    --lime:#C2DD58;
+    --lime-soft:#DEFA73;
+    --ink-soft: rgba(43,50,16,0.65);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Clear Sans', 'Work Sans', -apple-system, sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .app{ display:grid; grid-template-columns: 240px 1fr; min-height:100vh; }
+
+  /* SIDEBAR */
+  .sidebar{
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,0.04), transparent 40%),
+      radial-gradient(circle at 80% 85%, rgba(255,255,255,0.03), transparent 45%),
+      var(--ink);
+    color:var(--cream);
+    display:flex; flex-direction:column;
+    padding:28px 22px; position:sticky; top:0; height:100vh;
+  }
+  .brand{ display:flex; justify-content:center; margin-bottom:40px; padding:4px 0; }
+  .brand-logo-img{ width:100%; max-width:170px; height:auto; object-fit:contain; }
+  nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{
+    display:flex; align-items:center; gap:12px;
+    padding:11px 12px; border-radius:8px;
+    font-size:14px; font-weight:500;
+    color:rgba(251,248,239,0.65);
+    cursor:pointer; transition:background .15s, color .15s;
+    border-left:3px solid transparent;
+  }
+  .nav-item svg{ width:17px; height:17px; opacity:.8; }
+  .nav-item:hover{ background:rgba(255,255,255,0.08); color:var(--cream); }
+  .nav-item.active{ background:rgba(51,149,160,0.18); color:var(--cream); border-left:3px solid var(--teal); }
+  .sidebar-footer{ margin-top:auto; padding-top:24px; border-top:1px solid rgba(255,255,255,0.12); }
+  .tagline{ font-family:'Shadows Into Light Two', cursive; font-size:19px; color:var(--lime); line-height:1.1; }
+  .tagline-sub{ font-size:11px; color:rgba(255,255,255,0.45); margin-top:6px; }
+
+  /* MAIN */
+  main{ padding:36px 44px; max-width:1080px; }
+  .topbar{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; }
+  .page-title{ font-family:'Bebas Neue', sans-serif; font-size:38px; letter-spacing:0.5px; }
+  .page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; }
+
+  .btn-ghost{
+    background:none; border:1px solid var(--gray-light); color:var(--ink);
+    padding:11px 18px; border-radius:9px;
+    font-size:13.5px; font-weight:600; cursor:pointer;
+    display:flex; align-items:center; gap:8px; white-space:nowrap;
+  }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+  .btn-ghost.revealed{ border-color:var(--teal); color:var(--teal); }
+  .btn-ghost:focus-visible, select:focus-visible, input:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
+
+  /* PERIOD SELECTOR */
+  .period-panel{
+    background:#fff; border:1px solid var(--gray-light); border-radius:12px;
+    padding:14px 18px; margin-bottom:22px;
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  }
+  .period-toggle{ display:inline-flex; background:var(--cream); border:1px solid var(--gray-light); border-radius:9px; padding:3px; }
+  .period-toggle button{
+    border:none; background:none; padding:8px 16px; border-radius:7px;
+    font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer;
+  }
+  .period-toggle button.active{ background:var(--ink); color:#fff; }
+  .period-range{ display:none; align-items:center; gap:8px; }
+  .period-range.show{ display:flex; }
+  .period-range input[type="date"]{
+    border:1px solid var(--gray-light); border-radius:8px; padding:8px 10px;
+    font-family:'Clear Sans','Work Sans',sans-serif; font-size:12.5px; color:var(--ink);
+  }
+  .period-range span{ font-size:12px; color:var(--ink-soft); }
+  .period-label{ margin-left:auto; font-size:12.5px; color:var(--ink-soft); }
+  .client-filter-row{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    width:100%; padding-top:12px; margin-top:12px; border-top:1px solid var(--gray-light);
+  }
+  .search-box{
+    flex:1 1 240px; display:flex; align-items:center; gap:8px;
+    background:#fff; border:1px solid var(--gray-light); border-radius:8px; padding:9px 12px;
+  }
+  .search-box svg{ flex-shrink:0; color:var(--ink-soft); }
+  .search-box input{
+    border:none; outline:none; font-family:'Clear Sans','Work Sans',sans-serif;
+    font-size:13px; width:100%; background:transparent; color:var(--ink);
+  }
+  .client-chip{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(51,149,160,0.1); color:var(--teal);
+    border-radius:20px; padding:7px 8px 7px 14px;
+    font-size:12.5px; font-weight:600;
+  }
+  .client-chip button{
+    background:none; border:none; color:var(--teal); cursor:pointer;
+    font-size:15px; line-height:1; padding:2px 4px;
+  }
+
+  /* SUMMARY */
+  .summary-card{
+    background:#fff; border:1px solid var(--gray-light); border-radius:14px;
+    padding:26px 28px; margin-bottom:20px;
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px;
+  }
+  .summary-label{ font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-soft); font-weight:600; }
+  .money-row{ display:flex; align-items:center; gap:10px; margin-top:4px; }
+  .summary-value{ font-family:'Bebas Neue', sans-serif; font-size:46px; line-height:1; letter-spacing:0.5px; }
+  .money-mask{ letter-spacing:3px; }
+  .summary-note{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
+  .eye-btn{
+    background:none; border:none; cursor:pointer; padding:2px;
+    color:var(--ink-soft); display:flex; align-items:center; margin-bottom:4px;
+  }
+  .eye-btn:hover{ color:var(--teal); }
+  .mini-stats{ display:flex; gap:28px; }
+  .mini-stat{ text-align:right; }
+  .mini-stat .mini-label{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.5px; }
+  .mini-stat .mini-value{ font-family:'Bebas Neue', sans-serif; font-size:22px; margin-top:2px; }
+
+  /* GRID OF BREAKDOWN CARDS */
+  .breakdown-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+  .card{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:22px 24px; }
+  .card h2{ font-family:'Bebas Neue', sans-serif; font-size:18px; letter-spacing:0.5px; margin-bottom:14px; }
+
+  .bar-row{ margin-bottom:14px; }
+  .bar-row:last-child{ margin-bottom:0; }
+  .bar-top{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; }
+  .bar-top .bar-name{ font-weight:600; }
+  .bar-top .bar-amount{ font-weight:700; }
+  .bar-track{ background:var(--cream); border:1px solid var(--gray-light); border-radius:20px; height:10px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:20px; }
+  .bar-fill.efectivo{ background:var(--teal); }
+  .bar-fill.transferencia{ background:var(--lime); }
+  .bar-fill.cat-membresias{ background:var(--teal); }
+  .bar-fill.cat-clases{ background:var(--lime); }
+  .bar-fill.cat-alquiler{ background:var(--lime-soft); }
+  .bar-fill.cat-tienda{ background:var(--gray); }
+
+  .discount-card{ display:flex; justify-content:space-between; align-items:center; }
+  .discount-value{ font-family:'Bebas Neue', sans-serif; font-size:30px; }
+  .discount-note{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+
+  @media (max-width: 900px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ position:relative; height:auto; }
+    main{ padding:24px; }
+    .breakdown-grid{ grid-template-columns:1fr; }
+    .summary-card{ flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <img id="brand-logo" class="brand-logo-img" src="totem-logo.png" alt="Totem Climb Gym">
+    </div>
+    <nav>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel general
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Facturas
+      </div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Contabilidad
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        Productos
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="tagline">Totem = Familia</div>
+      <div class="tagline-sub">Cada miembro cuenta</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div>
+        <div class="page-title">Contabilidad</div>
+        <div class="page-sub">Reporte de ingresos por período</div>
+      </div>
+      <button class="btn-ghost" id="global-eye" onclick="toggleAllMoney(this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        Mostrar montos
+      </button>
+    </div>
+
+    <div class="period-panel">
+      <div class="period-toggle">
+        <button class="active" onclick="setPeriod('dia', this)">Día</button>
+        <button onclick="setPeriod('mes', this)">Mes</button>
+        <button onclick="setPeriod('rango', this)">Personalizado</button>
+      </div>
+      <div class="period-range" id="period-range">
+        <input type="date" value="2026-07-27">
+        <span>—</span>
+        <input type="date" value="2026-08-06">
+      </div>
+      <div class="period-label" id="period-label">Hoy · 6 ago 2026</div>
+
+      <div class="client-filter-row">
+        <div class="search-box" id="client-search-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" id="client-search-input" placeholder="Filtrar por cliente (nombre o CI)...">
+        </div>
+        <button class="btn-ghost" onclick="pickClient()">Buscar</button>
+        <div class="client-chip" id="client-chip" style="display:none;">
+          <span id="client-chip-name">Mariana Lopez</span>
+          <button onclick="clearClient()" aria-label="Quitar filtro de cliente">×</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div>
+        <div class="summary-label" id="summary-label">Ingresos del período</div>
+        <div class="money-row">
+          <div class="summary-value money-mask" data-value="$186.50">••••••</div>
+        </div>
+        <div class="summary-note">5 facturas emitidas · ticket promedio $37.30</div>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <div class="mini-label">Descuentos</div>
+          <div class="mini-value money-mask" data-value="$8.20">••••</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-label">Anuladas</div>
+          <div class="mini-value">1</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="breakdown-grid">
+      <div class="card">
+        <h2>Por método de pago</h2>
+        <div class="bar-row">
+          <div class="bar-top"><span class="bar-name">Efectivo</span><span class="bar-amount money-mask" data-value="$120.00">••••••</span></div>
+          <div class="bar-track"><div class="bar-fill efectivo" style="width:64%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-top"><span class="bar-name">Transferencia</span><span class="bar-amount money-mask" data-value="$66.50">••••••</span></div>
+          <div class="bar-track"><div class="bar-fill transferencia" style="width:36%"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Por categoría</h2>
+        <div class="bar-row">
+          <div class="bar-top"><span class="bar-name">Membresías</span><span class="bar-amount money-mask" data-value="$120.00">••••••</span></div>
+          <div class="bar-track"><div class="bar-fill cat-membresias" style="width:64%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-top"><span class="bar-name">Clases</span><span class="bar-amount money-mask" data-value="$40.00">••••••</span></div>
+          <div class="bar-track"><div class="bar-fill cat-clases" style="width:21%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-top"><span class="bar-name">Alquiler</span><span class="bar-amount money-mask" data-value="$14.50">••••••</span></div>
+          <div class="bar-track"><div class="bar-fill cat-alquiler" style="width:8%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-top"><span class="bar-name">Tienda</span><span class="bar-amount money-mask" data-value="$12.00">••••••</span></div>
+          <div class="bar-track"><div class="bar-fill cat-tienda" style="width:7%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card discount-card">
+      <div>
+        <div class="summary-label">Total en descuentos aplicados</div>
+        <div class="discount-value money-mask" data-value="$8.20">••••••</div>
+        <div class="discount-note">2 de 5 facturas del período incluyeron descuento</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function setPeriod(period, btn){
+    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const range = document.getElementById('period-range');
+    const label = document.getElementById('period-label');
+    if(period === 'rango'){
+      range.classList.add('show');
+      label.textContent = '';
+    } else {
+      range.classList.remove('show');
+      label.textContent = period === 'dia' ? 'Hoy · 6 ago 2026' : 'Agosto 2026';
+    }
+  }
+
+  function pickClient(){
+    const input = document.getElementById('client-search-input');
+    const name = input.value.trim() || 'Mariana Lopez';
+    document.getElementById('client-chip-name').textContent = name;
+    document.getElementById('client-chip').style.display = 'flex';
+    document.getElementById('client-search-box').style.display = 'none';
+    document.querySelector('.client-filter-row button.btn-ghost').style.display = 'none';
+    document.getElementById('summary-label').textContent = 'Ingresos del período — ' + name;
+  }
+
+  function clearClient(){
+    document.getElementById('client-chip').style.display = 'none';
+    document.getElementById('client-search-box').style.display = 'flex';
+    document.querySelector('.client-filter-row button.btn-ghost').style.display = 'inline-flex';
+    document.getElementById('client-search-input').value = '';
+    document.getElementById('summary-label').textContent = 'Ingresos del período';
+  }
+
+  function toggleAllMoney(btn){
+    const masks = document.querySelectorAll('.money-mask');
+    const isHidden = masks[0].textContent.trim().startsWith('•');
+    masks.forEach(m => { m.textContent = isHidden ? m.dataset.value : '••••••'; });
+    btn.classList.toggle('revealed', isHidden);
+    btn.lastChild.textContent = isHidden ? ' Ocultar montos' : ' Mostrar montos';
+  }
+</script>
+</body>
+</html>
