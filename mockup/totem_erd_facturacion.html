@@ -30,6 +30,7 @@ const src = `erDiagram
   PRODUCTOS ||--o{ DETALLE : aparece_en
   PRODUCTOS ||--o{ MEMBRESIAS : define
   MEMBRESIAS |o--o| MEMBRESIAS : pareja_con
+  CATEGORIAS_EVENTO ||--o{ EVENTOS : clasifica
   USUARIOS {
     int Id_Usuario PK
     string Nombre
@@ -86,6 +87,21 @@ const src = `erDiagram
     int Dias_Restantes
     string Estado
     int Id_Membresia_Pareja FK
+  }
+  CATEGORIAS_EVENTO {
+    int Id_Categoria PK
+    string Nombre
+    string Color
+  }
+  EVENTOS {
+    int Id_Evento PK
+    string Titulo
+    int Id_Categoria FK
+    date Fecha
+    time Hora_Inicio
+    time Hora_Fin
+    string Descripcion
+    int Cupo_Maximo
   }`;
 const { svg } = await mermaid.render('erd-svg', src);
 document.getElementById('erd').innerHTML = svg;
