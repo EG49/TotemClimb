@@ -1,177 +1,1387 @@
-```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Facturación - Documentación BD</title>
 
-    <title>ERD - Sistema de Facturación</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            erDiagram: {
+                layoutDirection: 'TB'
+            }
+        });
+    </script>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        header {
+            background: #1f2937;
+            color: white;
             padding: 30px;
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-        }
-
-        h1 {
             text-align: center;
-            margin-bottom: 30px;
         }
 
-        #erd {
-            display: flex;
-            justify-content: center;
+        header h1 {
+            margin: 0 0 10px;
+            font-size: 32px;
+        }
+
+        header p {
+            margin: 0;
+            color: #d1d5db;
+        }
+
+        main {
+            width: 95%;
+            max-width: 1500px;
+            margin: 30px auto;
+        }
+
+        section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #1f2937;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #374151;
+            margin-top: 25px;
+        }
+
+        .descripcion {
+            line-height: 1.6;
+            color: #4b5563;
+        }
+
+        .mermaid-container {
             overflow-x: auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th {
+            background: #1f2937;
+            color: white;
+            text-align: left;
+            padding: 12px;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        code {
+            background: #f1f5f9;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: Consolas, monospace;
+        }
+
+        pre {
+            background: #111827;
+            color: #e5e7eb;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            line-height: 1.5;
+        }
+
+        .nota {
+            background: #eff6ff;
+            border-left: 5px solid #2563eb;
+            padding: 15px;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        .advertencia {
+            background: #fff7ed;
+            border-left: 5px solid #ea580c;
+            padding: 15px;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #6b7280;
         }
     </style>
 </head>
 
 <body>
 
+<header>
     <h1>Sistema de Facturación</h1>
+    <p>Documentación del modelo de base de datos PostgreSQL</p>
+</header>
 
-    <div id="erd"></div>
+<main>
 
-    <script type="module">
+    <!-- ========================================================= -->
+    <!-- DESCRIPCIÓN -->
+    <!-- ========================================================= -->
 
-        import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+    <section>
+        <h2>1. Descripción general</h2>
 
-        mermaid.initialize({
-            startOnLoad: false,
-            theme: "default"
-        });
+        <p class="descripcion">
+            Esta base de datos administra el sistema de facturación del gimnasio.
+            Permite registrar clientes, empleados, productos vendidos, facturas,
+            detalles de factura, planes de membresía, membresías adquiridas
+            y eventos.
+        </p>
 
-        const src = `
-
-        erDiagram
-
-            CLIENTES ||--o{ FACTURAS : recibe
-            EMPLEADOS ||--o{ FACTURAS : genera
-
-            FACTURAS ||--|{ DETALLE_FACTURA : contiene
-
-            PRODUCTOS ||--o{ DETALLE_FACTURA : aparece_en
-
-            CLIENTES ||--o{ MEMBRESIAS : posee
-            PRODUCTOS ||--o{ MEMBRESIAS : define
-            FACTURAS ||--o{ MEMBRESIAS : origina
-
-            MEMBRESIAS |o--o| MEMBRESIAS : pareja_con
-
-            CATEGORIAS_EVENTO ||--o{ EVENTOS : clasifica
+        <div class="nota">
+            <strong>Decisión de diseño:</strong>
+            los productos físicos y los planes de membresía se manejan
+            como entidades independientes.
+        </div>
+    </section>
 
 
-            CLIENTES {
-                int id_cliente PK "NOT NULL"
-                string nombre "NOT NULL"
-                string apellido "NOT NULL"
-                string cedula UK "NOT NULL"
-                date fecha_nacimiento "NULL"
-                string correo "NULL"
-                string telefono "NULL"
-                string genero "NULL"
-                string contacto_emergencia "NULL"
-                string contrato_ruta "NULL"
-                date vigente_hasta "NULL"
-                timestamp fecha_registro "NOT NULL"
-            }
+    <!-- ========================================================= -->
+    <!-- DIAGRAMA ER -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>2. Diagrama Entidad-Relación</h2>
+
+        <div class="mermaid-container">
+            <div class="mermaid">
+
+                erDiagram
+
+                    CLIENTES {
+                        int id_cliente PK
+                        string nombre
+                        string apellido
+                        string cedula UK
+                        date fecha_nacimiento
+                        string correo
+                        string telefono
+                        string genero
+                        string contacto_emergencia
+                        string contrato_ruta
+                        date vigente_hasta
+                        timestamp fecha_registro
+                    }
+
+                    EMPLEADOS {
+                        int id_empleado PK
+                        string nombre
+                        string apellido
+                        string usuario UK
+                        string password
+                        string rol
+                        boolean activo
+                        timestamp fecha_registro
+                    }
+
+                    PRODUCTOS {
+                        int id_producto PK
+                        string nombre
+                        string categoria
+                        decimal precio
+                    }
+
+                    PLANES_MEMBRESIA {
+                        int id_plan PK
+                        string nombre UK
+                        string tipo
+                        decimal precio
+                        int duracion
+                        string unidad_duracion
+                        boolean permite_pareja
+                        boolean permite_descuento
+                        boolean activo
+                    }
+
+                    FACTURAS {
+                        int id_factura PK
+                        string numero_factura UK
+                        int id_cliente FK
+                        int id_empleado FK
+                        timestamp fecha
+                        string metodo_pago
+                        decimal descuento_porcentaje
+                        decimal subtotal
+                        decimal iva
+                        decimal total
+                        string estado
+                        string motivo_anulacion
+                    }
+
+                    DETALLE_FACTURA {
+                        int id_detalle PK
+                        int id_factura FK
+                        int id_producto FK
+                        int cantidad
+                        decimal precio_unitario
+                        decimal subtotal
+                    }
+
+                    MEMBRESIAS {
+                        int id_membresia PK
+                        int id_cliente FK
+                        int id_plan FK
+                        int id_factura FK
+                        date fecha_inicio
+                        date fecha_fin
+                        int dias_totales
+                        string estado
+                        int id_membresia_pareja FK
+                    }
+
+                    CATEGORIAS_EVENTO {
+                        int id_categoria PK
+                        string nombre UK
+                        string color
+                    }
+
+                    EVENTOS {
+                        int id_evento PK
+                        string titulo
+                        int id_categoria FK
+                        date fecha
+                        time hora_inicio
+                        time hora_fin
+                        string descripcion
+                        int cupo_maximo
+                    }
+
+                    CLIENTES ||--o{ FACTURAS : recibe
+                    EMPLEADOS ||--o{ FACTURAS : genera
+
+                    FACTURAS ||--|{ DETALLE_FACTURA : contiene
+                    PRODUCTOS ||--o{ DETALLE_FACTURA : aparece_en
+
+                    CLIENTES ||--o{ MEMBRESIAS : posee
+                    PLANES_MEMBRESIA ||--o{ MEMBRESIAS : configura
+                    FACTURAS ||--o{ MEMBRESIAS : origina
+
+                    MEMBRESIAS |o--o| MEMBRESIAS : pareja_con
+
+                    CATEGORIAS_EVENTO ||--o{ EVENTOS : clasifica
+
+            </div>
+        </div>
+    </section>
 
 
-            EMPLEADOS {
-                int id_empleado PK "NOT NULL"
-                string nombre "NOT NULL"
-                string apellido "NOT NULL"
-                string usuario UK "NOT NULL"
-                string password "NOT NULL"
-                string rol "NOT NULL"
-                boolean activo "NOT NULL"
-                timestamp fecha_registro "NOT NULL"
-            }
+    <!-- ========================================================= -->
+    <!-- CLIENTES -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>3. Tabla: CLIENTES</h2>
+
+        <p class="descripcion">
+            Almacena la información personal y de contacto de los clientes
+            del gimnasio.
+        </p>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Tipo</th>
+                        <th>Restricción</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>id_cliente</td>
+                        <td>SERIAL</td>
+                        <td>PK</td>
+                        <td>Identificador único del cliente.</td>
+                    </tr>
+
+                    <tr>
+                        <td>nombre</td>
+                        <td>VARCHAR(100)</td>
+                        <td>NOT NULL</td>
+                        <td>Nombre del cliente.</td>
+                    </tr>
+
+                    <tr>
+                        <td>apellido</td>
+                        <td>VARCHAR(100)</td>
+                        <td>NOT NULL</td>
+                        <td>Apellido del cliente.</td>
+                    </tr>
+
+                    <tr>
+                        <td>cedula</td>
+                        <td>VARCHAR(20)</td>
+                        <td>UNIQUE, NOT NULL</td>
+                        <td>Número de identificación.</td>
+                    </tr>
+
+                    <tr>
+                        <td>fecha_nacimiento</td>
+                        <td>DATE</td>
+                        <td>NULL</td>
+                        <td>Fecha de nacimiento.</td>
+                    </tr>
+
+                    <tr>
+                        <td>correo</td>
+                        <td>VARCHAR(150)</td>
+                        <td>NULL</td>
+                        <td>Correo electrónico.</td>
+                    </tr>
+
+                    <tr>
+                        <td>telefono</td>
+                        <td>VARCHAR(30)</td>
+                        <td>NULL</td>
+                        <td>Número telefónico.</td>
+                    </tr>
+
+                    <tr>
+                        <td>genero</td>
+                        <td>VARCHAR(30)</td>
+                        <td>NULL</td>
+                        <td>Género registrado.</td>
+                    </tr>
+
+                    <tr>
+                        <td>contacto_emergencia</td>
+                        <td>VARCHAR(150)</td>
+                        <td>NULL</td>
+                        <td>Contacto para emergencias.</td>
+                    </tr>
+
+                    <tr>
+                        <td>contrato_ruta</td>
+                        <td>VARCHAR(150)</td>
+                        <td>NULL</td>
+                        <td>Información relacionada con contrato/ruta.</td>
+                    </tr>
+
+                    <tr>
+                        <td>vigente_hasta</td>
+                        <td>DATE</td>
+                        <td>NULL</td>
+                        <td>Fecha de vigencia registrada.</td>
+                    </tr>
+
+                    <tr>
+                        <td>fecha_registro</td>
+                        <td>TIMESTAMP</td>
+                        <td>NOT NULL</td>
+                        <td>Fecha y hora de registro.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
 
-            PRODUCTOS {
-                int id_producto PK "NOT NULL"
-                string nombre "NOT NULL"
-                string categoria "NOT NULL"
-                string tipo "NOT NULL"
-                decimal precio "NOT NULL"
-                int stock "NOT NULL"
-                boolean es_membresia "NOT NULL"
-                string tipo_membresia "NULL"
-                int dias_incluidos "NULL"
-            }
+    <!-- ========================================================= -->
+    <!-- EMPLEADOS -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>4. Tabla: EMPLEADOS</h2>
+
+        <p class="descripcion">
+            Registra a los empleados que utilizan el sistema.
+            El empleado es quien genera la factura y realiza el cobro.
+        </p>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Tipo</th>
+                        <th>Restricción</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>id_empleado</td>
+                        <td>SERIAL</td>
+                        <td>PK</td>
+                        <td>Identificador del empleado.</td>
+                    </tr>
+
+                    <tr>
+                        <td>nombre</td>
+                        <td>VARCHAR(100)</td>
+                        <td>NOT NULL</td>
+                        <td>Nombre.</td>
+                    </tr>
+
+                    <tr>
+                        <td>apellido</td>
+                        <td>VARCHAR(100)</td>
+                        <td>NOT NULL</td>
+                        <td>Apellido.</td>
+                    </tr>
+
+                    <tr>
+                        <td>usuario</td>
+                        <td>VARCHAR(50)</td>
+                        <td>UNIQUE, NOT NULL</td>
+                        <td>Usuario utilizado para iniciar sesión.</td>
+                    </tr>
+
+                    <tr>
+                        <td>password</td>
+                        <td>VARCHAR(255)</td>
+                        <td>NOT NULL</td>
+                        <td>Contraseña almacenada de forma segura.</td>
+                    </tr>
+
+                    <tr>
+                        <td>rol</td>
+                        <td>VARCHAR(30)</td>
+                        <td>NOT NULL</td>
+                        <td>ADMIN, SUPERVISOR o VENDEDOR.</td>
+                    </tr>
+
+                    <tr>
+                        <td>activo</td>
+                        <td>BOOLEAN</td>
+                        <td>NOT NULL</td>
+                        <td>Indica si el empleado está activo.</td>
+                    </tr>
+
+                    <tr>
+                        <td>fecha_registro</td>
+                        <td>TIMESTAMP</td>
+                        <td>NOT NULL</td>
+                        <td>Fecha de registro.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
 
-            FACTURAS {
-                int id_factura PK "NOT NULL"
-                string numero_factura UK "NOT NULL"
-                int id_cliente FK "NOT NULL"
-                int id_empleado FK "NOT NULL"
-                timestamp fecha "NOT NULL"
-                string metodo_pago "NOT NULL"
-                decimal descuento_porcentaje "NOT NULL"
-                decimal subtotal "NOT NULL"
-                decimal iva "NOT NULL"
-                decimal total "NOT NULL"
-                string estado "NOT NULL"
-                string motivo_anulacion "NULL"
-            }
+    <!-- ========================================================= -->
+    <!-- PRODUCTOS -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>5. Tabla: PRODUCTOS</h2>
+
+        <p class="descripcion">
+            Contiene los productos físicos que pueden ser vendidos mediante
+            una factura.
+        </p>
+
+        <div class="nota">
+            <strong>Importante:</strong>
+            por ahora esta tabla no administra inventario.
+            Por esa razón no contiene campos de <code>stock</code>.
+            Tampoco se utiliza un campo <code>tipo</code>.
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Tipo</th>
+                        <th>Restricción</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>id_producto</td>
+                        <td>SERIAL</td>
+                        <td>PK</td>
+                        <td>Identificador del producto.</td>
+                    </tr>
+
+                    <tr>
+                        <td>nombre</td>
+                        <td>VARCHAR(150)</td>
+                        <td>NOT NULL</td>
+                        <td>Nombre del producto.</td>
+                    </tr>
+
+                    <tr>
+                        <td>categoria</td>
+                        <td>VARCHAR(100)</td>
+                        <td>NOT NULL</td>
+                        <td>Categoría del producto.</td>
+                    </tr>
+
+                    <tr>
+                        <td>precio</td>
+                        <td>NUMERIC(10,2)</td>
+                        <td>NOT NULL</td>
+                        <td>Precio de venta.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Productos registrados inicialmente</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Precio</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>Agua Cielo</td>
+                    <td>Bebida</td>
+                    <td>$0.50</td>
+                </tr>
+
+                <tr>
+                    <td>Sporade</td>
+                    <td>Bebida</td>
+                    <td>$0.75</td>
+                </tr>
+
+                <tr>
+                    <td>Coca-Cola</td>
+                    <td>Bebida</td>
+                    <td>$0.75</td>
+                </tr>
+
+                <tr>
+                    <td>Cielo de Toronja</td>
+                    <td>Bebida</td>
+                    <td>$0.75</td>
+                </tr>
+
+                <tr>
+                    <td>Agua Splendor</td>
+                    <td>Bebida</td>
+                    <td>$1.00</td>
+                </tr>
+
+                <tr>
+                    <td>Magnesio Cubo</td>
+                    <td>Suplemento</td>
+                    <td>$5.00</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
 
 
-            DETALLE_FACTURA {
-                int id_detalle PK "NOT NULL"
-                int id_factura FK "NOT NULL"
-                int id_producto FK "NOT NULL"
-                int cantidad "NOT NULL"
-                decimal precio_unitario "NOT NULL"
-                decimal subtotal "NOT NULL"
-            }
+    <!-- ========================================================= -->
+    <!-- PLANES DE MEMBRESÍA -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>6. Tabla: PLANES_MEMBRESIA</h2>
+
+        <p class="descripcion">
+            Define el catálogo de planes de membresía disponibles.
+            Esta tabla contiene la configuración del plan, no una membresía
+            específica de un cliente.
+        </p>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Tipo</th>
+                        <th>Restricción</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>id_plan</td>
+                        <td>SERIAL</td>
+                        <td>PK</td>
+                        <td>Identificador del plan.</td>
+                    </tr>
+
+                    <tr>
+                        <td>nombre</td>
+                        <td>VARCHAR(100)</td>
+                        <td>UNIQUE, NOT NULL</td>
+                        <td>Nombre comercial del plan.</td>
+                    </tr>
+
+                    <tr>
+                        <td>tipo</td>
+                        <td>VARCHAR(20)</td>
+                        <td>NOT NULL</td>
+                        <td>JUNIOR, SENIOR o PASES.</td>
+                    </tr>
+
+                    <tr>
+                        <td>precio</td>
+                        <td>NUMERIC(10,2)</td>
+                        <td>NOT NULL</td>
+                        <td>Precio establecido para el plan.</td>
+                    </tr>
+
+                    <tr>
+                        <td>duracion</td>
+                        <td>INTEGER</td>
+                        <td>NOT NULL</td>
+                        <td>Cantidad de unidades de duración.</td>
+                    </tr>
+
+                    <tr>
+                        <td>unidad_duracion</td>
+                        <td>VARCHAR(10)</td>
+                        <td>NOT NULL</td>
+                        <td>DIA o MES.</td>
+                    </tr>
+
+                    <tr>
+                        <td>permite_pareja</td>
+                        <td>BOOLEAN</td>
+                        <td>NOT NULL</td>
+                        <td>Indica si permite membresía de pareja.</td>
+                    </tr>
+
+                    <tr>
+                        <td>permite_descuento</td>
+                        <td>BOOLEAN</td>
+                        <td>NOT NULL</td>
+                        <td>Indica si se puede aplicar descuento.</td>
+                    </tr>
+
+                    <tr>
+                        <td>activo</td>
+                        <td>BOOLEAN</td>
+                        <td>NOT NULL</td>
+                        <td>Indica si el plan está disponible.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Planes actuales</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Plan</th>
+                    <th>Tipo</th>
+                    <th>Precio</th>
+                    <th>Duración</th>
+                    <th>Pareja</th>
+                    <th>Descuento</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>Senior Mensual</td>
+                    <td>SENIOR</td>
+                    <td>$65.00</td>
+                    <td>1 MES</td>
+                    <td>No</td>
+                    <td>No</td>
+                </tr>
+
+                <tr>
+                    <td>Senior Pareja</td>
+                    <td>SENIOR</td>
+                    <td>$111.00</td>
+                    <td>1 MES</td>
+                    <td>Sí</td>
+                    <td>No</td>
+                </tr>
+
+                <tr>
+                    <td>Senior 90 Días</td>
+                    <td>SENIOR</td>
+                    <td>$145.00</td>
+                    <td>90 DÍAS</td>
+                    <td>No</td>
+                    <td>No</td>
+                </tr>
+
+                <tr>
+                    <td>Junior Mensual</td>
+                    <td>JUNIOR</td>
+                    <td>$65.00</td>
+                    <td>1 MES</td>
+                    <td>No</td>
+                    <td>Sí</td>
+                </tr>
+
+                <tr>
+                    <td>Pase 1 Día</td>
+                    <td>PASES</td>
+                    <td>$10.00</td>
+                    <td>1 DÍA</td>
+                    <td>No</td>
+                    <td>No</td>
+                </tr>
+
+                <tr>
+                    <td>Pase 5 Días</td>
+                    <td>PASES</td>
+                    <td>$30.00</td>
+                    <td>5 DÍAS</td>
+                    <td>No</td>
+                    <td>No</td>
+                </tr>
+
+                <tr>
+                    <td>Pase 10 Días</td>
+                    <td>PASES</td>
+                    <td>$49.00</td>
+                    <td>10 DÍAS</td>
+                    <td>No</td>
+                    <td>No</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
 
 
-            MEMBRESIAS {
-                int id_membresia PK "NOT NULL"
-                int id_cliente FK "NOT NULL"
-                int id_producto FK "NOT NULL"
-                int id_factura FK "NOT NULL"
-                date fecha_inicio "NOT NULL"
-                date fecha_fin "NOT NULL"
-                int dias_totales "NOT NULL"
-                string estado "NOT NULL"
-                int id_membresia_pareja FK "NULL"
-            }
+    <!-- ========================================================= -->
+    <!-- FACTURAS -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>7. Tabla: FACTURAS</h2>
+
+        <p class="descripcion">
+            Registra cada factura generada por un empleado para un cliente.
+            La factura puede contener productos y puede originar una membresía.
+        </p>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Tipo</th>
+                        <th>Restricción</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>id_factura</td>
+                        <td>SERIAL</td>
+                        <td>PK</td>
+                        <td>Identificador interno.</td>
+                    </tr>
+
+                    <tr>
+                        <td>numero_factura</td>
+                        <td>VARCHAR(30)</td>
+                        <td>UNIQUE, NOT NULL</td>
+                        <td>Número visible de la factura.</td>
+                    </tr>
+
+                    <tr>
+                        <td>id_cliente</td>
+                        <td>INTEGER</td>
+                        <td>FK, NOT NULL</td>
+                        <td>Cliente al que pertenece la factura.</td>
+                    </tr>
+
+                    <tr>
+                        <td>id_empleado</td>
+                        <td>INTEGER</td>
+                        <td>FK, NOT NULL</td>
+                        <td>Empleado que genera la factura.</td>
+                    </tr>
+
+                    <tr>
+                        <td>fecha</td>
+                        <td>TIMESTAMP</td>
+                        <td>NOT NULL</td>
+                        <td>Fecha y hora de emisión.</td>
+                    </tr>
+
+                    <tr>
+                        <td>metodo_pago</td>
+                        <td>VARCHAR(30)</td>
+                        <td>NOT NULL</td>
+                        <td>Método utilizado para pagar.</td>
+                    </tr>
+
+                    <tr>
+                        <td>descuento_porcentaje</td>
+                        <td>NUMERIC(5,2)</td>
+                        <td>NOT NULL</td>
+                        <td>Porcentaje de descuento aplicado.</td>
+                    </tr>
+
+                    <tr>
+                        <td>subtotal</td>
+                        <td>NUMERIC(10,2)</td>
+                        <td>NOT NULL</td>
+                        <td>Subtotal antes de impuestos.</td>
+                    </tr>
+
+                    <tr>
+                        <td>iva</td>
+                        <td>NUMERIC(10,2)</td>
+                        <td>NOT NULL</td>
+                        <td>Valor monetario del IVA.</td>
+                    </tr>
+
+                    <tr>
+                        <td>total</td>
+                        <td>NUMERIC(10,2)</td>
+                        <td>NOT NULL</td>
+                        <td>Total final de la factura.</td>
+                    </tr>
+
+                    <tr>
+                        <td>estado</td>
+                        <td>VARCHAR(30)</td>
+                        <td>NOT NULL</td>
+                        <td>EMITIDA o ANULADA.</td>
+                    </tr>
+
+                    <tr>
+                        <td>motivo_anulacion</td>
+                        <td>VARCHAR(255)</td>
+                        <td>NULL</td>
+                        <td>Motivo registrado cuando una factura es anulada.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
 
-            CATEGORIAS_EVENTO {
-                int id_categoria PK "NOT NULL"
-                string nombre UK "NOT NULL"
-                string color "NOT NULL"
-            }
+    <!-- ========================================================= -->
+    <!-- DETALLE FACTURA -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>8. Tabla: DETALLE_FACTURA</h2>
+
+        <p class="descripcion">
+            Representa los productos individuales incluidos dentro de una factura.
+            Permite que una factura tenga uno o varios productos.
+        </p>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Tipo</th>
+                        <th>Restricción</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>id_detalle</td>
+                        <td>SERIAL</td>
+                        <td>PK</td>
+                        <td>Identificador del detalle.</td>
+                    </tr>
+
+                    <tr>
+                        <td>id_factura</td>
+                        <td>INTEGER</td>
+                        <td>FK, NOT NULL</td>
+                        <td>Factura a la que pertenece.</td>
+                    </tr>
+
+                    <tr>
+                        <td>id_producto</td>
+                        <td>INTEGER</td>
+                        <td>FK, NOT NULL</td>
+                        <td>Producto vendido.</td>
+                    </tr>
+
+                    <tr>
+                        <td>cantidad</td>
+                        <td>INTEGER</td>
+                        <td>NOT NULL</td>
+                        <td>Cantidad vendida.</td>
+                    </tr>
+
+                    <tr>
+                        <td>precio_unitario</td>
+                        <td>NUMERIC(10,2)</td>
+                        <td>NOT NULL</td>
+                        <td>Precio del producto al momento de la venta.</td>
+                    </tr>
+
+                    <tr>
+                        <td>subtotal</td>
+                        <td>NUMERIC(10,2)</td>
+                        <td>NOT NULL</td>
+                        <td>Subtotal del detalle.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="nota">
+            <strong>Importante:</strong>
+            se almacena <code>precio_unitario</code> en el detalle para conservar
+            el precio histórico utilizado en la factura aunque posteriormente
+            cambie el precio del producto.
+        </div>
+    </section>
 
 
-            EVENTOS {
-                int id_evento PK "NOT NULL"
-                string titulo "NOT NULL"
-                int id_categoria FK "NOT NULL"
-                date fecha "NOT NULL"
-                time hora_inicio "NOT NULL"
-                time hora_fin "NOT NULL"
-                string descripcion "NULL"
-                int cupo_maximo "NULL"
-            }
+    <!-- ========================================================= -->
+    <!-- MEMBRESÍAS -->
+    <!-- ========================================================= -->
 
-        `;
+    <section>
+        <h2>9. Tabla: MEMBRESIAS</h2>
 
-        const { svg } = await mermaid.render(
-            "erd-sistema-facturacion",
-            src
-        );
+        <p class="descripcion">
+            Representa una membresía concreta adquirida por un cliente.
+            El plan define las condiciones comerciales y esta tabla registra
+            la instancia real de dicha membresía.
+        </p>
 
-        document.getElementById("erd").innerHTML = svg;
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Tipo</th>
+                        <th>Restricción</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
 
-    </script>
+                <tbody>
+                    <tr>
+                        <td>id_membresia</td>
+                        <td>SERIAL</td>
+                        <td>PK</td>
+                        <td>Identificador de la membresía.</td>
+                    </tr>
+
+                    <tr>
+                        <td>id_cliente</td>
+                        <td>INTEGER</td>
+                        <td>FK, NOT NULL</td>
+                        <td>Cliente propietario.</td>
+                    </tr>
+
+                    <tr>
+                        <td>id_plan</td>
+                        <td>INTEGER</td>
+                        <td>FK, NOT NULL</td>
+                        <td>Plan utilizado para configurar la membresía.</td>
+                    </tr>
+
+                    <tr>
+                        <td>id_factura</td>
+                        <td>INTEGER</td>
+                        <td>FK, NOT NULL</td>
+                        <td>Factura que originó la membresía.</td>
+                    </tr>
+
+                    <tr>
+                        <td>fecha_inicio</td>
+                        <td>DATE</td>
+                        <td>NOT NULL</td>
+                        <td>Inicio de la membresía.</td>
+                    </tr>
+
+                    <tr>
+                        <td>fecha_fin</td>
+                        <td>DATE</td>
+                        <td>NOT NULL</td>
+                        <td>Finalización de la membresía.</td>
+                    </tr>
+
+                    <tr>
+                        <td>dias_totales</td>
+                        <td>INTEGER</td>
+                        <td>NOT NULL</td>
+                        <td>Cantidad total de accesos disponibles originalmente.</td>
+                    </tr>
+
+                    <tr>
+                        <td>dias_restantes</td>
+                        <td>INTEGER</td>
+                        <td>NOT NULL</td>
+                        <td>Cantidad de accesos que todavía puede utilizar el cliente.</td>
+                    </tr>
+
+                    <tr>
+                        <td>estado</td>
+                        <td>VARCHAR(30)</td>
+                        <td>NOT NULL</td>
+                        <td>ACTIVA, VENCIDA o CANCELADA.</td>
+                    </tr>
+
+                    <tr>
+                        <td>id_membresia_pareja</td>
+                        <td>INTEGER</td>
+                        <td>FK, NULL, UNIQUE</td>
+                        <td>Referencia a la membresía de la pareja.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="nota">
+            <strong>Control de accesos:</strong>
+            en los planes PASES, <code>dias_totales</code> representa la cantidad
+            de accesos adquiridos y <code>dias_restantes</code> representa la
+            cantidad de accesos disponibles. Cada ingreso del cliente reduce
+            <code>dias_restantes</code> en uno.
+        </div>
+
+        <div class="nota">
+            <strong>Membresía de pareja:</strong>
+            el plan Senior Pareja cuesta $111 para dos clientes.
+            Se pueden registrar dos membresías relacionadas entre sí,
+            utilizando <code>id_membresia_pareja</code>.
+        </div>
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- CATEGORIAS EVENTO -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>10. Tabla: CATEGORIAS_EVENTO</h2>
+
+        <p class="descripcion">
+            Contiene las categorías utilizadas para clasificar los eventos
+            del gimnasio.
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Campo</th>
+                    <th>Tipo</th>
+                    <th>Restricción</th>
+                    <th>Descripción</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>id_categoria</td>
+                    <td>SERIAL</td>
+                    <td>PK</td>
+                    <td>Identificador de la categoría.</td>
+                </tr>
+
+                <tr>
+                    <td>nombre</td>
+                    <td>VARCHAR(100)</td>
+                    <td>UNIQUE, NOT NULL</td>
+                    <td>Nombre de la categoría.</td>
+                </tr>
+
+                <tr>
+                    <td>color</td>
+                    <td>VARCHAR(30)</td>
+                    <td>NOT NULL</td>
+                    <td>Color utilizado para representar la categoría.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- EVENTOS -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>11. Tabla: EVENTOS</h2>
+
+        <p class="descripcion">
+            Registra las actividades o eventos programados en el gimnasio.
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Campo</th>
+                    <th>Tipo</th>
+                    <th>Restricción</th>
+                    <th>Descripción</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>id_evento</td>
+                    <td>SERIAL</td>
+                    <td>PK</td>
+                    <td>Identificador del evento.</td>
+                </tr>
+
+                <tr>
+                    <td>titulo</td>
+                    <td>VARCHAR(150)</td>
+                    <td>NOT NULL</td>
+                    <td>Nombre del evento.</td>
+                </tr>
+
+                <tr>
+                    <td>id_categoria</td>
+                    <td>INTEGER</td>
+                    <td>FK, NOT NULL</td>
+                    <td>Categoría del evento.</td>
+                </tr>
+
+                <tr>
+                    <td>fecha</td>
+                    <td>DATE</td>
+                    <td>NOT NULL</td>
+                    <td>Fecha del evento.</td>
+                </tr>
+
+                <tr>
+                    <td>hora_inicio</td>
+                    <td>TIME</td>
+                    <td>NOT NULL</td>
+                    <td>Hora de inicio.</td>
+                </tr>
+
+                <tr>
+                    <td>hora_fin</td>
+                    <td>TIME</td>
+                    <td>NOT NULL</td>
+                    <td>Hora de finalización.</td>
+                </tr>
+
+                <tr>
+                    <td>descripcion</td>
+                    <td>TEXT</td>
+                    <td>NULL</td>
+                    <td>Descripción del evento.</td>
+                </tr>
+
+                <tr>
+                    <td>cupo_maximo</td>
+                    <td>INTEGER</td>
+                    <td>NULL</td>
+                    <td>Cantidad máxima de participantes.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- REGLAS DE NEGOCIO -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>12. Reglas de negocio principales</h2>
+
+        <ul>
+            <li>
+                Una factura pertenece a un cliente y es generada por un empleado.
+            </li>
+
+            <li>
+                Una factura puede contener uno o varios productos.
+            </li>
+
+            <li>
+                El precio registrado en <code>DETALLE_FACTURA</code>
+                representa el precio histórico utilizado en la venta.
+            </li>
+
+            <li>
+                Los productos físicos no representan membresías.
+            </li>
+
+            <li>
+                Los planes de membresía se administran mediante
+                <code>PLANES_MEMBRESIA</code>.
+            </li>
+
+            <li>
+                Una membresía pertenece a un cliente y utiliza un plan.
+            </li>
+
+            <li>
+                Una membresía queda asociada a la factura mediante
+                <code>id_factura</code>.
+            </li>
+
+            <li>
+                El descuento variable de Junior se aplica en la factura,
+                no modificando el precio base del plan.
+            </li>
+
+            <li>
+                El plan Senior Pareja permite relacionar dos membresías.
+            </li>
+
+            <li>
+                Los planes PASES representan duraciones de 1, 5 y 10 días.
+            </li>
+
+            <li>
+                El plan Senior de larga duración es de 90 días.
+            </li>
+
+            <li>
+                En los planes PASES, cada acceso utilizado reduce
+                <code>dias_restantes</code> en uno.
+            </li>
+
+            <li>
+                Cuando <code>dias_restantes</code> llega a cero, el cliente
+                no puede utilizar nuevamente ese pase.
+            </li>
+
+            <li>
+                Los productos actualmente no manejan inventario ni stock.
+            </li>
+        </ul>
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- ESTRUCTURA GENERAL -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>13. Estructura general del sistema</h2>
+
+        <pre>
+CLIENTES
+   │
+   ├─────────────── FACTURAS ─────────────── EMPLEADOS
+   │                      │
+   │                      │
+   │                DETALLE_FACTURA
+   │                      │
+   │                   PRODUCTOS
+   │
+   └─────────────── MEMBRESIAS
+                         │
+                  PLANES_MEMBRESIA
+                         │
+                  pareja_con
+                  (otra membresía)
+
+
+CATEGORIAS_EVENTO
+        │
+        └──────────── EVENTOS
+        </pre>
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- NOTAS DE DISEÑO -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>14. Decisiones de diseño</h2>
+
+        <h3>Productos vs. membresías</h3>
+
+        <p class="descripcion">
+            Los productos físicos y las membresías tienen comportamientos
+            diferentes, por lo que no se almacenan dentro de la misma tabla.
+            Los productos se encuentran en <code>PRODUCTOS</code>, mientras
+            que los planes comerciales se encuentran en
+            <code>PLANES_MEMBRESIA</code>.
+        </p>
+
+        <h3>Precio histórico</h3>
+
+        <p class="descripcion">
+            El precio de un producto puede cambiar con el tiempo.
+            Por ello, el precio utilizado en una venta se copia en
+            <code>DETALLE_FACTURA.precio_unitario</code>.
+        </p>
+
+        <h3>Descuentos</h3>
+
+        <p class="descripcion">
+            El descuento se registra en la factura porque representa
+            una condición aplicada a una venta específica.
+            El precio base del plan permanece independiente.
+        </p>
+
+        <h3>Duración de membresías</h3>
+
+        <p class="descripcion">
+            Los planes pueden tener duración expresada en días o meses.
+            Por ello se utilizan los campos <code>duracion</code> y
+            <code>unidad_duracion</code>.
+        </p>
+    </section>
+
+</main>
+
+<footer>
+    Sistema de Facturación · Documentación de Base de Datos PostgreSQL
+</footer>
 
 </body>
 </html>
-```
