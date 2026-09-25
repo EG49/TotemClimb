@@ -1,0 +1,35 @@
+INSERT INTO planes_membresia
+    (nombre, tipo, precio, duracion, unidad_duracion, permite_pareja, permite_descuento)
+VALUES
+
+    -- SENIOR
+    ('Senior Mensual', 'SENIOR', 65.00, 1, 'MES', FALSE, FALSE),
+    ('Senior Pareja', 'SENIOR', 111.00, 1, 'MES', TRUE, FALSE),
+    ('Senior 3 Meses', 'SENIOR', 145.00, 3, 'MES', FALSE, FALSE),
+
+    -- JUNIOR
+    ('Junior Mensual', 'JUNIOR', 65.00, 1, 'MES', FALSE, TRUE),
+
+    -- PASES
+    ('Pase 1 Día', 'PASES', 10.00, 1, 'DIA', FALSE, FALSE),
+    ('Pase 5 Días', 'PASES', 30.00, 5, 'DIA', FALSE, FALSE),
+    ('Pase 10 Días', 'PASES', 49.00, 10, 'DIA', FALSE, FALSE);
+
+
+
+
+
+INSERT INTO productos
+    (nombre, categoria, tipo, precio, stock)
+VALUES
+    ('Agua Cielo', 'Bebida', 'Producto', 0.50, 0),
+    ('Sporade', 'Bebida', 'Producto', 0.75, 0),
+    ('Coca-Cola', 'Bebida', 'Producto', 0.75, 0),
+    ('Cielo de Toronja', 'Bebida', 'Producto', 0.75, 0),
+    ('Agua Splendor', 'Bebida', 'Producto', 1.00, 0),
+    ('Magnesio Cubo', 'Suplemento', 'Producto', 5.00, 0);
+
+
+ALTER TABLE productos
+DROP COLUMN IF EXISTS stock,
+DROP COLUMN IF EXISTS tipo;

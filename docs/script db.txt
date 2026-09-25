@@ -1,0 +1,329 @@
+-- ============================================================
+-- BASE DE DATOS: SISTEMA DE FACTURACIÓN
+-- PostgreSQL
+-- ============================================================
+
+
+-- ============================================================
+-- 1. CLIENTES
+-- ============================================================
+
+CREATE TABLE clientes (
+    id_cliente SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    cedula VARCHAR(20) NOT NULL UNIQUE,
+    fecha_nacimiento DATE,
+    correo VARCHAR(150),
+    telefono VARCHAR(30),
+    genero VARCHAR(30),
+    contacto_emergencia VARCHAR(150),
+    contrato_ruta VARCHAR(150),
+    vigente_hasta DATE,
+    fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- ============================================================
+-- 2. EMPLEADOS
+-- ============================================================
+
+CREATE TABLE empleados (
+    id_empleado SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    usuario VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    rol VARCHAR(30) NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_empleado_rol
+        CHECK (rol IN ('ADMIN', 'SUPERVISOR', 'VENDEDOR'))
+);
+
+
+-- ============================================================
+-- 3. PRODUCTOS
+-- ============================================================
+
+CREATE TABLE productos (
+    id_producto SERIAL PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    categoria VARCHAR(100) NOT NULL,
+    precio NUMERIC(10,2) NOT NULL,
+
+    CONSTRAINT chk_producto_precio
+        CHECK (precio >= 0)
+);
+
+
+-- ============================================================
+-- 4. PLANES DE MEMBRESÍA
+-- ============================================================
+
+CREATE TABLE planes_membresia (
+    id_plan SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    tipo VARCHAR(20) NOT NULL,
+    precio NUMERIC(10,2) NOT NULL,
+    duracion INTEGER NOT NULL,
+    unidad_duracion VARCHAR(10) NOT NULL,
+    permite_pareja BOOLEAN NOT NULL DEFAULT FALSE,
+    permite_descuento BOOLEAN NOT NULL DEFAULT FALSE,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT chk_plan_tipo
+        CHECK (tipo IN ('JUNIOR', 'SENIOR', 'PASES')),
+
+    CONSTRAINT chk_plan_precio
+        CHECK (precio >= 0),
+
+    CONSTRAINT chk_plan_duracion
+        CHECK (duracion > 0),
+
+    CONSTRAINT chk_plan_unidad
+        CHECK (unidad_duracion IN ('DIA', 'MES'))
+);
+
+
+-- ============================================================
+-- 5. FACTURAS
+-- ============================================================
+
+CREATE TABLE facturas (
+    id_factura SERIAL PRIMARY KEY,
+    numero_factura VARCHAR(30) NOT NULL UNIQUE,
+
+    id_cliente INTEGER NOT NULL,
+    id_empleado INTEGER NOT NULL,
+
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    metodo_pago VARCHAR(30) NOT NULL,
+
+    descuento_porcentaje NUMERIC(5,2) NOT NULL DEFAULT 0,
+
+    subtotal NUMERIC(10,2) NOT NULL,
+    iva NUMERIC(10,2) NOT NULL,
+    total NUMERIC(10,2) NOT NULL,
+
+    estado VARCHAR(30) NOT NULL DEFAULT 'EMITIDA',
+    motivo_anulacion VARCHAR(255),
+
+    CONSTRAINT fk_factura_cliente
+        FOREIGN KEY (id_cliente)
+        REFERENCES clientes(id_cliente),
+
+    CONSTRAINT fk_factura_empleado
+        FOREIGN KEY (id_empleado)
+        REFERENCES empleados(id_empleado),
+
+    CONSTRAINT chk_factura_descuento
+        CHECK (
+            descuento_porcentaje >= 0
+            AND descuento_porcentaje <= 100
+        ),
+
+    CONSTRAINT chk_factura_subtotal
+        CHECK (subtotal >= 0),
+
+    CONSTRAINT chk_factura_iva
+        CHECK (iva >= 0),
+
+    CONSTRAINT chk_factura_total
+        CHECK (total >= 0),
+
+    CONSTRAINT chk_factura_estado
+        CHECK (
+            estado IN ('EMITIDA', 'ANULADA')
+        ),
+
+    CONSTRAINT chk_factura_anulacion
+        CHECK (
+            (estado = 'ANULADA' AND motivo_anulacion IS NOT NULL)
+            OR
+            (estado <> 'ANULADA')
+        )
+);
+
+
+-- ============================================================
+-- 6. DETALLE DE FACTURA
+-- ============================================================
+
+CREATE TABLE detalle_factura (
+    id_detalle SERIAL PRIMARY KEY,
+
+    id_factura INTEGER NOT NULL,
+    id_producto INTEGER NOT NULL,
+
+    cantidad INTEGER NOT NULL,
+    precio_unitario NUMERIC(10,2) NOT NULL,
+    subtotal NUMERIC(10,2) NOT NULL,
+
+    CONSTRAINT fk_detalle_factura
+        FOREIGN KEY (id_factura)
+        REFERENCES facturas(id_factura)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_detalle_producto
+        FOREIGN KEY (id_producto)
+        REFERENCES productos(id_producto),
+
+    CONSTRAINT chk_detalle_cantidad
+        CHECK (cantidad > 0),
+
+    CONSTRAINT chk_detalle_precio
+        CHECK (precio_unitario >= 0),
+
+    CONSTRAINT chk_detalle_subtotal
+        CHECK (subtotal >= 0)
+);
+
+
+-- ============================================================
+-- 7. MEMBRESÍAS
+-- ============================================================
+
+CREATE TABLE membresias (
+    id_membresia SERIAL PRIMARY KEY,
+
+    id_cliente INTEGER NOT NULL,
+    id_plan INTEGER NOT NULL,
+    id_factura INTEGER NOT NULL,
+
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+
+    -- Para controlar la cantidad de accesos de los PASES
+    dias_totales INTEGER NOT NULL,
+    dias_restantes INTEGER NOT NULL,
+
+    estado VARCHAR(30) NOT NULL DEFAULT 'ACTIVA',
+
+    id_membresia_pareja INTEGER UNIQUE,
+
+    CONSTRAINT fk_membresia_cliente
+        FOREIGN KEY (id_cliente)
+        REFERENCES clientes(id_cliente),
+
+    CONSTRAINT fk_membresia_plan
+        FOREIGN KEY (id_plan)
+        REFERENCES planes_membresia(id_plan),
+
+    CONSTRAINT fk_membresia_factura
+        FOREIGN KEY (id_factura)
+        REFERENCES facturas(id_factura),
+
+    CONSTRAINT fk_membresia_pareja
+        FOREIGN KEY (id_membresia_pareja)
+        REFERENCES membresias(id_membresia),
+
+    CONSTRAINT chk_membresia_fechas
+        CHECK (fecha_fin >= fecha_inicio),
+
+    CONSTRAINT chk_membresia_dias
+        CHECK (dias_totales > 0),
+
+    CONSTRAINT chk_membresia_dias_restantes
+        CHECK (
+            dias_restantes >= 0
+            AND dias_restantes <= dias_totales
+        ),
+
+    CONSTRAINT chk_membresia_estado
+        CHECK (
+            estado IN ('ACTIVA', 'VENCIDA', 'CANCELADA')
+        ),
+
+    CONSTRAINT chk_membresia_no_auto_pareja
+        CHECK (
+            id_membresia_pareja IS NULL
+            OR id_membresia_pareja <> id_membresia
+        )
+);
+
+
+-- ============================================================
+-- 8. CATEGORÍAS DE EVENTOS
+-- ============================================================
+
+CREATE TABLE categorias_evento (
+    id_categoria SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    color VARCHAR(30) NOT NULL
+);
+
+
+-- ============================================================
+-- 9. EVENTOS
+-- ============================================================
+
+CREATE TABLE eventos (
+    id_evento SERIAL PRIMARY KEY,
+
+    titulo VARCHAR(150) NOT NULL,
+    id_categoria INTEGER NOT NULL,
+
+    fecha DATE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+
+    descripcion TEXT,
+    cupo_maximo INTEGER,
+
+    CONSTRAINT fk_evento_categoria
+        FOREIGN KEY (id_categoria)
+        REFERENCES categorias_evento(id_categoria),
+
+    CONSTRAINT chk_evento_horas
+        CHECK (hora_fin > hora_inicio),
+
+    CONSTRAINT chk_evento_cupo
+        CHECK (
+            cupo_maximo IS NULL
+            OR cupo_maximo > 0
+        )
+);
+
+
+-- ============================================================
+-- ÍNDICES
+-- ============================================================
+
+CREATE INDEX idx_facturas_cliente
+    ON facturas(id_cliente);
+
+CREATE INDEX idx_facturas_empleado
+    ON facturas(id_empleado);
+
+CREATE INDEX idx_facturas_fecha
+    ON facturas(fecha);
+
+
+CREATE INDEX idx_detalle_factura
+    ON detalle_factura(id_factura);
+
+CREATE INDEX idx_detalle_producto
+    ON detalle_factura(id_producto);
+
+
+CREATE INDEX idx_membresias_cliente
+    ON membresias(id_cliente);
+
+CREATE INDEX idx_membresias_plan
+    ON membresias(id_plan);
+
+CREATE INDEX idx_membresias_factura
+    ON membresias(id_factura);
+
+CREATE INDEX idx_membresias_estado
+    ON membresias(estado);
+
+
+CREATE INDEX idx_eventos_fecha
+    ON eventos(fecha);
+
+CREATE INDEX idx_eventos_categoria
+    ON eventos(id_categoria);
