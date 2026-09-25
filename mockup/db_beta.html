@@ -1,0 +1,177 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ERD - Sistema de Facturación</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 30px;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        #erd {
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Sistema de Facturación</h1>
+
+    <div id="erd"></div>
+
+    <script type="module">
+
+        import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: "default"
+        });
+
+        const src = `
+
+        erDiagram
+
+            CLIENTES ||--o{ FACTURAS : recibe
+            EMPLEADOS ||--o{ FACTURAS : genera
+
+            FACTURAS ||--|{ DETALLE_FACTURA : contiene
+
+            PRODUCTOS ||--o{ DETALLE_FACTURA : aparece_en
+
+            CLIENTES ||--o{ MEMBRESIAS : posee
+            PRODUCTOS ||--o{ MEMBRESIAS : define
+            FACTURAS ||--o{ MEMBRESIAS : origina
+
+            MEMBRESIAS |o--o| MEMBRESIAS : pareja_con
+
+            CATEGORIAS_EVENTO ||--o{ EVENTOS : clasifica
+
+
+            CLIENTES {
+                int id_cliente PK "NOT NULL"
+                string nombre "NOT NULL"
+                string apellido "NOT NULL"
+                string cedula UK "NOT NULL"
+                date fecha_nacimiento "NULL"
+                string correo "NULL"
+                string telefono "NULL"
+                string genero "NULL"
+                string contacto_emergencia "NULL"
+                string contrato_ruta "NULL"
+                date vigente_hasta "NULL"
+                timestamp fecha_registro "NOT NULL"
+            }
+
+
+            EMPLEADOS {
+                int id_empleado PK "NOT NULL"
+                string nombre "NOT NULL"
+                string apellido "NOT NULL"
+                string usuario UK "NOT NULL"
+                string password "NOT NULL"
+                string rol "NOT NULL"
+                boolean activo "NOT NULL"
+                timestamp fecha_registro "NOT NULL"
+            }
+
+
+            PRODUCTOS {
+                int id_producto PK "NOT NULL"
+                string nombre "NOT NULL"
+                string categoria "NOT NULL"
+                string tipo "NOT NULL"
+                decimal precio "NOT NULL"
+                int stock "NOT NULL"
+                boolean es_membresia "NOT NULL"
+                string tipo_membresia "NULL"
+                int dias_incluidos "NULL"
+            }
+
+
+            FACTURAS {
+                int id_factura PK "NOT NULL"
+                string numero_factura UK "NOT NULL"
+                int id_cliente FK "NOT NULL"
+                int id_empleado FK "NOT NULL"
+                timestamp fecha "NOT NULL"
+                string metodo_pago "NOT NULL"
+                decimal descuento_porcentaje "NOT NULL"
+                decimal subtotal "NOT NULL"
+                decimal iva "NOT NULL"
+                decimal total "NOT NULL"
+                string estado "NOT NULL"
+                string motivo_anulacion "NULL"
+            }
+
+
+            DETALLE_FACTURA {
+                int id_detalle PK "NOT NULL"
+                int id_factura FK "NOT NULL"
+                int id_producto FK "NOT NULL"
+                int cantidad "NOT NULL"
+                decimal precio_unitario "NOT NULL"
+                decimal subtotal "NOT NULL"
+            }
+
+
+            MEMBRESIAS {
+                int id_membresia PK "NOT NULL"
+                int id_cliente FK "NOT NULL"
+                int id_producto FK "NOT NULL"
+                int id_factura FK "NOT NULL"
+                date fecha_inicio "NOT NULL"
+                date fecha_fin "NOT NULL"
+                int dias_totales "NOT NULL"
+                string estado "NOT NULL"
+                int id_membresia_pareja FK "NULL"
+            }
+
+
+            CATEGORIAS_EVENTO {
+                int id_categoria PK "NOT NULL"
+                string nombre UK "NOT NULL"
+                string color "NOT NULL"
+            }
+
+
+            EVENTOS {
+                int id_evento PK "NOT NULL"
+                string titulo "NOT NULL"
+                int id_categoria FK "NOT NULL"
+                date fecha "NOT NULL"
+                time hora_inicio "NOT NULL"
+                time hora_fin "NOT NULL"
+                string descripcion "NULL"
+                int cupo_maximo "NULL"
+            }
+
+        `;
+
+        const { svg } = await mermaid.render(
+            "erd-sistema-facturacion",
+            src
+        );
+
+        document.getElementById("erd").innerHTML = svg;
+
+    </script>
+
+</body>
+</html>
+```
