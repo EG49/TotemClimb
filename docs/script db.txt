@@ -3,6 +3,11 @@
 -- Base de datos: PostgreSQL
 -- ============================================================
 
+-- BASE DE DATOS: SISTEMA DE FACTURACIÓN
+-- PostgreSQL
+-- ============================================================
+
+
 -- ============================================================
 -- 1. CLIENTES
 -- ============================================================
@@ -26,6 +31,16 @@ CREATE TABLE clientes (
     contrato_ruta VARCHAR(150),
     vigente_hasta DATE,
 
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    cedula VARCHAR(20) NOT NULL UNIQUE,
+    fecha_nacimiento DATE,
+    correo VARCHAR(150),
+    telefono VARCHAR(30),
+    genero VARCHAR(30),
+    contacto_emergencia VARCHAR(150),
+    contrato_ruta VARCHAR(150),
+    vigente_hasta DATE,
     fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -47,6 +62,12 @@ CREATE TABLE empleados (
 
     activo BOOLEAN NOT NULL DEFAULT TRUE,
 
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    usuario VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    rol VARCHAR(30) NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
     fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT chk_empleado_rol
@@ -97,6 +118,46 @@ CREATE TABLE productos (
 
 -- ============================================================
 -- 4. FACTURAS
+    nombre VARCHAR(150) NOT NULL,
+    categoria VARCHAR(100) NOT NULL,
+    precio NUMERIC(10,2) NOT NULL,
+
+    CONSTRAINT chk_producto_precio
+        CHECK (precio >= 0)
+);
+
+
+-- ============================================================
+-- 4. PLANES DE MEMBRESÍA
+-- ============================================================
+
+CREATE TABLE planes_membresia (
+    id_plan SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    tipo VARCHAR(20) NOT NULL,
+    precio NUMERIC(10,2) NOT NULL,
+    duracion INTEGER NOT NULL,
+    unidad_duracion VARCHAR(10) NOT NULL,
+    permite_pareja BOOLEAN NOT NULL DEFAULT FALSE,
+    permite_descuento BOOLEAN NOT NULL DEFAULT FALSE,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT chk_plan_tipo
+        CHECK (tipo IN ('JUNIOR', 'SENIOR', 'PASES')),
+
+    CONSTRAINT chk_plan_precio
+        CHECK (precio >= 0),
+
+    CONSTRAINT chk_plan_duracion
+        CHECK (duracion > 0),
+
+    CONSTRAINT chk_plan_unidad
+        CHECK (unidad_duracion IN ('DIA', 'MES'))
+);
+
+
+-- ============================================================
+-- 5. FACTURAS
 -- ============================================================
 
 CREATE TABLE facturas (
@@ -150,6 +211,7 @@ CREATE TABLE facturas (
                 'EMITIDA',
                 'ANULADA'
             )
+            estado IN ('EMITIDA', 'ANULADA')
         ),
 
     CONSTRAINT chk_factura_anulacion
@@ -163,6 +225,7 @@ CREATE TABLE facturas (
 
 -- ============================================================
 -- 5. DETALLE DE FACTURA
+-- 6. DETALLE DE FACTURA
 -- ============================================================
 
 CREATE TABLE detalle_factura (
@@ -197,20 +260,22 @@ CREATE TABLE detalle_factura (
 
 
 -- ============================================================
--- 6. MEMBRESÍAS
+-- 7. MEMBRESÍAS
 -- ============================================================
 
 CREATE TABLE membresias (
     id_membresia SERIAL PRIMARY KEY,
 
     id_cliente INTEGER NOT NULL,
-    id_producto INTEGER NOT NULL,
+    id_plan INTEGER NOT NULL,
     id_factura INTEGER NOT NULL,
 
     fecha_inicio DATE NOT NULL,
     fecha_fin DATE NOT NULL,
 
+    -- Para controlar la cantidad de accesos de los PASES
     dias_totales INTEGER NOT NULL,
+    dias_restantes INTEGER NOT NULL,
 
     estado VARCHAR(30) NOT NULL DEFAULT 'ACTIVA',
 
@@ -220,9 +285,9 @@ CREATE TABLE membresias (
         FOREIGN KEY (id_cliente)
         REFERENCES clientes(id_cliente),
 
-    CONSTRAINT fk_membresia_producto
-        FOREIGN KEY (id_producto)
-        REFERENCES productos(id_producto),
+    CONSTRAINT fk_membresia_plan
+        FOREIGN KEY (id_plan)
+        REFERENCES planes_membresia(id_plan),
 
     CONSTRAINT fk_membresia_factura
         FOREIGN KEY (id_factura)
@@ -238,13 +303,15 @@ CREATE TABLE membresias (
     CONSTRAINT chk_membresia_dias
         CHECK (dias_totales > 0),
 
+    CONSTRAINT chk_membresia_dias_restantes
+        CHECK (
+            dias_restantes >= 0
+            AND dias_restantes <= dias_totales
+        ),
+
     CONSTRAINT chk_membresia_estado
         CHECK (
-            estado IN (
-                'ACTIVA',
-                'VENCIDA',
-                'CANCELADA'
-            )
+            estado IN ('ACTIVA', 'VENCIDA', 'CANCELADA')
         ),
 
     CONSTRAINT chk_membresia_no_auto_pareja
@@ -256,35 +323,31 @@ CREATE TABLE membresias (
 
 
 -- ============================================================
--- 7. CATEGORÍAS DE EVENTOS
+-- 8. CATEGORÍAS DE EVENTOS
 -- ============================================================
 
 CREATE TABLE categorias_evento (
     id_categoria SERIAL PRIMARY KEY,
-
     nombre VARCHAR(100) NOT NULL UNIQUE,
     color VARCHAR(30) NOT NULL
 );
 
 
 -- ============================================================
--- 8. EVENTOS
+-- 9. EVENTOS
 -- ============================================================
 
 CREATE TABLE eventos (
     id_evento SERIAL PRIMARY KEY,
 
     titulo VARCHAR(150) NOT NULL,
-
     id_categoria INTEGER NOT NULL,
 
     fecha DATE NOT NULL,
-
     hora_inicio TIME NOT NULL,
     hora_fin TIME NOT NULL,
 
     descripcion TEXT,
-
     cupo_maximo INTEGER,
 
     CONSTRAINT fk_evento_categoria
@@ -315,17 +378,19 @@ CREATE INDEX idx_facturas_empleado
 CREATE INDEX idx_facturas_fecha
     ON facturas(fecha);
 
+
 CREATE INDEX idx_detalle_factura
     ON detalle_factura(id_factura);
 
 CREATE INDEX idx_detalle_producto
     ON detalle_factura(id_producto);
 
+
 CREATE INDEX idx_membresias_cliente
     ON membresias(id_cliente);
 
-CREATE INDEX idx_membresias_producto
-    ON membresias(id_producto);
+CREATE INDEX idx_membresias_plan
+    ON membresias(id_plan);
 
 CREATE INDEX idx_membresias_factura
     ON membresias(id_factura);
@@ -333,58 +398,9 @@ CREATE INDEX idx_membresias_factura
 CREATE INDEX idx_membresias_estado
     ON membresias(estado);
 
+
 CREATE INDEX idx_eventos_fecha
     ON eventos(fecha);
 
 CREATE INDEX idx_eventos_categoria
     ON eventos(id_categoria);
-
-
-CREATE TABLE planes_membresia (
-    id_plan SERIAL PRIMARY KEY,
-
-    nombre VARCHAR(100) NOT NULL UNIQUE,
-
-    tipo VARCHAR(20) NOT NULL,
-
-    precio NUMERIC(10,2) NOT NULL,
-
-    duracion INTEGER NOT NULL,
-
-    unidad_duracion VARCHAR(10) NOT NULL,
-
-    permite_pareja BOOLEAN NOT NULL DEFAULT FALSE,
-
-    permite_descuento BOOLEAN NOT NULL DEFAULT FALSE,
-
-    activo BOOLEAN NOT NULL DEFAULT TRUE,
-
-    CONSTRAINT chk_plan_tipo
-        CHECK (
-            tipo IN ('JUNIOR', 'SENIOR', 'PASES')
-        ),
-
-    CONSTRAINT chk_plan_precio
-        CHECK (precio >= 0),
-
-    CONSTRAINT chk_plan_duracion
-        CHECK (duracion > 0),
-
-    CONSTRAINT chk_plan_unidad
-        CHECK (
-            unidad_duracion IN ('DIA', 'MES')
-        )
-);
-
-
-ALTER TABLE productos
-DROP CONSTRAINT IF EXISTS chk_producto_membresia;
-
-ALTER TABLE productos
-DROP COLUMN IF EXISTS es_membresia;
-
-ALTER TABLE productos
-DROP COLUMN IF EXISTS tipo_membresia;
-
-ALTER TABLE productos
-DROP COLUMN IF EXISTS dias_incluidos;
