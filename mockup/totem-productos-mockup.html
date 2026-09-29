@@ -205,79 +205,45 @@
       <div class="filter-bar">
         <div class="search-box">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-          <input type="text" placeholder="Buscar producto o servicio...">
-        </div>
-      </div>
-      <div class="filter-bar" style="margin-top:-8px;">
-        <div class="filter-chips">
-          <button class="chip active">Todos (8)</button>
-          <button class="chip">Clases (2)</button>
-          <button class="chip">Alquiler (3)</button>
-          <button class="chip">Tienda (3)</button>
+          <input type="text" placeholder="Buscar producto...">
         </div>
       </div>
 
       <div class="card">
-        <div class="card-header"><span>8 productos y servicios registrados</span></div>
+        <div class="card-header"><span>6 productos registrados</span></div>
         <table>
           <thead>
-            <tr><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th></th></tr>
+            <tr><th>Nombre</th><th>Precio</th><th></th></tr>
           </thead>
           <tbody>
             <tr>
-              <td><div class="prod-name">Clase grupal de escalada</div><div class="prod-meta">Introducción, grupos de hasta 6</div></td>
-              <td>Clases</td>
-              <td class="price">$15.00</td>
-              <td class="stock none">—</td>
+              <td><div class="prod-name">Agua Cielo</div></td>
+              <td class="price">$0.50</td>
               <td><button class="btn-ghost">Editar</button></td>
             </tr>
             <tr>
-              <td><div class="prod-name">Clase particular</div><div class="prod-meta">1 hora, instructor dedicado</div></td>
-              <td>Clases</td>
-              <td class="price">$25.00</td>
-              <td class="stock none">—</td>
+              <td><div class="prod-name">Sporade</div></td>
+              <td class="price">$0.75</td>
               <td><button class="btn-ghost">Editar</button></td>
             </tr>
             <tr>
-              <td><div class="prod-name">Alquiler de arnés</div></td>
-              <td>Alquiler</td>
-              <td class="price">$2.00</td>
-              <td class="stock">18 disponibles</td>
+              <td><div class="prod-name">Coca-Cola</div></td>
+              <td class="price">$0.75</td>
               <td><button class="btn-ghost">Editar</button></td>
             </tr>
             <tr>
-              <td><div class="prod-name">Alquiler de pies de gato</div></td>
-              <td>Alquiler</td>
-              <td class="price">$2.50</td>
-              <td class="stock low">4 disponibles</td>
+              <td><div class="prod-name">Cielo de Toronja</div></td>
+              <td class="price">$0.75</td>
               <td><button class="btn-ghost">Editar</button></td>
             </tr>
             <tr>
-              <td><div class="prod-name">Alquiler de casco</div></td>
-              <td>Alquiler</td>
-              <td class="price">$1.50</td>
-              <td class="stock">12 disponibles</td>
+              <td><div class="prod-name">Agua Splendor</div></td>
+              <td class="price">$1.00</td>
               <td><button class="btn-ghost">Editar</button></td>
             </tr>
             <tr>
-              <td><div class="prod-name">Magnesio (bolsa 56g)</div></td>
-              <td>Tienda</td>
-              <td class="price">$4.00</td>
-              <td class="stock">32 en stock</td>
-              <td><button class="btn-ghost">Editar</button></td>
-            </tr>
-            <tr>
-              <td><div class="prod-name">Bolsa de magnesio (chalk bag)</div></td>
-              <td>Tienda</td>
-              <td class="price">$12.00</td>
-              <td class="stock low">3 en stock</td>
-              <td><button class="btn-ghost">Editar</button></td>
-            </tr>
-            <tr>
-              <td><div class="prod-name">Cinta de agarre (tape)</div></td>
-              <td>Tienda</td>
-              <td class="price">$3.50</td>
-              <td class="stock">20 en stock</td>
+              <td><div class="prod-name">Magnesio Cubo</div></td>
+              <td class="price">$5.00</td>
               <td><button class="btn-ghost">Editar</button></td>
             </tr>
           </tbody>
@@ -309,7 +275,25 @@
               <td class="price">$35.00</td>
               <td>1 mes</td>
               <td class="stock none">—</td>
+              <td>No</td>
+              <td><button class="btn-ghost">Editar</button></td>
+            </tr>
+            <tr>
+              <td><div class="prod-name">Membresía Senior 3 meses</div></td>
+              <td><span class="kind servicio">Senior</span></td>
+              <td class="price">$145.00</td>
+              <td>3 meses</td>
+              <td class="stock none">—</td>
+              <td>No</td>
+              <td><button class="btn-ghost">Editar</button></td>
+            </tr>
+            <tr>
+              <td><div class="prod-name">Promo pareja (2 personas)</div><div class="prod-meta">Genera 2 membresías Senior enlazadas</div></td>
+              <td><span class="kind servicio">Senior</span></td>
+              <td class="price">$111.00</td>
+              <td>1 mes</td>
               <td>Sí</td>
+              <td>No</td>
               <td><button class="btn-ghost">Editar</button></td>
             </tr>
             <tr>
@@ -318,18 +302,28 @@
               <td class="price">$49.00</td>
               <td>10 días / máx. 1 mes</td>
               <td class="stock none">—</td>
-              <td>Sí</td>
-              <td><button class="btn-ghost">Editar</button></td>
-            </tr>
-            <tr>
-              <td><div class="prod-name">Promo pareja (2 personas)</div><div class="prod-meta">Genera 2 membresías Senior enlazadas</div></td>
-              <td><span class="kind producto">Senior</span></td>
-              <td class="price">$111.00</td>
-              <td>1 mes</td>
-              <td>Sí</td>
               <td>No</td>
               <td><button class="btn-ghost">Editar</button></td>
             </tr>
+            <tr>
+              <td><div class="prod-name">Pase 5 días</div><div class="prod-meta">Se descuenta con cada ingreso; vigente máx. 1 mes</div></td>
+              <td><span class="kind producto">Pases</span></td>
+              <td class="price">$30.00</td>
+              <td>5 días / máx. 1 mes</td>
+              <td class="stock none">—</td>
+              <td>No</td>
+              <td><button class="btn-ghost">Editar</button></td>
+            </tr>
+            <tr>
+              <td><div class="prod-name">Pase 1 día</div><div class="prod-meta">Se descuenta con cada ingreso; vigente máx. 1 mes</div></td>
+              <td><span class="kind producto">Pases</span></td>
+              <td class="price">$10.00</td>
+              <td>1 día</td>
+              <td class="stock none">—</td>
+              <td>No</td>
+              <td><button class="btn-ghost">Editar</button></td>
+            </tr>
+            
           </tbody>
         </table>
       </div>
