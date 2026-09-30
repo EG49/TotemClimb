@@ -1,9 +1,17 @@
 -- ============================================================
 -- BASE DE DATOS: SISTEMA DE FACTURACIÓN
 -- PostgreSQL
--- Version 2: agrega stock nullable en productos, CHECK en
--- metodo_pago, y quita NOT NULL de dias_totales/dias_restantes
--- en membresias (para planes mensuales Junior/Senior)
+-- Version 3:
+--   - clientes: se quita contrato_ruta (el contrato se maneja
+--     físico/local, fuera del sistema); contacto_emergencia
+--     pasa a ser solo el número de celular, y se agrega
+--     "referencia" para la relación con el cliente (ej. Mamá)
+--   - productos: se deja solo con nombre y precio (sin
+--     categoria ni stock; no se está pidiendo ese control)
+--   - corregidas comas colgantes que rompían el CREATE TABLE
+--     de clientes y productos
+--   - corregido typo 'FEMENIO' -> 'FEMENINO' en el CHECK de
+--     genero
 -- ============================================================
 
 
@@ -21,16 +29,12 @@ CREATE TABLE clientes (
     telefono VARCHAR(10),
     genero VARCHAR(30),
     contacto_emergencia VARCHAR(10),
-    #contrato_ruta VARCHAR(150), CREO QUE NO SE HARÁ 
+    referencia VARCHAR(50),
     vigente_hasta DATE,
     fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-
     CONSTRAINT chk_genero
-        CHECK (genero IN ('MASCULINO', 'FEMENIO', 'OTRO')),
-    
-
-
+        CHECK (genero IN ('MASCULINO', 'FEMENINO', 'OTRO'))
 );
 
 
@@ -56,11 +60,9 @@ CREATE TABLE empleados (
 -- ============================================================
 -- 3. PRODUCTOS
 -- ============================================================
--- CAMBIO v2: se agrega "stock" (nullable). Se llena solo si
--- categoria es de tipo Alquiler o Tienda; queda NULL si es
--- Clases u otra categoría que no maneje inventario. No se
--- agrega columna "tipo": la categoría ya es suficiente para
--- inferir si aplica o no el control de stock.
+-- Solo artículos físicos que se venden (alquiler, tienda).
+-- Sin categoria ni stock: no se ha pedido ese control por
+-- ahora. Las membresías viven aparte, en planes_membresia.
 
 CREATE TABLE productos (
     id_producto SERIAL PRIMARY KEY,
@@ -68,9 +70,7 @@ CREATE TABLE productos (
     precio NUMERIC(10,2) NOT NULL,
 
     CONSTRAINT chk_producto_precio
-        CHECK (precio >= 0),
-
-
+        CHECK (precio >= 0)
 );
 
 
@@ -106,8 +106,6 @@ CREATE TABLE planes_membresia (
 -- ============================================================
 -- 5. FACTURAS
 -- ============================================================
--- CAMBIO v2: se agrega CHECK a metodo_pago (antes era texto
--- libre sin restricción, a diferencia de los demás enums).
 
 CREATE TABLE facturas (
     id_factura SERIAL PRIMARY KEY,
@@ -206,13 +204,6 @@ CREATE TABLE detalle_factura (
 -- ============================================================
 -- 7. MEMBRESÍAS
 -- ============================================================
--- CAMBIO v2: dias_totales y dias_restantes dejan de ser
--- NOT NULL. Quedan NULL para planes mensuales (Junior/Senior);
--- solo se usan para planes tipo "Por día" (PASES). El estado
--- AGOTADA se descarta: una membresía "Por día" solo pasa a
--- VENCIDA al cumplirse el plazo (duracion del plan), sin
--- importar si quedaban días del paquete sin consumir.
--- dias_restantes sigue siendo un dato informativo.
 
 CREATE TABLE membresias (
     id_membresia SERIAL PRIMARY KEY,
