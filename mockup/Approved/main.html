@@ -229,6 +229,25 @@
   .due-relative.overdue{ color:var(--gray); }
   .due-date{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; }
 
+  .avisos-filters{ display:flex; gap:8px; flex-wrap:wrap; padding:0 24px 16px; }
+  .chip{
+    font-size:11.5px; font-weight:600; padding:6px 13px; border-radius:20px;
+    border:1px solid var(--gray-light); color:var(--ink-soft);
+    cursor:pointer; background:#fff;
+  }
+  .chip.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  .aviso-badge{
+    display:inline-flex; align-items:center;
+    padding:4px 11px; border-radius:20px;
+    font-size:10.5px; font-weight:700; letter-spacing:0.2px; white-space:nowrap;
+  }
+  .aviso-badge.membresia{ background:rgba(51,149,160,0.14); color:var(--teal); }
+  .aviso-badge.mayoria{ background:rgba(194,221,88,0.3); color:var(--ink); }
+  .aviso-badge.fiado{ background:rgba(106,106,103,0.14); color:var(--gray); }
+
+  .row-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+
   /* tape-style status pill, evocando la cinta de graduación de rutas de escalada */
   .tape{
     display:inline-flex;
@@ -441,60 +460,78 @@
 
     <div class="card">
       <div class="card-header">
-        <h2>Vigencia de membresías</h2>
+        <h2>Avisos</h2>
         <div style="display:flex; gap:8px;">
           <button class="btn-ghost">Enviar recordatorios</button>
           <button class="btn-ghost">Ver más →</button>
         </div>
       </div>
+      <div class="avisos-filters">
+        <button class="chip active" onclick="filterAvisos('todos', this)">Todos (4)</button>
+        <button class="chip" onclick="filterAvisos('membresia', this)">Membresías (2)</button>
+        <button class="chip" onclick="filterAvisos('mayoria', this)">Mayoría de edad (1)</button>
+        <button class="chip" onclick="filterAvisos('fiado', this)">Fiado (1)</button>
+      </div>
       <table>
         <thead>
-          <tr><th>Cliente</th><th>Estado</th><th>Vence</th><th></th><th></th></tr>
+          <tr><th>Tipo</th><th>Cliente</th><th>Detalle</th><th></th></tr>
         </thead>
         <tbody>
-          <tr>
+          <tr data-tipo="membresia">
+            <td><span class="aviso-badge membresia">Membresía</span></td>
             <td>
               <div class="client-name">Mariana Lopez</div>
               <div class="client-meta">CI 0912345678</div>
-              <div class="client-meta">mariana.lopez@email.com</div>
             </td>
-            <td><span class="tape por-vencer">Por vencer</span></td>
-            <td><div class="due-relative">en 3 días</div><div class="due-date">3 ago 2026</div></td>
-            <td><button class="btn-ghost">Renovar</button></td>
-            <td><button class="btn-ghost">Editar</button></td>
-          </tr>
-          <tr>
+            <td><div class="due-relative">Por vencer · en 3 días</div><div class="due-date">3 ago 2026</div></td>
             <td>
-              <div class="client-name">Carlos Rendon</div>
-              <div class="client-meta">CI 0923456789</div>
-              <div class="client-meta">carlos.rendon@email.com</div>
+              <div class="row-actions">
+                <button class="btn-ghost">Renovar</button>
+                <button class="btn-ghost">Editar</button>
+              </div>
             </td>
-            <td><span class="tape vigente">Vigente</span></td>
-            <td><div class="due-relative">en 18 días</div><div class="due-date">18 ago 2026</div></td>
-            <td><button class="btn-ghost">Renovar</button></td>
-            <td><button class="btn-ghost">Editar</button></td>
           </tr>
-          <tr>
+          <tr data-tipo="membresia">
+            <td><span class="aviso-badge membresia">Membresía</span></td>
             <td>
               <div class="client-name">Sofia Andrade</div>
               <div class="client-meta">CI 0934567890</div>
-              <div class="client-meta">sofia.andrade@email.com</div>
             </td>
-            <td><span class="tape vencido">Vencido</span></td>
-            <td><div class="due-relative overdue">hace 6 días</div><div class="due-date">28 jul 2026</div></td>
-            <td><button class="btn-ghost">Renovar</button></td>
-            <td><button class="btn-ghost">Editar</button></td>
-          </tr>
-          <tr>
+            <td><div class="due-relative overdue">Vencida · hace 6 días</div><div class="due-date">28 jul 2026</div></td>
             <td>
-              <div class="client-name">Jose Villar</div>
-              <div class="client-meta">CI 0945678901</div>
-              <div class="client-meta">jose.villar@email.com</div>
+              <div class="row-actions">
+                <button class="btn-ghost">Renovar</button>
+                <button class="btn-ghost">Editar</button>
+              </div>
             </td>
-            <td><span class="tape vigente">Vigente</span></td>
-            <td><div class="due-relative">en 29 días</div><div class="due-date">1 sep 2026</div></td>
-            <td><button class="btn-ghost">Renovar</button></td>
-            <td><button class="btn-ghost">Editar</button></td>
+          </tr>
+          <tr data-tipo="mayoria">
+            <td><span class="aviso-badge mayoria">Mayoría de edad</span></td>
+            <td>
+              <div class="client-name">Daniela Torres</div>
+              <div class="client-meta">Representada por: Pablo Torres</div>
+            </td>
+            <td><div class="due-relative">Cumplió 18 años</div><div class="due-date">6 ago 2026</div></td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost">Marcar contrato firmado</button>
+                <button class="btn-ghost">Editar</button>
+              </div>
+            </td>
+          </tr>
+          <tr data-tipo="fiado">
+            <td><span class="aviso-badge fiado">Fiado</span></td>
+            <td>
+              <div class="client-name">Andrea Salazar</div>
+              <div class="client-meta">CI 0956789012</div>
+            </td>
+            <td><div class="due-relative overdue">$18.50 pendiente</div><div class="due-date">Factura #001036 · 2 ago 2026</div></td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-ghost">Cobrar saldo</button>
+                <button class="btn-ghost">Ver factura</button>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -556,12 +593,43 @@
       </div>
     </div>
 
-    
+    <!-- CONTABILIDAD -->
+    <div class="side-card acc-card">
+      <div class="side-card-header">
+        <h2>Contabilidad</h2>
+        <button class="eye-btn" onclick="toggleMoney(this)" aria-label="Mostrar u ocultar montos">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="acc-period">Hoy · 6 ago 2026</div>
+
+      <div class="acc-total money-mask" data-value="$186.50">••••••</div>
+      <div class="acc-note">5 facturas emitidas hoy</div>
+
+      <div class="acc-breakdown">
+        <div class="acc-line">
+          <span>Efectivo</span>
+          <span class="money-mask" data-value="$120.00">••••••</span>
+        </div>
+        <div class="acc-line">
+          <span>Transferencia</span>
+          <span class="money-mask" data-value="$66.50">••••••</span>
+        </div>
+      </div>
+    </div>
 
   </aside>
 </div>
 
 <script>
+  function filterAvisos(tipo, btn){
+    btn.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('tr[data-tipo]').forEach(row => {
+      row.style.display = (tipo === 'todos' || row.dataset.tipo === tipo) ? '' : 'none';
+    });
+  }
+
   function calView(view, btn){
     document.getElementById('cal-mes').style.display = view === 'mes' ? 'block' : 'none';
     document.getElementById('cal-semana').style.display = view === 'semana' ? 'block' : 'none';
