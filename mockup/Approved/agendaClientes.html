@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Totem Climb Gym — Agenda por cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2B3210; --cream:#FFFFFF; --teal:#3395A0; --gray-light:#CCCCCC;
+    --gray:#6A6A67; --lime:#C2DD58; --lime-soft:#DEFA73; --ink-soft:rgba(43,50,16,0.65);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ font-family:'Clear Sans','Work Sans',-apple-system,sans-serif; background:var(--cream); color:var(--ink); min-height:100vh; }
+  .app{ display:grid; grid-template-columns:240px 1fr; min-height:100vh; }
+
+  .sidebar{
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,0.04), transparent 40%),
+      radial-gradient(circle at 80% 85%, rgba(255,255,255,0.03), transparent 45%),
+      var(--ink);
+    color:var(--cream); display:flex; flex-direction:column; padding:28px 22px; position:sticky; top:0; height:100vh;
+  }
+  .brand{ display:flex; justify-content:center; margin-bottom:40px; padding:4px 0; }
+  .brand-logo-img{ width:100%; max-width:170px; height:auto; object-fit:contain; }
+  nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{
+    display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:8px; font-size:14px; font-weight:500;
+    color:rgba(251,248,239,0.65); cursor:pointer; transition:background .15s,color .15s; border-left:3px solid transparent;
+  }
+  .nav-item svg{ width:17px; height:17px; opacity:.8; }
+  .nav-item:hover{ background:rgba(255,255,255,0.08); color:var(--cream); }
+  .nav-item.active{ background:rgba(51,149,160,0.18); color:var(--cream); border-left:3px solid var(--teal); }
+  .sidebar-footer{ margin-top:auto; padding-top:24px; border-top:1px solid rgba(255,255,255,0.12); }
+  .tagline{ font-family:'Shadows Into Light Two',cursive; font-size:19px; color:var(--lime); line-height:1.1; }
+  .tagline-sub{ font-size:11px; color:rgba(255,255,255,0.45); margin-top:6px; }
+
+  main{ padding:36px 44px; max-width:1220px; }
+  .topbar{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; gap:16px; }
+  .breadcrumb{ font-size:12.5px; color:var(--ink-soft); margin-bottom:6px; }
+  .breadcrumb span{ color:var(--teal); font-weight:600; cursor:pointer; }
+  .page-title{ font-family:'Bebas Neue',sans-serif; font-size:38px; letter-spacing:.5px; }
+  .page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; }
+
+  .btn-primary{
+    background:var(--teal); color:#fff; border:none; padding:12px 20px; border-radius:9px; font-weight:600; font-size:14px;
+    cursor:pointer; display:flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(51,149,160,0.35);
+    transition:transform .12s, box-shadow .12s; white-space:nowrap;
+  }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(51,149,160,0.42); }
+  .btn-ghost{
+    background:none; border:1px solid var(--gray-light); color:var(--ink); padding:11px 18px; border-radius:9px;
+    font-size:13.5px; font-weight:600; cursor:pointer; white-space:nowrap;
+  }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+  .btn-ghost.small{ padding:6px 12px; font-size:12.5px; }
+  .btn-quiet{ background:none; border:1px solid var(--gray-light); color:var(--gray); padding:6px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer; }
+  .btn-quiet:hover{ border-color:var(--gray); background:rgba(106,106,103,0.08); }
+  button:focus-visible, input:focus-visible, select:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
+
+  .filter-panel{ background:#fff; border:1px solid var(--gray-light); border-radius:12px; padding:16px 18px; margin-bottom:20px; }
+  .filter-row{ display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+  .filter-field{ display:flex; flex-direction:column; gap:5px; }
+  .filter-field label{ font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.4px; }
+  .search-box{ flex:1 1 240px; display:flex; align-items:center; gap:8px; background:#fff; border:1px solid var(--gray-light); border-radius:8px; padding:9px 12px; }
+  .search-box svg{ flex-shrink:0; color:var(--ink-soft); }
+  .search-box input{ border:none; outline:none; font-family:inherit; font-size:13px; width:100%; background:transparent; color:var(--ink); }
+  .filter-field select{ border:1px solid var(--gray-light); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:12.5px; color:var(--ink); background:#fff; }
+
+  .summary-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:22px; }
+  .summary-card{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:18px 20px; }
+  .summary-label{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-soft); font-weight:600; }
+  .summary-value{ font-family:'Bebas Neue',sans-serif; font-size:32px; margin-top:4px; line-height:1; }
+  .summary-note{ font-size:11.5px; color:var(--ink-soft); margin-top:5px; }
+
+  /* TARJETAS POR CLIENTE */
+  .cli-card{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .cli-head{ display:flex; align-items:center; gap:14px; padding:14px 20px; cursor:pointer; }
+  .cli-head:hover{ background:rgba(51,149,160,0.04); }
+  .avatar{ width:38px; height:38px; border-radius:50%; background:var(--lime-soft); color:var(--ink); font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .cli-main{ flex:1; min-width:0; }
+  .cli-name{ font-weight:700; font-size:14.5px; }
+  .cli-meta{ font-size:12px; color:var(--ink-soft); }
+  .tag{ display:inline-block; font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; margin-left:6px; }
+  .tag.prox{ background:rgba(51,149,160,0.12); color:var(--teal); }
+  .tag.tot{ background:rgba(106,106,103,0.12); color:var(--gray); }
+  .chev{ transition:transform .15s; color:var(--ink-soft); font-size:18px; }
+  .cli-card.open .chev{ transform:rotate(90deg); }
+  .cli-body{ display:none; border-top:1px solid var(--gray-light); }
+  .cli-card.open .cli-body{ display:block; }
+  table{ width:100%; border-collapse:collapse; }
+  th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--ink-soft); padding:10px 20px; background:var(--cream); font-weight:600; border-bottom:1px solid var(--gray-light); }
+  td{ padding:12px 20px; border-top:1px solid var(--gray-light); font-size:13px; vertical-align:middle; }
+  tr:first-child td{ border-top:none; }
+  .cat{ display:inline-flex; align-items:center; gap:7px; font-weight:600; font-size:12.5px; }
+  .cat i{ width:9px; height:9px; border-radius:50%; }
+  .badge{ display:inline-flex; padding:4px 11px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; }
+  .badge.prox{ background:rgba(51,149,160,0.12); color:var(--teal); }
+  .badge.hecho{ background:rgba(106,106,103,0.14); color:var(--gray); }
+  .by{ font-weight:600; }
+  .by small{ display:block; font-weight:400; color:var(--ink-soft); font-size:11.5px; }
+  .empty{ background:#fff; border:1px dashed var(--gray-light); border-radius:14px; padding:40px 20px; text-align:center; color:var(--ink-soft); font-size:14px; }
+
+  /* MODAL */
+  .overlay{ position:fixed; inset:0; background:rgba(43,50,16,0.5); display:none; align-items:center; justify-content:center; padding:20px; z-index:50; }
+  .overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:16px; width:100%; max-width:520px; padding:28px 30px; }
+  .modal h2{ font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.5px; }
+  .modal .hint{ font-size:12.5px; color:var(--ink-soft); margin-bottom:18px; }
+  .field{ margin-bottom:14px; position:relative; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; margin-bottom:5px; }
+  .field input, .field select{ width:100%; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-family:inherit; font-size:13.5px; color:var(--ink); background:#fff; }
+  .picker-list{ position:absolute; left:0; right:0; top:100%; margin-top:4px; background:#fff; border:1px solid var(--gray-light); border-radius:8px; box-shadow:0 10px 26px rgba(43,50,16,0.15); max-height:170px; overflow-y:auto; z-index:5; display:none; }
+  .picker-list.open{ display:block; }
+  .picker-opt{ padding:9px 12px; font-size:13px; cursor:pointer; display:flex; justify-content:space-between; }
+  .picker-opt:hover{ background:rgba(51,149,160,0.08); }
+  .picker-opt small{ color:var(--ink-soft); }
+  .chosen{ display:none; margin-top:8px; }
+  .chosen span{ background:rgba(51,149,160,0.12); color:var(--teal); border-radius:20px; padding:4px 6px 4px 12px; font-size:12.5px; font-weight:600; display:inline-flex; gap:6px; align-items:center; }
+  .chosen button{ border:none; background:none; cursor:pointer; color:var(--teal); font-size:15px; line-height:1; }
+  .note{ font-size:12px; color:var(--ink-soft); background:rgba(194,221,88,0.2); border-radius:8px; padding:9px 12px; margin-bottom:6px; }
+  .err{ color:#b3261e; font-size:12.5px; margin-top:6px; display:none; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:12px; margin-top:18px; }
+  .toast{ position:fixed; bottom:24px; right:24px; background:var(--ink); color:#fff; padding:12px 18px; border-radius:10px; font-size:13px; display:none; z-index:60; }
+
+  @media (max-width:900px){
+    .app{ grid-template-columns:1fr; } .sidebar{ position:relative; height:auto; }
+    main{ padding:24px; } .topbar{ flex-direction:column; } .summary-row{ grid-template-columns:1fr; }
+    .cli-body{ overflow-x:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand"><img id="brand-logo" class="brand-logo-img" src="totem-logo.png" alt="Totem Climb Gym"></div>
+    <nav>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel general
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Facturas
+      </div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Calendario
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Contabilidad
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        Productos
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="tagline">Totem = Familia</div>
+      <div class="tagline-sub">Cada miembro cuenta</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div>
+        <div class="breadcrumb"><span>Calendario</span> / Agenda por cliente</div>
+        <div class="page-title">Agenda por cliente</div>
+        <div class="page-sub">Clases de prueba, clases grupales y eventos en los que está inscrito cada cliente, y quién los agendó</div>
+      </div>
+      <button class="btn-primary" onclick="openModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Agendar cliente
+      </button>
+    </div>
+
+    <div class="filter-panel">
+      <div class="filter-row">
+        <div class="search-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="q" type="text" placeholder="Cliente (nombre o CI)..." oninput="render()">
+        </div>
+        <div class="filter-field">
+          <label for="f-cat">Tipo</label>
+          <select id="f-cat" onchange="render()">
+            <option value="">Todos</option>
+            <option value="prueba">Clase de prueba</option>
+            <option value="grupal">Clase grupal</option>
+            <option value="especial">Evento especial</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="f-est">Estado</label>
+          <select id="f-est" onchange="render()">
+            <option value="prox">Próximas</option>
+            <option value="hecho">Realizadas</option>
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="f-by">Agendado por</label>
+          <select id="f-by" onchange="render()"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-card"><div class="summary-label">Clientes con agenda</div><div class="summary-value" id="s-cli">0</div><div class="summary-note">según los filtros actuales</div></div>
+      <div class="summary-card"><div class="summary-label">Inscripciones</div><div class="summary-value" id="s-ins">0</div><div class="summary-note">según los filtros actuales</div></div>
+      <div class="summary-card"><div class="summary-label">Clases de prueba próximas</div><div class="summary-value" id="s-prueba">0</div><div class="summary-note">pendientes de realizarse</div></div>
+    </div>
+
+    <div id="list"></div>
+  </main>
+</div>
+
+<!-- MODAL AGENDAR -->
+<div class="overlay" id="overlay" onclick="if(event.target===this) closeModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <h2 id="m-title">Agendar cliente</h2>
+    <p class="hint">Inscribe a un cliente en una clase o evento ya creado en el Calendario.</p>
+
+    <div class="field">
+      <label for="m-buscar">Cliente</label>
+      <input id="m-buscar" type="text" placeholder="Buscar por nombre o cédula…" autocomplete="off" oninput="filterClients()" onfocus="filterClients()">
+      <div class="picker-list" id="picker-list"></div>
+      <div class="chosen" id="chosen"></div>
+    </div>
+    <div class="field">
+      <label for="m-evento">Clase o evento</label>
+      <select id="m-evento"></select>
+    </div>
+    <div class="note">Quedará registrado a nombre de <b>Camila R.</b> (sesión actual) con la fecha y hora de hoy.</div>
+    <div class="err" id="m-err" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveIns()">Agendar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+  const HOY = '2026-10-09';
+  const CATS = {
+    prueba:  { nombre:'Clase de prueba', color:'#6A6A67' },
+    grupal:  { nombre:'Clase grupal',    color:'#2B3210' },
+    especial:{ nombre:'Evento especial', color:'#C2DD58' }
+  };
+  const VENDEDORES = ['Camila R.', 'Diego M.'];
+  const SESION = 'Camila R.';
+  const CLIENTES = [
+    { id:1, n:'Luis Perez',     ci:'0967890123' },
+    { id:2, n:'Sofia Andrade',  ci:'0945678901' },
+    { id:3, n:'Jose Villar',    ci:'0956789012' },
+    { id:4, n:'Mariana Lopez',  ci:'0912345678' },
+    { id:5, n:'Carlos Rendon',  ci:'0923456789' },
+    { id:6, n:'Mateo Rendon',   ci:'—' },
+    { id:7, n:'Andrea Salazar', ci:'0934567890' }
+  ];
+  const EVENTOS = [
+    { id:1, titulo:'Clase de prueba — grupo sábado', cat:'prueba',  fecha:'2026-10-10', ini:'10:00', fin:'11:00' },
+    { id:2, titulo:'Clase grupal — técnica de pies', cat:'grupal',  fecha:'2026-10-13', ini:'18:30', fin:'20:00' },
+    { id:3, titulo:'Clase de prueba — tarde',        cat:'prueba',  fecha:'2026-10-17', ini:'16:00', fin:'17:00' },
+    { id:4, titulo:'Torneo interno (todo el día)',   cat:'especial',fecha:'2026-10-24', ini:'00:00', fin:'23:59' },
+    { id:5, titulo:'Clase grupal — fuerza de dedos', cat:'grupal',  fecha:'2026-10-27', ini:'18:30', fin:'20:00' },
+    { id:8, titulo:'Clase grupal — calentamiento',   cat:'grupal',  fecha:'2026-09-29', ini:'18:30', fin:'20:00' },
+    { id:9, titulo:'Clase de prueba — mañana',       cat:'prueba',  fecha:'2026-09-26', ini:'09:00', fin:'10:00' }
+  ];
+  // inscripciones: quién agendó y cuándo
+  const INS = [
+    { cli:1, ev:1, por:'Camila R.', cuando:'2026-10-05 17:20' },
+    { cli:2, ev:1, por:'Diego M.',  cuando:'2026-10-07 10:05' },
+    { cli:3, ev:3, por:'Camila R.', cuando:'2026-10-08 12:40' },
+    { cli:4, ev:2, por:'Diego M.',  cuando:'2026-10-06 18:00' },
+    { cli:4, ev:4, por:'Diego M.',  cuando:'2026-10-06 18:02' },
+    { cli:5, ev:4, por:'Camila R.', cuando:'2026-10-08 09:15' },
+    { cli:6, ev:2, por:'Camila R.', cuando:'2026-10-08 09:20' },
+    { cli:7, ev:5, por:'Diego M.',  cuando:'2026-10-09 08:50' },
+    { cli:1, ev:8, por:'Camila R.', cuando:'2026-09-25 16:30' },
+    { cli:1, ev:9, por:'Diego M.',  cuando:'2026-09-22 11:10' }
+  ];
+  const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const evById = id => EVENTOS.find(e => e.id===id);
+  const cliById = id => CLIENTES.find(c => c.id===id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fechaTxt = k => { const [y,m,d]=k.split('-').map(Number); return d+' '+MESES[m-1]+' '+y; };
+  const cuandoTxt = s => { const [f,h]=s.split(' '); return fechaTxt(f)+' · '+h; };
+  const esProx = e => e.fecha >= HOY;
+  const initials = n => n.split(' ').map(x=>x[0]).slice(0,2).join('');
+
+  document.getElementById('f-by').innerHTML = '<option value="">Todos</option>' + VENDEDORES.map(v=>`<option>${v}</option>`).join('');
+
+  function filtered(){
+    const q = document.getElementById('q').value.trim().toLowerCase();
+    const cat = document.getElementById('f-cat').value, est = document.getElementById('f-est').value, by = document.getElementById('f-by').value;
+    return INS.filter(i => {
+      const c = cliById(i.cli), e = evById(i.ev);
+      if (q && !(c.n.toLowerCase().includes(q) || c.ci.includes(q))) return false;
+      if (cat && e.cat !== cat) return false;
+      if (est === 'prox' && !esProx(e)) return false;
+      if (est === 'hecho' && esProx(e)) return false;
+      if (by && i.por !== by) return false;
+      return true;
+    });
+  }
+
+  const openSet = new Set();
+  function toggle(id){ openSet.has(id) ? openSet.delete(id) : openSet.add(id); render(); }
+
+  function render(){
+    const rows = filtered();
+    const byCli = {};
+    rows.forEach(i => (byCli[i.cli] = byCli[i.cli] || []).push(i));
+    const ids = Object.keys(byCli).map(Number).sort((a,b) => cliById(a).n.localeCompare(cliById(b).n));
+    document.getElementById('s-cli').textContent = ids.length;
+    document.getElementById('s-ins').textContent = rows.length;
+    document.getElementById('s-prueba').textContent = rows.filter(i => evById(i.ev).cat==='prueba' && esProx(evById(i.ev))).length;
+
+    if (!ids.length){ document.getElementById('list').innerHTML = '<div class="empty">No hay inscripciones con estos filtros.</div>'; return; }
+    document.getElementById('list').innerHTML = ids.map(id => {
+      const c = cliById(id);
+      const list = byCli[id].sort((a,b) => evById(a.ev).fecha.localeCompare(evById(b.ev).fecha));
+      const prox = list.filter(i => esProx(evById(i.ev))).length;
+      const open = openSet.has(id) || ids.length <= 2;
+      return `<div class="cli-card ${open?'open':''}">
+        <div class="cli-head" onclick="toggle(${id})">
+          <div class="avatar">${esc(initials(c.n))}</div>
+          <div class="cli-main"><div class="cli-name">${esc(c.n)}</div><div class="cli-meta">CI ${esc(c.ci)}</div></div>
+          <span class="tag prox">${prox} próxima${prox===1?'':'s'}</span><span class="tag tot">${list.length} en total</span>
+          <span class="chev">›</span>
+        </div>
+        <div class="cli-body"><table>
+          <thead><tr><th>Clase / evento</th><th>Tipo</th><th>Fecha y hora</th><th>Estado</th><th>Agendado por</th><th></th></tr></thead>
+          <tbody>${list.map(i => {
+            const e = evById(i.ev), prox = esProx(e);
+            const hora = (e.ini==='00:00' && e.fin==='23:59') ? 'Todo el día' : e.ini+' – '+e.fin;
+            return `<tr>
+              <td><b>${esc(e.titulo)}</b></td>
+              <td><span class="cat"><i style="background:${CATS[e.cat].color}"></i>${CATS[e.cat].nombre}</span></td>
+              <td>${fechaTxt(e.fecha)}<div style="font-size:11.5px;color:var(--ink-soft)">${hora}</div></td>
+              <td><span class="badge ${prox?'prox':'hecho'}">${prox?'Próxima':'Realizada'}</span></td>
+              <td class="by">${esc(i.por)}<small>${cuandoTxt(i.cuando)}</small></td>
+              <td>${prox ? `<button class="btn-quiet" onclick="quitar(${i.cli},${i.ev})">Quitar</button>` : ''}</td>
+            </tr>`;
+          }).join('')}</tbody></table></div>
+      </div>`;
+    }).join('');
+  }
+
+  function quitar(cli, ev){
+    const c = cliById(cli), e = evById(ev);
+    if (!confirm('¿Quitar a '+c.n+' de "'+e.titulo+'"? Quedará registrado en la bitácora.')) return;
+    const idx = INS.findIndex(i => i.cli===cli && i.ev===ev);
+    if (idx>=0) INS.splice(idx,1);
+    toast('Inscripción quitada'); render();
+  }
+
+  /* MODAL */
+  let chosen = null;
+  function openModal(){
+    chosen = null;
+    document.getElementById('m-buscar').value = ''; document.getElementById('m-buscar').style.display = 'block';
+    document.getElementById('chosen').style.display = 'none';
+    document.getElementById('m-err').style.display = 'none';
+    document.getElementById('m-evento').innerHTML = EVENTOS.filter(esProx).sort((a,b)=>a.fecha.localeCompare(b.fecha))
+      .map(e => `<option value="${e.id}">${fechaTxt(e.fecha)} · ${esc(e.titulo)}</option>`).join('');
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('m-buscar').focus();
+  }
+  function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
+  document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
+  document.addEventListener('click', e => { if (!e.target.closest('.field')) document.getElementById('picker-list').classList.remove('open'); });
+
+  function filterClients(){
+    const q = document.getElementById('m-buscar').value.trim().toLowerCase();
+    const list = CLIENTES.filter(c => !q || c.n.toLowerCase().includes(q) || c.ci.includes(q)).slice(0,6);
+    const el = document.getElementById('picker-list');
+    el.innerHTML = list.length ? list.map(c => `<div class="picker-opt" onclick="pick(${c.id})"><span>${esc(c.n)}</span><small>${esc(c.ci)}</small></div>`).join('')
+      : '<div class="picker-opt" style="color:var(--ink-soft);cursor:default;">Sin resultados</div>';
+    el.classList.add('open');
+  }
+  function pick(id){
+    chosen = id; const c = cliById(id);
+    document.getElementById('picker-list').classList.remove('open');
+    document.getElementById('m-buscar').style.display = 'none';
+    const ch = document.getElementById('chosen');
+    ch.innerHTML = `<span>${esc(c.n)}<button onclick="unpick()" aria-label="Cambiar cliente">×</button></span>`; ch.style.display = 'block';
+  }
+  function unpick(){ chosen = null; document.getElementById('chosen').style.display='none'; document.getElementById('m-buscar').style.display='block'; document.getElementById('m-buscar').value=''; }
+
+  function saveIns(){
+    const err = document.getElementById('m-err'), fail = m => { err.textContent = m; err.style.display = 'block'; };
+    const ev = parseInt(document.getElementById('m-evento').value, 10);
+    if (!chosen) return fail('Elige un cliente.');
+    if (!ev) return fail('Elige una clase o evento.');
+    if (INS.some(i => i.cli===chosen && i.ev===ev)) return fail('Ese cliente ya está inscrito en ese evento.');
+    INS.push({ cli:chosen, ev, por:SESION, cuando: HOY+' 22:30' });
+    openSet.add(chosen); closeModal(); toast('Cliente agendado'); render();
+  }
+
+  function toast(m){ const t = document.getElementById('toast'); t.textContent = m; t.style.display='block'; setTimeout(()=>t.style.display='none', 2200); }
+
+  render();
+</script>
+</body>
+</html>
