@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Totem Climb Gym — Editar cliente (menor)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2B3210;
+    --cream:#FFFFFF;
+    --teal:#3395A0;
+    --gray-light:#CCCCCC;
+    --gray:#6A6A67;
+    --lime:#C2DD58;
+    --lime-soft:#DEFA73;
+    --ink-soft: rgba(43,50,16,0.65);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Clear Sans', 'Work Sans', -apple-system, sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .app{ display:grid; grid-template-columns: 240px 1fr; min-height:100vh; }
+
+  /* SIDEBAR */
+  .sidebar{
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,0.04), transparent 40%),
+      radial-gradient(circle at 80% 85%, rgba(255,255,255,0.03), transparent 45%),
+      var(--ink);
+    color:var(--cream);
+    display:flex; flex-direction:column;
+    padding:28px 22px; position:sticky; top:0; height:100vh;
+  }
+  .brand{ display:flex; justify-content:center; margin-bottom:40px; padding:4px 0; }
+  .brand-logo-img{ width:100%; max-width:170px; height:auto; object-fit:contain; }
+  nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{
+    display:flex; align-items:center; gap:12px;
+    padding:11px 12px; border-radius:8px;
+    font-size:14px; font-weight:500;
+    color:rgba(251,248,239,0.65);
+    cursor:pointer; transition:background .15s, color .15s;
+    border-left:3px solid transparent;
+  }
+  .nav-item svg{ width:17px; height:17px; opacity:.8; }
+  .nav-item:hover{ background:rgba(255,255,255,0.08); color:var(--cream); }
+  .nav-item.active{ background:rgba(51,149,160,0.18); color:var(--cream); border-left:3px solid var(--teal); }
+  .sidebar-footer{ margin-top:auto; padding-top:24px; border-top:1px solid rgba(255,255,255,0.12); }
+  .tagline{ font-family:'Shadows Into Light Two', cursive; font-size:19px; color:var(--lime); line-height:1.1; }
+  .tagline-sub{ font-size:11px; color:rgba(255,255,255,0.45); margin-top:6px; }
+
+  /* MAIN */
+  main{ padding:36px 44px; max-width:820px; }
+  .breadcrumb{ font-size:12.5px; color:var(--ink-soft); margin-bottom:6px; }
+  .breadcrumb span{ color:var(--teal); font-weight:600; cursor:pointer; }
+  .topbar{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+  .page-title{ font-family:'Bebas Neue', sans-serif; font-size:38px; letter-spacing:0.5px; }
+  .page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; }
+
+  .minor-badge{
+    display:inline-block; font-size:9.5px; font-weight:700; letter-spacing:0.3px;
+    text-transform:uppercase; color:var(--gray); background:rgba(106,106,103,0.14);
+    border-radius:10px; padding:2px 8px; margin-left:6px; vertical-align:middle;
+  }
+
+  /* DEMO SWITCH — solo para esta vista previa del mockup */
+  .demo-switch{
+    display:flex; align-items:center; gap:10px;
+    background:#fff; border:1px dashed var(--gray-light); border-radius:10px;
+    padding:10px 16px; margin-bottom:22px; font-size:12.5px; color:var(--ink-soft);
+  }
+  .demo-switch b{ color:var(--ink); }
+  .demo-toggle{ display:inline-flex; background:var(--cream); border:1px solid var(--gray-light); border-radius:8px; padding:2px; margin-left:auto; }
+  .demo-toggle button{ border:none; background:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; color:var(--ink-soft); cursor:pointer; }
+  .demo-toggle button.active{ background:var(--ink); color:#fff; }
+
+  .btn-primary{
+    background:var(--teal); color:#fff; border:none;
+    padding:13px 22px; border-radius:9px;
+    font-weight:600; font-size:14px; cursor:pointer;
+    display:flex; align-items:center; gap:8px;
+    box-shadow:0 4px 14px rgba(51,149,160,0.35);
+    transition:transform .12s, box-shadow .12s;
+  }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(51,149,160,0.42); }
+  .btn-ghost{
+    background:none; border:1px solid var(--gray-light); color:var(--ink);
+    padding:12px 20px; border-radius:9px;
+    font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+  .btn-ghost.small{ padding:8px 14px; font-size:12.5px; }
+  .btn-danger-ghost{
+    background:none; border:1px solid var(--gray-light); color:var(--gray);
+    padding:8px 14px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;
+  }
+  .btn-danger-ghost:hover{ border-color:var(--gray); background:rgba(106,106,103,0.08); }
+  .btn-primary:focus-visible, .btn-ghost:focus-visible, input:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
+
+  /* ALERT BANNER */
+  .alert-banner{
+    display:none;
+    align-items:flex-start; gap:12px;
+    background:rgba(194,221,88,0.22); border:1px solid var(--lime);
+    border-radius:12px; padding:16px 18px; margin-bottom:22px;
+  }
+  .alert-banner.show{ display:flex; }
+  .alert-banner svg{ flex-shrink:0; color:var(--ink); margin-top:1px; }
+  .alert-title{ font-weight:700; font-size:14px; }
+  .alert-text{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; margin-bottom:10px; }
+
+  /* CARD */
+  .card{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:30px 32px; margin-bottom:20px; }
+  .section-label{ font-family:'Bebas Neue', sans-serif; font-size:16px; letter-spacing:0.6px; margin-bottom:2px; }
+  .section-hint{ font-size:12px; color:var(--ink-soft); margin-bottom:18px; }
+
+  .field-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px 20px; }
+  .field.full{ grid-column:1 / -1; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink); margin-bottom:6px; }
+  .field .optional-tag{ font-weight:400; color:var(--ink-soft); text-transform:none; letter-spacing:0; }
+  .field input{
+    width:100%; border:1px solid var(--gray-light); border-radius:8px;
+    padding:11px 13px; font-family:'Clear Sans','Work Sans',sans-serif;
+    font-size:13.5px; color:var(--ink); background:#fff;
+  }
+
+  /* REPRESENTANTE */
+  .rep-card{
+    display:flex; align-items:center; gap:14px;
+    border:1px solid var(--gray-light); border-radius:10px; padding:16px;
+  }
+  .rep-card.warn{ border-color:var(--lime); background:rgba(194,221,88,0.08); }
+  .rep-name{ font-weight:700; font-size:14px; }
+  .rep-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .rep-actions{ margin-left:auto; display:flex; gap:8px; align-items:center; }
+
+  .form-actions{ display:flex; justify-content:flex-end; gap:12px; }
+
+  @media (max-width: 860px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ position:relative; height:auto; }
+    main{ padding:24px; }
+    .field-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <img id="brand-logo" class="brand-logo-img" src="totem-logo.png" alt="Totem Climb Gym">
+    </div>
+    <nav>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel general
+      </div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Facturas
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Contabilidad
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        Productos
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="tagline">Totem = Familia</div>
+      <div class="tagline-sub">Cada miembro cuenta</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div>
+        <div class="breadcrumb"><span>Clientes</span> / Editar cliente</div>
+        <div class="page-title">Mateo Rendon <span class="minor-badge">Menor</span></div>
+        <div class="page-sub" id="page-sub">9 años · Cliente desde el 18 ago 2026</div>
+      </div>
+    </div>
+
+    <div class="demo-switch">
+      Vista previa del mockup: <b id="demo-label">menor normal</b>
+      <div class="demo-toggle">
+        <button class="active" onclick="setDemo('normal', this)">Menor</button>
+        <button onclick="setDemo('18', this)">Cumplió 18</button>
+      </div>
+    </div>
+
+    <div class="alert-banner" id="alert-18">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <div>
+        <div class="alert-title">Cumplió 18 años el 6 ago 2026</div>
+        <div class="alert-text">Ya no puede seguir representado legalmente — necesita firmar su propio contrato de deslinde de responsabilidad como adulto antes de renovar su membresía.</div>
+        <button class="btn-ghost small">Marcar contrato firmado</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Datos del menor</div>
+      <div class="section-hint">Información básica del menor registrado.</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Nombre</label>
+          <input type="text" value="Mateo">
+        </div>
+        <div class="field">
+          <label>Apellido</label>
+          <input type="text" value="Rendon">
+        </div>
+        <div class="field">
+          <label>Fecha de nacimiento</label>
+          <input type="date" value="2017-08-06" id="fecha-nacimiento">
+        </div>
+        <div class="field">
+          <label>Cédula <span class="optional-tag">(opcional)</span></label>
+          <input type="text" placeholder="—">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Representante legal</div>
+      <div class="section-hint" id="rep-hint">El representante firmó el contrato de deslinde en su nombre.</div>
+      <div class="rep-card" id="rep-card">
+        <div>
+          <div class="rep-name">Carlos Rendon</div>
+          <div class="rep-meta">098 234 5678 · carlos.rendon@email.com</div>
+        </div>
+        <div class="rep-actions">
+          <button class="btn-ghost small">Ver perfil</button>
+          <button class="btn-danger-ghost" id="quitar-rep-btn">Quitar representante</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-danger-ghost" style="margin-right:auto;">Eliminar cliente</button>
+      <button class="btn-ghost">Cancelar</button>
+      <button class="btn-primary">Guardar cambios</button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function setDemo(state, btn){
+    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const is18 = state === '18';
+
+    document.getElementById('demo-label').textContent = is18 ? 'cumplió 18 años' : 'menor normal';
+    document.getElementById('alert-18').classList.toggle('show', is18);
+    document.getElementById('page-sub').textContent = is18 ? '18 años · Cliente desde el 18 ago 2026' : '9 años · Cliente desde el 18 ago 2026';
+    document.getElementById('fecha-nacimiento').value = is18 ? '2008-08-06' : '2017-08-06';
+    document.getElementById('rep-card').classList.toggle('warn', is18);
+    document.getElementById('rep-hint').textContent = is18
+      ? 'Esta relación ya no aplica legalmente — quítala una vez que firme su propio contrato.'
+      : 'El representante firmó el contrato de deslinde en su nombre.';
+    document.getElementById('quitar-rep-btn').style.display = is18 ? 'inline-flex' : 'none';
+  }
+  // Estado inicial: menor normal, sin botón "Quitar representante" visible
+  document.getElementById('quitar-rep-btn').style.display = 'none';
+</script>
+</body>
+</html>
