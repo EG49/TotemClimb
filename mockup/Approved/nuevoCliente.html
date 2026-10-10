@@ -147,6 +147,39 @@
     margin-top:4px;
   }
 
+
+  /* CLASE DE PRUEBA */
+  .trial-box{ margin-top:14px; display:none; }
+  .trial-grid{ display:grid; grid-template-columns:290px 1fr; gap:22px; align-items:start; }
+  .mcal{ border:1px solid var(--gray-light); border-radius:12px; padding:12px; }
+  .mcal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .mcal-head b{ font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.5px; text-transform:capitalize; }
+  .mcal-head button{ width:30px; height:30px; border:1px solid var(--gray-light); background:#fff; border-radius:8px; cursor:pointer; font-size:16px; color:var(--ink); }
+  .mcal-head button:hover{ border-color:var(--teal); color:var(--teal); }
+  .mcal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; }
+  .mcal-grid .h{ font-size:10px; font-weight:600; color:var(--ink-soft); padding:3px 0; }
+  .mcal-day{ border:none; background:none; font-family:inherit; font-size:12.5px; padding:7px 0 11px; border-radius:7px; cursor:pointer; position:relative; color:var(--ink); }
+  .mcal-day:hover:not(:disabled){ background:rgba(51,149,160,0.1); }
+  .mcal-day:disabled{ color:var(--gray-light); cursor:not-allowed; }
+  .mcal-day.today{ font-weight:700; box-shadow:inset 0 0 0 1px var(--ink); }
+  .mcal-day.sel{ background:var(--teal); color:#fff; }
+  .mcal-day i{ position:absolute; bottom:3px; left:50%; width:5px; height:5px; margin-left:-2.5px; border-radius:50%; background:var(--gray); }
+  .mcal-day.sel i{ background:#fff; }
+  .mcal-legend{ font-size:11px; color:var(--ink-soft); margin-top:8px; display:flex; align-items:center; gap:6px; }
+  .mcal-legend i{ width:6px; height:6px; border-radius:50%; background:var(--gray); display:inline-block; }
+  .slots-title{ font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.5px; text-transform:capitalize; }
+  .slots-hint{ font-size:12px; color:var(--ink-soft); margin-bottom:10px; }
+  .slot{ display:flex; align-items:center; gap:10px; border:1px solid var(--gray-light); border-radius:10px; padding:11px 14px; margin-bottom:8px; cursor:pointer; font-size:13px; }
+  .slot:hover{ border-color:var(--teal); }
+  .slot.on{ border-color:var(--teal); background:rgba(51,149,160,0.08); }
+  .slot.off{ opacity:.55; cursor:not-allowed; }
+  .slot input{ width:auto; }
+  .slot .s-main{ font-weight:700; }
+  .slot .s-meta{ font-size:11.5px; color:var(--ink-soft); }
+  .slot-new{ display:none; grid-template-columns:1fr 1fr; gap:12px; margin:2px 0 8px 26px; }
+  .trial-summary{ margin-top:12px; font-size:12.5px; padding:10px 14px; border-radius:10px; background:rgba(194,221,88,0.2); display:none; }
+  @media (max-width:860px){ .trial-grid{ grid-template-columns:1fr; } }
+
   .form-actions{
     display:flex; justify-content:flex-end; gap:12px;
     margin-top:30px;
@@ -181,6 +214,10 @@
         Facturas
       </div>
       <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Calendario
+      </div>
+      <div class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         Contabilidad
       </div>
@@ -199,7 +236,7 @@
     <div class="topbar">
       <div class="breadcrumb"><span>Clientes</span> / Nuevo cliente</div>
       <div class="page-title">Nuevo cliente</div>
-      <div class="page-sub">El contrato firmado se sube después, desde la edición del cliente.</div>
+      <div class="page-sub">El contrato de deslinde se firma en físico; el sistema solo registra la fecha de registro.</div>
     </div>
 
     <div class="card">
@@ -296,6 +333,38 @@
         <button class="btn-ghost" type="button" onclick="addMenor()">+ Agregar menor</button>
       </div>
 
+      <hr class="section-divider">
+
+      <div class="check-row">
+        <input type="checkbox" id="quiere-prueba" onchange="toggleTrial(this)">
+        <div>
+          <label for="quiere-prueba">¿Agendar clase de prueba?</label>
+          <div class="cr-hint">Elige un día en el calendario: puedes unirte a una clase de prueba ya creada o crear un horario nuevo.</div>
+        </div>
+      </div>
+
+      <div class="trial-box" id="trial-box">
+        <div class="trial-grid">
+          <div>
+            <div class="mcal">
+              <div class="mcal-head">
+                <button type="button" onclick="mcalShift(-1)" aria-label="Mes anterior">‹</button>
+                <b id="mcal-title"></b>
+                <button type="button" onclick="mcalShift(1)" aria-label="Mes siguiente">›</button>
+              </div>
+              <div class="mcal-grid" id="mcal-grid"></div>
+              <div class="mcal-legend"><i></i> Ya hay una clase de prueba ese día</div>
+            </div>
+          </div>
+          <div>
+            <div class="slots-title" id="slots-title">Elige un día</div>
+            <div class="slots-hint" id="slots-hint">Selecciona una fecha en el calendario.</div>
+            <div id="slots"></div>
+          </div>
+        </div>
+        <div class="trial-summary" id="trial-summary"></div>
+      </div>
+
       <div class="form-actions">
         <button class="btn-ghost">Cancelar</button>
         <button class="btn-primary">
@@ -346,6 +415,78 @@
     const tpl = document.getElementById('menor-template');
     const clone = tpl.content.cloneNode(true);
     document.getElementById('menores-list').appendChild(clone);
+  }
+
+  /* ---------- CLASE DE PRUEBA ---------- */
+  const T_TODAY = new Date(2026, 9, 9);
+  const T_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const T_DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  // Clases de prueba ya creadas en el Calendario (datos de ejemplo)
+  const pruebas = [
+    { id:1, fecha:'2026-10-10', ini:'10:00', fin:'11:00', cupo:6,    ins:2 },
+    { id:7, fecha:'2026-10-14', ini:'09:00', fin:'10:00', cupo:3,    ins:3 },
+    { id:3, fecha:'2026-10-17', ini:'16:00', fin:'17:00', cupo:null, ins:1 }
+  ];
+  const tState = { month:new Date(2026,9,1), sel:null, slot:null };
+  const tKey = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+
+  function toggleTrial(cb){
+    document.getElementById('trial-box').style.display = cb.checked ? 'block' : 'none';
+    if (cb.checked) renderMcal(); else { tState.sel = null; tState.slot = null; }
+  }
+  function mcalShift(n){ tState.month = new Date(tState.month.getFullYear(), tState.month.getMonth()+n, 1); renderMcal(); }
+  function renderMcal(){
+    const m = tState.month, first = new Date(m.getFullYear(), m.getMonth(), 1);
+    const last = new Date(m.getFullYear(), m.getMonth()+1, 0), blanks = (first.getDay()+6)%7;
+    document.getElementById('mcal-title').textContent = T_MESES[m.getMonth()]+' '+m.getFullYear();
+    let h = ['L','M','M','J','V','S','D'].map(d=>`<div class="h">${d}</div>`).join('');
+    for (let i=0;i<blanks;i++) h += '<div></div>';
+    const todayKey = tKey(T_TODAY);
+    for (let d=1; d<=last.getDate(); d++){
+      const k = tKey(new Date(m.getFullYear(), m.getMonth(), d));
+      const past = k < todayKey, has = pruebas.some(p => p.fecha===k);
+      h += `<button type="button" class="mcal-day ${k===todayKey?'today':''} ${k===tState.sel?'sel':''}" ${past?'disabled':''} onclick="pickDay('${k}')">${d}${has?'<i></i>':''}</button>`;
+    }
+    document.getElementById('mcal-grid').innerHTML = h;
+    renderSlots();
+  }
+  function pickDay(k){ tState.sel = k; tState.slot = null; renderMcal(); }
+
+  function renderSlots(){
+    const t = document.getElementById('slots-title'), hint = document.getElementById('slots-hint'), box = document.getElementById('slots');
+    if (!tState.sel){ t.textContent='Elige un día'; hint.textContent='Selecciona una fecha en el calendario.'; box.innerHTML=''; updateSummary(); return; }
+    const [y,mo,d] = tState.sel.split('-').map(Number), dt = new Date(y,mo-1,d);
+    t.textContent = T_DIAS[dt.getDay()]+' '+d+' de '+T_MESES[mo-1];
+    const list = pruebas.filter(p => p.fecha===tState.sel);
+    hint.textContent = list.length ? 'Únete a una clase existente o crea un horario nuevo.' : 'No hay clases de prueba ese día. Crea un horario nuevo.';
+    let h = '';
+    list.forEach(p => {
+      const lleno = p.cupo && p.ins >= p.cupo;
+      h += `<label class="slot ${lleno?'off':''} ${tState.slot==='e'+p.id?'on':''}">
+        <input type="radio" name="slot" ${lleno?'disabled':''} ${tState.slot==='e'+p.id?'checked':''} onchange="pickSlot('e${p.id}')">
+        <div><div class="s-main">${p.ini} – ${p.fin}</div>
+        <div class="s-meta">${lleno?'Cupo completo':'Inscritos '+p.ins+(p.cupo?'/'+p.cupo:' · sin límite de cupo')}</div></div></label>`;
+    });
+    h += `<label class="slot ${tState.slot==='new'?'on':''}">
+        <input type="radio" name="slot" ${tState.slot==='new'?'checked':''} onchange="pickSlot('new')">
+        <div><div class="s-main">+ Crear horario nuevo</div><div class="s-meta">Se agrega al Calendario como "Clase de prueba".</div></div></label>
+      <div class="slot-new" id="slot-new" style="display:${tState.slot==='new'?'grid':'none'}">
+        <div class="field"><label>Hora inicio</label><input type="time" id="n-ini" value="10:00" onchange="updateSummary()"></div>
+        <div class="field"><label>Hora fin</label><input type="time" id="n-fin" value="11:00" onchange="updateSummary()"></div>
+      </div>`;
+    box.innerHTML = h;
+    updateSummary();
+  }
+  function pickSlot(id){ tState.slot = id; renderSlots(); }
+  function updateSummary(){
+    const el = document.getElementById('trial-summary');
+    if (!tState.sel || !tState.slot){ el.style.display='none'; return; }
+    let hora;
+    if (tState.slot==='new'){ hora = document.getElementById('n-ini').value+' – '+document.getElementById('n-fin').value; }
+    else { const p = pruebas.find(x => 'e'+x.id===tState.slot); hora = p.ini+' – '+p.fin; }
+    const [y,mo,d] = tState.sel.split('-').map(Number);
+    el.textContent = 'Al guardar, el cliente quedará inscrito en la clase de prueba del '+d+' de '+T_MESES[mo-1]+', '+hora+'.';
+    el.style.display = 'block';
   }
 </script>
 </body>

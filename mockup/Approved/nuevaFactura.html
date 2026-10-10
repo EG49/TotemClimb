@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Totem Climb Gym — Cobrar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2B3210; --cream:#FFFFFF; --teal:#3395A0; --gray-light:#CCCCCC;
+    --gray:#6A6A67; --lime:#C2DD58; --lime-soft:#DEFA73; --ink-soft: rgba(43,50,16,0.65);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ font-family:'Clear Sans','Work Sans',-apple-system,sans-serif; background:var(--cream); color:var(--ink); min-height:100vh; }
+  .app{ display:grid; grid-template-columns: 240px 1fr; min-height:100vh; }
+
+  .sidebar{
+    background: radial-gradient(circle at 20% 15%, rgba(255,255,255,0.04), transparent 40%),
+      radial-gradient(circle at 80% 85%, rgba(255,255,255,0.03), transparent 45%), var(--ink);
+    color:var(--cream); display:flex; flex-direction:column;
+    padding:28px 22px; position:sticky; top:0; height:100vh;
+  }
+  .brand{ display:flex; justify-content:center; margin-bottom:40px; padding:4px 0; }
+  .brand-logo-img{ width:100%; max-width:170px; height:auto; object-fit:contain; }
+  nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{ display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:8px;
+    font-size:14px; font-weight:500; color:rgba(251,248,239,0.65); cursor:pointer;
+    transition:background .15s, color .15s; border-left:3px solid transparent; }
+  .nav-item svg{ width:17px; height:17px; opacity:.8; }
+  .nav-item:hover{ background:rgba(255,255,255,0.08); color:var(--cream); }
+  .nav-item.active{ background:rgba(51,149,160,0.18); color:var(--cream); border-left:3px solid var(--teal); }
+  .sidebar-footer{ margin-top:auto; padding-top:24px; border-top:1px solid rgba(255,255,255,0.12); }
+  .tagline{ font-family:'Shadows Into Light Two', cursive; font-size:19px; color:var(--lime); line-height:1.1; }
+  .tagline-sub{ font-size:11px; color:rgba(255,255,255,0.45); margin-top:6px; }
+
+  main{ padding:36px 44px; max-width:920px; }
+  .breadcrumb{ font-size:12.5px; color:var(--ink-soft); margin-bottom:6px; }
+  .breadcrumb span{ color:var(--teal); font-weight:600; cursor:pointer; }
+  .page-title{ font-family:'Bebas Neue', sans-serif; font-size:38px; letter-spacing:0.5px; }
+  .page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; margin-bottom:26px; }
+
+  .btn-primary{ background:var(--teal); color:#fff; border:none; padding:13px 22px; border-radius:9px;
+    font-weight:600; font-size:14px; cursor:pointer; display:flex; align-items:center; gap:8px;
+    box-shadow:0 4px 14px rgba(51,149,160,0.35); transition:transform .12s, box-shadow .12s; }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(51,149,160,0.42); }
+  .btn-primary:disabled{ opacity:0.45; cursor:not-allowed; transform:none; box-shadow:none; }
+  .btn-ghost{ background:none; border:1px solid var(--gray-light); color:var(--ink); padding:12px 20px;
+    border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+  .btn-primary:focus-visible, .btn-ghost:focus-visible, input:focus-visible, select:focus-visible{
+    outline:2px solid var(--teal); outline-offset:2px; }
+
+  .card{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:26px 28px; margin-bottom:20px; }
+  .section-label{ font-family:'Bebas Neue', sans-serif; font-size:16px; letter-spacing:0.6px; margin-bottom:2px; }
+  .section-hint{ font-size:12px; color:var(--ink-soft); margin-bottom:16px; }
+
+  .client-search{ display:flex; gap:10px; }
+  .client-search input{ flex:1; border:1px solid var(--gray-light); border-radius:8px; padding:11px 13px;
+    font-family:'Clear Sans','Work Sans',sans-serif; font-size:13.5px; color:var(--ink); }
+  .client-picked{ margin-top:14px; display:flex; align-items:center; justify-content:space-between;
+    background:rgba(51,149,160,0.06); border:1px solid var(--gray-light); border-radius:10px; padding:14px 16px; }
+  .client-picked-name{ font-weight:700; }
+  .client-picked-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+
+  .tape{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:20px;
+    font-size:10.5px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase;
+    background:rgba(51,149,160,0.14); color:var(--teal); margin-top:6px; }
+
+  .item-add-row{ display:flex; gap:10px; align-items:end; margin-bottom:16px; flex-wrap:wrap; }
+  .item-add-field{ display:flex; flex-direction:column; gap:5px; }
+  .item-add-field label{ font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.4px; }
+  .item-add-field select, .item-add-field input{ border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px;
+    font-family:'Clear Sans','Work Sans',sans-serif; font-size:13px; color:var(--ink); background:#fff; }
+  #sel-item{ min-width:260px; flex:1; }
+  #qty-input{ width:70px; text-align:center; }
+
+  table{ width:100%; border-collapse:collapse; }
+  th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink-soft);
+    padding:9px 4px; border-bottom:1px solid var(--gray-light); font-weight:600; }
+  td{ padding:11px 4px; border-bottom:1px solid var(--gray-light); font-size:13.5px; vertical-align:top; }
+  td.num{ text-align:right; }
+  .item-kind{ display:inline-block; font-size:10px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase;
+    padding:2px 8px; border-radius:20px; margin-top:3px; }
+  .item-kind.producto{ background:rgba(106,106,103,0.14); color:var(--gray); }
+  .item-kind.membresia{ background:rgba(194,221,88,0.3); color:var(--ink); }
+  .pareja-row{ margin-top:8px; display:flex; gap:8px; align-items:center; }
+  .pareja-row input{ flex:1; border:1px solid var(--gray-light); border-radius:7px; padding:7px 10px; font-size:12px; }
+  .pareja-label{ font-size:11px; color:var(--teal); font-weight:600; white-space:nowrap; }
+  .remove-btn{ background:none; border:none; color:var(--gray); cursor:pointer; font-size:13px; padding:2px 6px; }
+  .remove-btn:hover{ color:#b23; }
+  .empty-items{ text-align:center; color:var(--ink-soft); font-size:13px; padding:26px 0; }
+
+  .membership-note{ display:none; gap:10px; align-items:flex-start; background:rgba(194,221,88,0.15);
+    border:1px solid var(--gray-light); border-radius:10px; padding:12px 14px; margin-top:16px; font-size:12.5px; color:var(--ink); }
+  .membership-note svg{ flex-shrink:0; color:var(--teal); margin-top:1px; }
+  .membership-note.show{ display:flex; }
+
+  .discount-row{ display:flex; align-items:flex-start; gap:10px; background:rgba(194,221,88,0.1);
+    border:1px solid var(--gray-light); border-radius:10px; padding:14px 16px; margin-top:16px; }
+  .discount-row input[type="checkbox"]{ width:auto; margin-top:3px; }
+  .discount-row label{ font-size:13px; font-weight:600; display:block; margin-bottom:2px; cursor:pointer; }
+  .discount-row .dr-hint{ font-size:11.5px; color:var(--ink-soft); font-weight:400; }
+  .discount-pct{ display:none; align-items:center; gap:8px; margin-top:10px; }
+  .discount-pct.show{ display:flex; }
+  .discount-pct input{ width:80px; border:1px solid var(--gray-light); border-radius:7px; padding:8px 10px; font-size:13px; }
+  .discount-blocked{ display:none; font-size:11.5px; color:var(--gray); margin-top:8px; font-weight:600; }
+  .discount-blocked.show{ display:block; }
+
+  .totals{ margin-top:16px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .totals-row{ display:flex; justify-content:space-between; gap:40px; font-size:13.5px; color:var(--ink-soft); width:240px; }
+  .totals-row.grand{ font-family:'Bebas Neue', sans-serif; font-size:24px; color:var(--ink);
+    border-top:1px solid var(--gray-light); padding-top:8px; margin-top:2px; }
+
+  .fiado-toggle{ display:flex; gap:10px; }
+  .fiado-option{ flex:1; border:1px solid var(--gray-light); border-radius:9px; padding:13px 16px; cursor:pointer; text-align:center; }
+  .fiado-option .fo-title{ font-family:'Bebas Neue', sans-serif; font-size:16px; letter-spacing:0.4px; }
+  .fiado-option .fo-sub{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+  .fiado-option.active{ border-color:var(--teal); background:rgba(51,149,160,0.08); }
+  .fiado-option.active .fo-title{ color:var(--teal); }
+
+  .method-options{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+  .method-option{ border:1px solid var(--gray-light); border-radius:9px; padding:11px 18px; font-size:13.5px;
+    font-weight:600; cursor:pointer; color:var(--ink-soft); background:#fff; }
+  .method-option.active{ border-color:var(--teal); background:rgba(51,149,160,0.08); color:var(--teal); }
+
+  .fiado-detail{ display:none; margin-top:16px; }
+  .fiado-detail.show{ display:block; }
+  .fiado-field-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .fiado-field label{ font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.4px; display:block; margin-bottom:6px; }
+  .fiado-field input{ width:100%; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:13.5px; }
+  .fiado-saldo-preview{ margin-top:12px; font-size:13px; color:var(--ink-soft); }
+  .fiado-saldo-preview b{ color:var(--ink); }
+
+  .form-actions{ display:flex; justify-content:flex-end; gap:12px; }
+
+  @media (max-width: 860px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ position:relative; height:auto; }
+    main{ padding:24px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand"><img id="brand-logo" class="brand-logo-img" src="totem-logo.png" alt="Totem Climb Gym"></div>
+    <nav>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel general
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Facturas
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Contabilidad
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        Productos
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="tagline">Totem = Familia</div>
+      <div class="tagline-sub">Cada miembro cuenta</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="breadcrumb"><span>Facturas</span> / Nueva factura</div>
+    <div class="page-title">Cobrar</div>
+    <div class="page-sub">Selecciona el cliente, agrega los ítems y genera la factura.</div>
+
+    <!-- CLIENTE -->
+    <div class="card">
+      <div class="section-label">Cliente</div>
+      <div class="section-hint">Busca por nombre o CI. Si viene desde "Guardar y cobrar ahora", ya aparece precargado.</div>
+      <div class="client-search">
+        <input type="text" placeholder="Buscar cliente...">
+        <button class="btn-ghost">Buscar</button>
+      </div>
+      <div class="client-picked">
+        <div>
+          <div class="client-picked-name">Mariana Lopez</div>
+          <div class="client-picked-meta">CI 0912345678 · mariana.lopez@email.com</div>
+          <span class="tape">Membresía vence en 3 días</span>
+        </div>
+        <button class="btn-ghost">Cambiar</button>
+      </div>
+    </div>
+
+    <!-- ITEMS -->
+    <div class="card">
+      <div class="section-label">Productos y planes</div>
+      <div class="section-hint">Una sola lista para todo: productos de tienda/alquiler y planes de membresía.</div>
+
+      <div class="item-add-row">
+        <div class="item-add-field" style="flex:1;">
+          <label>Producto / plan</label>
+          <select id="sel-item">
+            <optgroup label="Productos">
+              <option value="p|Alquiler de arnés|2.00">Alquiler de arnés — $2.00</option>
+              <option value="p|Alquiler de pies de gato|2.50">Alquiler de pies de gato — $2.50</option>
+              <option value="p|Alquiler de casco|1.50">Alquiler de casco — $1.50</option>
+              <option value="p|Magnesio (bolsa 56g)|4.00">Magnesio (bolsa 56g) — $4.00</option>
+              <option value="p|Bolsa de magnesio (chalk bag)|12.00">Bolsa de magnesio (chalk bag) — $12.00</option>
+              <option value="p|Cinta de agarre (tape)|3.50">Cinta de agarre (tape) — $3.50</option>
+            </optgroup>
+            <optgroup label="Planes de membresía">
+              <option value="m|Membresía Junior|30.00|0|1">Membresía Junior — $30.00</option>
+              <option value="m|Membresía Senior|35.00|0|1">Membresía Senior — $35.00</option>
+              <option value="m|Pase 10 días|49.00|0|1">Pase 10 días — $49.00</option>
+              <option value="m|Promo pareja (2 personas)|111.00|1|0">Promo pareja (2 personas) — $111.00</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="item-add-field">
+          <label>Cantidad</label>
+          <input type="number" id="qty-input" value="1" min="1">
+        </div>
+        <button class="btn-primary" onclick="addItem()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Agregar
+        </button>
+      </div>
+
+      <table id="items-table">
+        <thead>
+          <tr><th>Ítem</th><th class="num">Cant.</th><th class="num">Precio unit.</th><th class="num">Subtotal</th><th></th></tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+      </table>
+      <div id="empty-msg" class="empty-items">Aún no has agregado ningún producto o plan.</div>
+
+      <div id="membership-note" class="membership-note">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        <span>Esta factura incluye un plan de membresía: al generarla se creará o actualizará la vigencia correspondiente.</span>
+      </div>
+
+      <div class="discount-row">
+        <input type="checkbox" id="chk-descuento" onchange="toggleDescuento()">
+        <div style="flex:1;">
+          <label for="chk-descuento">¿Aplica descuento?</label>
+          <div class="dr-hint">Porcentaje variable, se decide caso por caso.</div>
+          <div class="discount-pct" id="discount-pct">
+            <input type="number" id="pct-input" min="0" max="100" value="10" oninput="render()">
+            <span style="font-size:13px; color:var(--ink-soft);">%</span>
+          </div>
+          <div class="discount-blocked" id="discount-blocked">Un ítem agregado no permite descuento — se bloqueó para toda la factura.</div>
+        </div>
+      </div>
+
+      <div class="totals">
+        <div class="totals-row"><span>Subtotal</span><span id="tot-subtotal">$0.00</span></div>
+        <div class="totals-row" id="row-descuento" style="display:none;"><span>Descuento</span><span id="tot-descuento">-$0.00</span></div>
+        <div class="totals-row"><span>IVA (15%)</span><span id="tot-iva">$0.00</span></div>
+        <div class="totals-row grand"><span>Total</span><span id="tot-total">$0.00</span></div>
+      </div>
+    </div>
+
+    <!-- FORMA DE COBRO -->
+    <div class="card">
+      <div class="section-label">Forma de cobro</div>
+      <div class="section-hint">Selecciona si se paga completo ahora o queda fiado.</div>
+
+      <div class="fiado-toggle">
+        <div class="fiado-option active" onclick="setFiado(false, this)">
+          <div class="fo-title">Pagar completo</div>
+          <div class="fo-sub">Se cobra el total ahora</div>
+        </div>
+        <div class="fiado-option" onclick="setFiado(true, this)">
+          <div class="fo-title">Fiar</div>
+          <div class="fo-sub">Queda pendiente de cobro</div>
+        </div>
+      </div>
+
+      <div id="pago-completo">
+        <div class="method-options">
+          <div class="method-option active" onclick="selectMethod(this)">Efectivo</div>
+          <div class="method-option" onclick="selectMethod(this)">Transferencia</div>
+        </div>
+      </div>
+
+      <div id="fiado-detail" class="fiado-detail">
+        <div class="fiado-field-grid">
+          <div class="fiado-field">
+            <label>Monto recibido ahora (opcional)</label>
+            <input type="number" id="monto-recibido" min="0" step="0.01" value="0" oninput="render()">
+          </div>
+          <div class="fiado-field">
+            <label>Método de ese abono</label>
+            <select id="metodo-abono">
+              <option>Efectivo</option>
+              <option>Transferencia</option>
+            </select>
+          </div>
+        </div>
+        <div class="fiado-saldo-preview">Saldo que queda pendiente: <b id="saldo-preview">$0.00</b></div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-ghost">Cancelar</button>
+      <button class="btn-primary" id="generate-btn" disabled onclick="alert('Maqueta: aquí se generaría la factura con el estado y saldo correspondientes.')">
+        Generar factura
+      </button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  let items = [];
+  let isFiado = false;
+
+  function addItem(){
+    const sel = document.getElementById('sel-item');
+    const parts = sel.value.split('|');
+    const kind = parts[0], name = parts[1], price = parts[2], permitePareja = parts[3], permiteDescuento = parts[4];
+    const qty = Math.max(1, parseInt(document.getElementById('qty-input').value) || 1);
+    items.push({
+      kind: kind, name: name, price: parseFloat(price), qty: qty,
+      permitePareja: kind === 'm' ? permitePareja === '1' : false,
+      permiteDescuento: kind === 'm' ? permiteDescuento === '1' : true,
+      pareja: ''
+    });
+    render();
+  }
+
+  function removeItem(index){
+    items.splice(index, 1);
+    render();
+  }
+
+  function render(){
+    const body = document.getElementById('items-body');
+    const emptyMsg = document.getElementById('empty-msg');
+    body.innerHTML = '';
+
+    if(items.length === 0){
+      emptyMsg.style.display = 'block';
+    } else {
+      emptyMsg.style.display = 'none';
+      items.forEach((item, i) => {
+        const subtotal = item.price * item.qty;
+        const tr = document.createElement('tr');
+        let parejaHtml = '';
+        if(item.permitePareja){
+          parejaHtml = '<div class="pareja-row"><span class="pareja-label">Pareja:</span><input type="text" placeholder="Buscar cliente..." onchange="items[' + i + '].pareja=this.value"></div>';
+        }
+        tr.innerHTML =
+          '<td>' + item.name + '<br><span class="item-kind ' + (item.kind === 'm' ? 'membresia' : 'producto') + '">' + (item.kind === 'm' ? 'Membresía' : 'Producto') + '</span>' + parejaHtml + '</td>' +
+          '<td class="num">' + item.qty + '</td>' +
+          '<td class="num">$' + item.price.toFixed(2) + '</td>' +
+          '<td class="num">$' + subtotal.toFixed(2) + '</td>' +
+          '<td><button class="remove-btn" onclick="removeItem(' + i + ')">Quitar</button></td>';
+        body.appendChild(tr);
+      });
+    }
+
+    const subtotal = items.reduce(function(sum, item){ return sum + item.price * item.qty; }, 0);
+
+    const anyBlocked = items.some(function(item){ return !item.permiteDescuento; });
+    const chkDescuento = document.getElementById('chk-descuento');
+    chkDescuento.disabled = anyBlocked;
+    if(anyBlocked) chkDescuento.checked = false;
+    document.getElementById('discount-blocked').classList.toggle('show', anyBlocked);
+    document.getElementById('discount-pct').classList.toggle('show', chkDescuento.checked && !anyBlocked);
+
+    const pct = (chkDescuento.checked && !anyBlocked) ? (parseFloat(document.getElementById('pct-input').value) || 0) : 0;
+    const descuentoMonto = subtotal * (pct / 100);
+    const base = subtotal - descuentoMonto;
+    const iva = base * 0.15;
+    const total = base + iva;
+
+    document.getElementById('tot-subtotal').textContent = '$' + subtotal.toFixed(2);
+    document.getElementById('row-descuento').style.display = descuentoMonto > 0 ? 'flex' : 'none';
+    document.getElementById('tot-descuento').textContent = '-$' + descuentoMonto.toFixed(2);
+    document.getElementById('tot-iva').textContent = '$' + iva.toFixed(2);
+    document.getElementById('tot-total').textContent = '$' + total.toFixed(2);
+
+    const hasMembership = items.some(function(item){ return item.kind === 'm'; });
+    document.getElementById('membership-note').classList.toggle('show', hasMembership);
+
+    if(isFiado){
+      const recibido = parseFloat(document.getElementById('monto-recibido').value) || 0;
+      const saldo = Math.max(0, total - recibido);
+      document.getElementById('saldo-preview').textContent = '$' + saldo.toFixed(2);
+    }
+
+    document.getElementById('generate-btn').disabled = items.length === 0;
+    document.getElementById('generate-btn').textContent = (isFiado && total > 0) ? 'Generar factura (fiada)' : 'Generar factura';
+  }
+
+  function toggleDescuento(){ render(); }
+
+  function setFiado(value, el){
+    isFiado = value;
+    document.querySelectorAll('.fiado-option').forEach(function(o){ o.classList.remove('active'); });
+    el.classList.add('active');
+    document.getElementById('pago-completo').style.display = value ? 'none' : 'block';
+    document.getElementById('fiado-detail').classList.toggle('show', value);
+    render();
+  }
+
+  function selectMethod(el){
+    document.querySelectorAll('#pago-completo .method-option').forEach(function(o){ o.classList.remove('active'); });
+    el.classList.add('active');
+  }
+
+  render();
+</script>
+</body>
+</html>
