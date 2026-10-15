@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Panel general — Totem Climb Gym{% endblock %}
+{% block nav_panel %}active{% endblock %}
+
+{% block contenido %}
+  <div class="page-title">Hola, {{ empleado.nombre.split(' ')[0] }}</div>
+  <div class="page-sub">
+    Entraste como {{ 'administrador' if empleado.es_admin else 'vendedor' }}.
+  </div>
+
+  <div class="card">
+    <p style="font-size:14px; color:var(--ink-soft);">
+      Aquí van las tarjetas de acceso rápido, las estadísticas, el panel de
+      Avisos y el calendario, tal como están en la maqueta del Inicio. Se
+      irán conectando conforme se construyan los módulos.
+    </p>
+  </div>
+{% endblock %}

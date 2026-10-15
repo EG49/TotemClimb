@@ -1,0 +1,122 @@
+/* Sistema visual de Totem Climb Gym.
+   Extraído de las maquetas para que todas las pantallas compartan una
+   sola hoja de estilos en vez de repetir el CSS en cada archivo. */
+
+:root{
+  --ink:#2B3210;
+  --cream:#FFFFFF;
+  --teal:#3395A0;
+  --gray-light:#CCCCCC;
+  --gray:#6A6A67;
+  --lime:#C2DD58;
+  --lime-soft:#DEFA73;
+  --ink-soft: rgba(43,50,16,0.65);
+  --error:#B3261E;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:'Clear Sans','Work Sans',-apple-system,sans-serif;
+  background:var(--cream); color:var(--ink); min-height:100vh;
+}
+.app{ display:grid; grid-template-columns:240px 1fr; min-height:100vh; }
+
+/* SIDEBAR */
+.sidebar{
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255,255,255,0.04), transparent 40%),
+    radial-gradient(circle at 80% 85%, rgba(255,255,255,0.03), transparent 45%),
+    var(--ink);
+  color:var(--cream); display:flex; flex-direction:column;
+  padding:28px 22px; position:sticky; top:0; height:100vh;
+}
+.brand{ display:flex; justify-content:center; margin-bottom:40px; padding:4px 0; }
+.brand-logo-img{ width:100%; max-width:170px; height:auto; object-fit:contain; }
+nav{ display:flex; flex-direction:column; gap:4px; }
+.nav-item{
+  display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:8px;
+  font-size:14px; font-weight:500; color:rgba(251,248,239,0.65); cursor:pointer;
+  text-decoration:none; transition:background .15s,color .15s;
+  border-left:3px solid transparent;
+}
+.nav-item svg{ width:17px; height:17px; opacity:.8; }
+.nav-item:hover{ background:rgba(255,255,255,0.08); color:var(--cream); }
+.nav-item.active{ background:rgba(51,149,160,0.18); color:var(--cream); border-left:3px solid var(--teal); }
+.sidebar-footer{ margin-top:auto; padding-top:24px; border-top:1px solid rgba(255,255,255,0.12); }
+.tagline{ font-family:'Shadows Into Light Two',cursive; font-size:19px; color:var(--lime); line-height:1.1; }
+.tagline-sub{ font-size:11px; color:rgba(255,255,255,0.45); margin-top:6px; }
+.sesion{ font-size:12px; color:rgba(255,255,255,0.75); margin-bottom:10px; }
+.sesion b{ display:block; color:var(--cream); font-size:13px; }
+.btn-salir{
+  background:none; border:1px solid rgba(255,255,255,0.25); color:rgba(255,255,255,0.8);
+  padding:7px 12px; border-radius:7px; font-size:12px; font-weight:600;
+  cursor:pointer; width:100%; font-family:inherit;
+}
+.btn-salir:hover{ border-color:var(--lime); color:var(--lime); }
+
+/* MAIN */
+main{ padding:36px 44px; max-width:1220px; }
+.page-title{ font-family:'Bebas Neue',sans-serif; font-size:38px; letter-spacing:.5px; }
+.page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; margin-bottom:26px; }
+
+.btn-primary{
+  background:var(--teal); color:#fff; border:none; padding:12px 20px; border-radius:9px;
+  font-weight:600; font-size:14px; cursor:pointer; font-family:inherit;
+  display:inline-flex; align-items:center; gap:8px;
+  box-shadow:0 4px 14px rgba(51,149,160,0.35);
+  transition:transform .12s, box-shadow .12s;
+}
+.btn-primary:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(51,149,160,0.42); }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible{
+  outline:2px solid var(--teal); outline-offset:2px;
+}
+
+.card{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:26px 28px; }
+
+table{ width:100%; border-collapse:collapse; }
+th{
+  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.8px;
+  color:var(--ink-soft); padding:11px 18px; background:var(--cream);
+  font-weight:600; border-bottom:1px solid var(--gray-light);
+}
+td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px; }
+
+/* MENSAJES */
+.flash{ padding:12px 16px; border-radius:9px; font-size:13.5px; margin-bottom:16px; }
+.flash.error{ background:rgba(179,38,30,0.08); color:var(--error); border:1px solid rgba(179,38,30,0.25); }
+.flash.ok{ background:rgba(194,221,88,0.22); color:var(--ink); border:1px solid var(--lime); }
+
+/* LOGIN */
+.login-wrap{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding:24px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(51,149,160,0.10), transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(194,221,88,0.14), transparent 45%),
+    var(--cream);
+}
+.login-card{
+  background:#fff; border:1px solid var(--gray-light); border-radius:16px;
+  padding:38px 36px; width:100%; max-width:390px;
+  box-shadow:0 18px 50px rgba(43,50,16,0.10);
+}
+.login-logo{ display:flex; justify-content:center; margin-bottom:26px; }
+.login-logo img{ max-width:170px; height:auto; }
+.login-title{ font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:.5px; text-align:center; }
+.login-sub{ font-size:13px; color:var(--ink-soft); text-align:center; margin-bottom:24px; }
+.field{ margin-bottom:16px; }
+.field label{ display:block; font-size:12.5px; font-weight:600; margin-bottom:6px; }
+.field input{
+  width:100%; border:1px solid var(--gray-light); border-radius:8px; padding:11px 13px;
+  font-family:inherit; font-size:14px; color:var(--ink); background:#fff;
+}
+.login-card .btn-primary{ width:100%; justify-content:center; margin-top:6px; }
+.login-pie{
+  font-family:'Shadows Into Light Two',cursive; font-size:17px; color:var(--teal);
+  text-align:center; margin-top:24px;
+}
+
+@media (max-width:900px){
+  .app{ grid-template-columns:1fr; }
+  .sidebar{ position:relative; height:auto; }
+  main{ padding:24px; }
+}

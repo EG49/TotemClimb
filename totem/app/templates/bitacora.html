@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titulo %}Bitácora — Totem Climb Gym{% endblock %}
+{% block nav_bitacora %}active{% endblock %}
+
+{% block contenido %}
+  <div class="page-title">Bitácora</div>
+  <div class="page-sub">Últimos 100 movimientos registrados en el sistema.</div>
+
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Empleado</th>
+          <th>Acción</th>
+          <th>Entidad</th>
+          <th>Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movimientos %}
+        <tr>
+          <td>{{ m.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td>{{ m.empleado }}</td>
+          <td>{{ m.accion.replace('_', ' ')|capitalize }}</td>
+          <td>{{ m.entidad|capitalize }}{% if m.id_entidad %} #{{ m.id_entidad }}{% endif %}</td>
+          <td style="color:var(--ink-soft); font-size:12.5px;">
+            {{ m.detalle if m.detalle else '—' }}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="color:var(--ink-soft);">Todavía no hay movimientos registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

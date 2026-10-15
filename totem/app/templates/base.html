@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block titulo %}Totem Climb Gym{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/totem.css') }}">
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <img class="brand-logo-img" src="{{ url_for('static', filename='img/totem-logo.png') }}" alt="Totem Climb Gym">
+    </div>
+    <nav>
+      <a class="nav-item {% block nav_panel %}{% endblock %}" href="{{ url_for('main.panel') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel general
+      </a>
+      {% if empleado and empleado.es_admin %}
+      <a class="nav-item {% block nav_bitacora %}{% endblock %}" href="{{ url_for('main.bitacora') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Bitácora
+      </a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-footer">
+      {% if empleado %}
+      <div class="sesion">
+        Sesión de
+        <b>{{ empleado.nombre }}</b>
+        {{ 'Administrador' if empleado.es_admin else 'Vendedor' }}
+      </div>
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        <button type="submit" class="btn-salir">Cerrar sesión</button>
+      </form>
+      {% endif %}
+      <div class="tagline" style="margin-top:16px;">Totem = Familia</div>
+      <div class="tagline-sub">Cada miembro cuenta</div>
+    </div>
+  </aside>
+
+  <main>
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for categoria, mensaje in mensajes %}
+        <div class="flash {{ categoria }}">{{ mensaje }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    {% block contenido %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>
