@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% set editando = evento is not none %}
+{% block titulo %}{{ 'Editar evento' if editando else 'Nuevo evento' }} — Totem Climb Gym{% endblock %}
+{% block nav_calendario %}active{% endblock %}
+
+{% block contenido %}
+<div class="migas">
+  <a href="{{ url_for('calendario.ver') }}">Calendario</a> /
+  {{ 'Editar evento' if editando else 'Nuevo evento' }}
+</div>
+<div class="page-title">{{ evento.titulo if editando else 'Nuevo evento' }}</div>
+<div class="page-sub">
+  Los cumpleaños no se crean aquí: salen solos de la fecha de nacimiento
+  de cada cliente.
+</div>
+
+<div class="disposicion-evento">
+  <form method="post" class="card">
+    <div class="rejilla">
+      <div class="campo ancho">
+        <label for="titulo">Título</label>
+        <input id="titulo" name="titulo" type="text" value="{{ datos.get('titulo') or '' }}"
+               placeholder="Ej. Clase de prueba — grupo sábado"
+               class="{{ 'con-error' if errores.get('titulo') }}">
+        {% if errores.get('titulo') %}<div class="error">{{ errores['titulo'] }}</div>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="id_categoria">Categoría</label>
+        <select id="id_categoria" name="id_categoria">
+          {% for c in categorias %}
+            <option value="{{ c.id_categoria }}"
+                    {{ 'selected' if datos.get('id_categoria')|string == c.id_categoria|string }}>
+              {{ c.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="fecha">Fecha</label>
+        <input id="fecha" name="fecha" type="date" value="{{ datos.get('fecha') or '' }}"
+               class="{{ 'con-error' if errores.get('fecha') }}">
+        {% if errores.get('fecha') %}<div class="error">{{ errores['fecha'] }}</div>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="hora_inicio">Hora inicio</label>
+        <input id="hora_inicio" name="hora_inicio" type="time"
+               value="{{ datos.get('hora_inicio') or '10:00' }}">
+      </div>
+      <div class="campo">
+        <label for="hora_fin">Hora fin</label>
+        <input id="hora_fin" name="hora_fin" type="time"
+               value="{{ datos.get('hora_fin') or '11:00' }}"
+               class="{{ 'con-error' if errores.get('hora_fin') }}">
+        {% if errores.get('hora_fin') %}<div class="error">{{ errores['hora_fin'] }}</div>{% endif %}
+      </div>
+
+      <div class="campo ancho">
+        <label class="fila-check compacta">
+          <input type="checkbox" name="todo_el_dia" id="todo_el_dia"
+                 {{ 'checked' if datos.get('todo_el_dia') }} onchange="alternarHoras()">
+          <span>
+            <b>Evento de todo el día</b>
+            <small>Se guarda de 00:00 a 23:59 y se indica en el título.</small>
+          </span>
+        </label>
+      </div>
+
+      <div class="campo">
+        <label for="cupo_maximo">Cupo máximo <span class="opcional">(opcional)</span></label>
+        <input id="cupo_maximo" name="cupo_maximo" type="number" min="1"
+               placeholder="Sin límite" value="{{ datos.get('cupo_maximo') or '' }}"
+               class="{{ 'con-error' if errores.get('cupo_maximo') }}">
+        {% if errores.get('cupo_maximo') %}<div class="error">{{ errores['cupo_maximo'] }}</div>{% endif %}
+      </div>
+
+      <div class="campo ancho">
+        <label for="descripcion">Descripción <span class="opcional">(opcional)</span></label>
+        <input id="descripcion" name="descripcion" type="text"
+               value="{{ datos.get('descripcion') or '' }}"
+               placeholder="Qué traer, instructor a cargo...">
+      </div>
+    </div>
+
+    {% if not editando %}
+    <hr class="divisor">
+    <div class="seccion">Inscribir clientes <span class="opcional" style="font-family:inherit;font-size:12.5px;">(opcional)</span></div>
+    <div class="seccion-nota">Busca por nombre o cédula. Puedes agregar varios.</div>
+    <div class="picker">
+      <input type="text" id="buscar-cliente" placeholder="Buscar cliente..." autocomplete="off">
+      <div class="picker-list" id="lista-clientes"></div>
+    </div>
+    <div class="chips" id="elegidos"></div>
+    {% endif %}
+
+    <div class="acciones-formulario">
+      <a class="btn-ghost" href="{{ url_for('calendario.ver') }}">Cancelar</a>
+      <button type="submit" class="btn-primary">
+        {{ 'Guardar cambios' if editando else 'Crear evento' }}
+      </button>
+    </div>
+  </form>
+
+  {% if editando %}
+  <aside>
+    <div class="card">
+      <div class="seccion">Inscritos</div>
+      <div class="seccion-nota">
+        {{ evento.cupo_texto }}{% if evento.cupo_lleno %} · cupo completo{% endif %}
+      </div>
+
+      {% for i in inscritos %}
+      <div class="tarjeta-menor">
+        <div class="tarjeta-menor-datos">
+          <div class="nombre">{{ i.cliente_nombre }}</div>
+          <div class="meta">
+            CI {{ i.cedula or '—' }} ·
+            Agendado por {{ i.agendado_por }}
+            el {{ i.fecha_inscripcion.strftime('%d/%m/%Y') }}
+          </div>
+        </div>
+        <form method="post" style="display:inline"
+              action="{{ url_for('calendario.quitar_inscrito', id_evento=evento.id_evento, id_cliente=i.id_cliente) }}"
+              onsubmit="return confirm('¿Quitar a {{ i.cliente_nombre }} de este evento?');">
+          <button type="submit" class="btn-quieto chico">Quitar</button>
+        </form>
+      </div>
+      {% else %}
+      <div class="vacio">Todavía no hay nadie inscrito.</div>
+      {% endfor %}
+
+      {% if not evento.cupo_lleno %}
+      <form method="post" action="{{ url_for('calendario.inscribir', id_evento=evento.id_evento) }}"
+            id="form-inscribir" style="margin-top:14px;">
+        <input type="hidden" name="id_cliente" id="id_cliente_inscribir">
+        <div class="picker">
+          <input type="text" id="buscar-inscribir" placeholder="Inscribir a alguien más..." autocomplete="off">
+          <div class="picker-list" id="lista-inscribir"></div>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="seccion">Eliminar evento</div>
+      <div class="seccion-nota">
+        Se borra el evento y todas sus inscripciones. No se puede deshacer.
+      </div>
+      <form method="post" action="{{ url_for('calendario.eliminar_evento', id_evento=evento.id_evento) }}"
+            onsubmit="return confirm('¿Eliminar «{{ evento.titulo }}» y sus {{ evento.inscritos }} inscripciones?');">
+        <button type="submit" class="btn-quieto">Eliminar evento</button>
+      </form>
+    </div>
+  </aside>
+  {% endif %}
+</div>
+
+<script>
+  function alternarHoras(){
+    const todo = document.getElementById('todo_el_dia').checked;
+    document.getElementById('hora_inicio').disabled = todo;
+    document.getElementById('hora_fin').disabled = todo;
+  }
+  alternarHoras();
+
+  function montarBuscador(campoId, listaId, alElegir){
+    const campo = document.getElementById(campoId);
+    if (!campo) return;
+    const lista = document.getElementById(listaId);
+    let temporizador;
+    campo.addEventListener('input', () => {
+      clearTimeout(temporizador);
+      const termino = campo.value.trim();
+      if (termino.length < 2) { lista.classList.remove('open'); return; }
+      temporizador = setTimeout(async () => {
+        const r = await fetch('{{ url_for("cobrar.buscar_clientes") }}?q=' + encodeURIComponent(termino));
+        const datos = await r.json();
+        lista.innerHTML = datos.clientes.length
+          ? datos.clientes.map(c => `<div class="picker-opt" data-id="${c.id}" data-nombre="${c.nombre}">
+               <span>${c.nombre}</span><small>${c.cedula}</small></div>`).join('')
+          : '<div class="picker-opt vacia">Sin resultados</div>';
+        lista.querySelectorAll('.picker-opt[data-id]').forEach(o => {
+          o.addEventListener('click', () => { alElegir(o.dataset); lista.classList.remove('open'); });
+        });
+        lista.classList.add('open');
+      }, 250);
+    });
+  }
+
+  // Alta: se acumulan los clientes y se envían con el formulario.
+  const elegidos = [];
+  montarBuscador('buscar-cliente', 'lista-clientes', d => {
+    if (elegidos.some(e => e.id === d.id)) return;
+    elegidos.push(d);
+    document.getElementById('buscar-cliente').value = '';
+    pintarElegidos();
+  });
+  function pintarElegidos(){
+    const caja = document.getElementById('elegidos');
+    if (!caja) return;
+    caja.innerHTML = elegidos.map((e, i) => `
+      <span class="chip-cli">${e.nombre}
+        <input type="hidden" name="inscritos" value="${e.id}">
+        <button type="button" onclick="quitarElegido(${i})" aria-label="Quitar">&times;</button>
+      </span>`).join('');
+  }
+  function quitarElegido(i){ elegidos.splice(i, 1); pintarElegidos(); }
+
+  // Edición: inscribe a uno y envía de inmediato.
+  montarBuscador('buscar-inscribir', 'lista-inscribir', d => {
+    document.getElementById('id_cliente_inscribir').value = d.id;
+    document.getElementById('form-inscribir').submit();
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.picker'))
+      document.querySelectorAll('.picker-list').forEach(l => l.classList.remove('open'));
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block titulo %}Factura {{ factura.numero_factura }} — Totem Climb Gym{% endblock %}
+{% block nav_facturas %}active{% endblock %}
+
+{% block contenido %}
+<div class="migas">
+  <a href="{{ url_for('facturas.lista') }}">Facturas</a> / {{ factura.numero_factura }}
+</div>
+<div class="encabezado">
+  <div>
+    <div class="page-title">Factura {{ factura.numero_factura }}</div>
+    <div class="page-sub">
+      {{ factura.fecha.strftime('%d/%m/%Y %H:%M') }} · Atendió {{ factura.empleado_nombre }}
+    </div>
+  </div>
+  <span class="pill {{ {'EMITIDA':'vigente','PENDIENTE':'por_vencer','ANULADA':'sin_membresia'}[factura.estado] }}">
+    {{ {'EMITIDA':'Pagada','PENDIENTE':'Pendiente','ANULADA':'Anulada'}[factura.estado] }}
+  </span>
+</div>
+
+{% if factura.estado == 'ANULADA' %}
+<div class="aviso-anulada">
+  <b>Factura anulada</b>
+  <p>Motivo: {{ factura.motivo_anulacion }}</p>
+</div>
+{% endif %}
+
+<div class="comprobante card">
+  <div class="comp-cabecera">
+    <div>
+      <div class="meta">Cliente</div>
+      <div class="nombre">{{ factura.cliente_nombre }}</div>
+    </div>
+  </div>
+
+  <table class="tabla-items" style="display:table; margin-top:18px;">
+    <thead><tr><th>Ítem</th><th>Cant.</th><th>P. unit.</th><th>Subtotal</th></tr></thead>
+    <tbody>
+      {% for d in factura.detalle %}
+      <tr>
+        <td>
+          {{ d.nombre }}
+          {% if d.tipo == 'plan' %}<span class="etiqueta-menor">Membresía</span>{% endif %}
+        </td>
+        <td>{{ d.cantidad }}</td>
+        <td>${{ '%.2f'|format(d.precio_unitario) }}</td>
+        <td><b>${{ '%.2f'|format(d.subtotal) }}</b></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="totales comp-totales">
+    <div class="linea"><span>Subtotal</span><b>${{ '%.2f'|format(factura.subtotal) }}</b></div>
+    {% if factura.descuento_porcentaje %}
+      <div class="linea">
+        <span>Descuento {{ factura.descuento_porcentaje }}%</span>
+        <b>−${{ '%.2f'|format(factura.subtotal * factura.descuento_porcentaje / 100) }}</b>
+      </div>
+    {% endif %}
+    <div class="linea"><span>IVA {{ factura.iva_porcentaje }}%</span><b>${{ '%.2f'|format(factura.iva) }}</b></div>
+    <div class="linea total"><span>Total</span><b>${{ '%.2f'|format(factura.total) }}</b></div>
+    {% if factura.estado == 'PENDIENTE' %}
+      <div class="linea"><span>Abonado</span><b>${{ '%.2f'|format(factura.abonado) }}</b></div>
+      <div class="linea saldo"><span>Saldo pendiente</span><b>${{ '%.2f'|format(factura.saldo_pendiente) }}</b></div>
+    {% elif factura.estado == 'EMITIDA' %}
+      <div class="linea"><span>Pagado con</span><b>{{ factura.metodo_etiqueta }}</b></div>
+    {% endif %}
+  </div>
+</div>
+
+{% if abonos %}
+<div class="card" style="margin-top:20px;">
+  <div class="seccion">Historial de abonos</div>
+  <ul class="lista-abonos" style="margin-top:12px;">
+    {% for a in abonos %}
+    <li>
+      <span>
+        {{ a.fecha.strftime('%d/%m/%Y %H:%M') }} ·
+        {{ 'Efectivo' if a.metodo_pago == 'EFECTIVO' else 'Transferencia' }} ·
+        Recibió {{ a.empleado_nombre }}
+      </span>
+      <b>${{ '%.2f'|format(a.monto) }}</b>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endblock %}

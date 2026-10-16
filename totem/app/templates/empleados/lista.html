@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block titulo %}Empleados — Totem Climb Gym{% endblock %}
+{% block nav_empleados %}active{% endblock %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Empleados</div>
+    <div class="page-sub">Quién puede entrar al sistema y con qué permisos</div>
+  </div>
+  <a class="btn-primary" href="{{ url_for('empleados.nuevo') }}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+    Nuevo empleado
+  </a>
+</div>
+
+<div class="aviso-bloqueo" style="margin-bottom:18px;">
+  Un empleado no se borra nunca: sus facturas y su rastro en la bitácora
+  deben seguir diciendo quién las hizo. Cuando alguien deja de trabajar se
+  desactiva, y pierde el acceso sin perder el historial.
+</div>
+
+<div class="card tabla">
+  <table>
+    <thead>
+      <tr><th>Empleado</th><th>Usuario</th><th>Rol</th><th>Actividad</th><th>Estado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for e in empleados %}
+      {% set act = actividad[e.id_empleado] %}
+      <tr class="{{ 'inactiva' if not e.activo }}">
+        <td>
+          <div class="celda-cliente">
+            <div class="avatar {{ 'menor' if e.es_admin }}">{{ e.iniciales }}</div>
+            <div>
+              <div class="nombre">
+                {{ e.nombre_completo }}
+                {% if e.id_empleado == yo %}<span class="etiqueta-menor">Tú</span>{% endif %}
+              </div>
+              <div class="meta">Desde {{ e.fecha_registro.strftime('%d/%m/%Y') }}</div>
+            </div>
+          </div>
+        </td>
+        <td class="meta">{{ e.usuario }}</td>
+        <td>
+          <span class="plan-tag {{ 'senior' if e.es_admin else 'pases' }}">
+            {{ e.rol_etiqueta }}
+          </span>
+        </td>
+        <td class="meta">
+          {{ act.facturas }} factura{{ 's' if act.facturas != 1 }}
+          {% if act.abonos %} · {{ act.abonos }} abono{{ 's' if act.abonos != 1 }}{% endif %}
+          {% if act.ultima_accion %}
+            <div>Última acción: {{ act.ultima_accion.strftime('%d/%m/%Y %H:%M') }}</div>
+          {% endif %}
+        </td>
+        <td>
+          <span class="pill {{ 'vigente' if e.activo else 'sin_membresia' }}">
+            {{ 'Activo' if e.activo else 'Inactivo' }}
+          </span>
+        </td>
+        <td>
+          <div class="acciones">
+            <a class="btn-ghost small" href="{{ url_for('empleados.editar', id_empleado=e.id_empleado) }}">Editar</a>
+            {% if e.id_empleado != yo %}
+              <form method="post" style="display:inline"
+                    action="{{ url_for('empleados.estado', id_empleado=e.id_empleado) }}"
+                    onsubmit="return confirm({{ (('¿Reactivar a ' ~ e.nombre_completo ~ '?') if not e.activo
+                                                 else ('¿Desactivar a ' ~ e.nombre_completo ~ '? Dejará de poder entrar, pero su historial se conserva.'))|tojson }});">
+                <input type="hidden" name="activo" value="{{ '1' if not e.activo else '0' }}">
+                <button type="submit" class="btn-quieto chico">
+                  {{ 'Reactivar' if not e.activo else 'Desactivar' }}
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

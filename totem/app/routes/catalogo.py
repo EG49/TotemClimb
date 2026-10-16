@@ -1,6 +1,15 @@
 """Rutas del catálogo: productos y planes de membresía."""
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    abort,
+    flash,
+    g,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from app.security import login_requerido
 from app.services.catalogo_service import CatalogoService
@@ -38,10 +47,10 @@ def nuevo():
     if request.method == "POST":
         try:
             if tipo_item == "membresia":
-                servicio.guardar_plan(request.form.to_dict())
+                servicio.guardar_plan(request.form.to_dict(), id_empleado=g.empleado['id_empleado'])
                 destino = "planes"
             else:
-                servicio.guardar_producto(request.form.to_dict())
+                servicio.guardar_producto(request.form.to_dict(), id_empleado=g.empleado['id_empleado'])
                 destino = "productos"
         except ErrorValidacion as e:
             flash("Revisa los campos marcados.", "error")
@@ -75,7 +84,7 @@ def editar_producto(id_producto):
 
     if request.method == "POST":
         try:
-            servicio.guardar_producto(request.form.to_dict(), id_producto)
+            servicio.guardar_producto(request.form.to_dict(), id_producto, g.empleado['id_empleado'])
         except ErrorValidacion as e:
             flash("Revisa los campos marcados.", "error")
             return render_template(
@@ -107,7 +116,7 @@ def editar_plan(id_plan):
 
     if request.method == "POST":
         try:
-            servicio.guardar_plan(request.form.to_dict(), id_plan)
+            servicio.guardar_plan(request.form.to_dict(), id_plan, g.empleado['id_empleado'])
         except ErrorValidacion as e:
             flash("Revisa los campos marcados.", "error")
             return render_template(
@@ -142,7 +151,7 @@ def editar_plan(id_plan):
 @login_requerido
 def estado_producto(id_producto):
     activo = request.form.get("activo") == "1"
-    CatalogoService().cambiar_estado_producto(id_producto, activo)
+    CatalogoService().cambiar_estado_producto(id_producto, activo, g.empleado['id_empleado'])
     flash("Producto reactivado." if activo else "Producto desactivado.", "ok")
     return redirect(url_for("catalogo.lista", pestana="productos", inactivos="1"))
 
@@ -151,6 +160,6 @@ def estado_producto(id_producto):
 @login_requerido
 def estado_plan(id_plan):
     activo = request.form.get("activo") == "1"
-    CatalogoService().cambiar_estado_plan(id_plan, activo)
+    CatalogoService().cambiar_estado_plan(id_plan, activo, g.empleado['id_empleado'])
     flash("Plan reactivado." if activo else "Plan desactivado.", "ok")
     return redirect(url_for("catalogo.lista", pestana="planes", inactivos="1"))

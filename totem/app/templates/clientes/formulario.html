@@ -96,11 +96,74 @@
   </div>
   {% endif %}
 
+  {% if not editando and hay_categoria_prueba %}
+  <hr class="divisor">
+  <label class="fila-check">
+    <input type="checkbox" id="chk-prueba" onchange="alternar('prueba', this)">
+    <span>
+      <b>¿Agendar clase de prueba?</b>
+      <small>Puede unirse a una clase ya creada o reservar un horario nuevo.</small>
+    </span>
+  </label>
+  <input type="hidden" name="agendar_prueba" id="agendar_prueba" value="">
+  <div id="bloque-prueba" class="bloque-plegable" style="display:none">
+    {% if clases_prueba %}
+    <div class="seccion-nota">Clases de prueba con cupo disponible:</div>
+    <div class="opciones-prueba">
+      {% for c in clases_prueba %}
+      <label class="opcion-prueba">
+        <input type="radio" name="id_evento_prueba" value="{{ c.id_evento }}"
+               onchange="elegirPrueba('existente')">
+        <span>
+          <b>{{ c.fecha.strftime('%d/%m/%Y') }} · {{ c.horario }}</b>
+          <small>{{ c.titulo }} · {{ c.cupo_texto }}</small>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="seccion-nota" style="margin-top:14px;">O reserva un horario nuevo:</div>
+    {% else %}
+    <div class="seccion-nota">
+      No hay clases de prueba programadas. Reserva un horario nuevo:
+    </div>
+    {% endif %}
+
+    <label class="opcion-prueba">
+      <input type="radio" name="id_evento_prueba" value="" onchange="elegirPrueba('nueva')">
+      <span><b>Crear horario nuevo</b><small>Se agrega al calendario como clase de prueba.</small></span>
+    </label>
+
+    <div id="campos-prueba" class="rejilla" style="display:none; margin-top:14px;">
+      <div class="campo">
+        <label for="fecha_prueba">Fecha</label>
+        <input id="fecha_prueba" name="fecha_prueba" type="date">
+      </div>
+      <div class="campo">
+        <label>Horario</label>
+        <div class="duracion">
+          <input name="hora_inicio_prueba" type="time" value="10:00">
+          <input name="hora_fin_prueba" type="time" value="11:00">
+        </div>
+      </div>
+    </div>
+
+    {% if errores.get('clase_prueba') %}
+      <div class="error">{{ errores['clase_prueba'] }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="acciones-formulario">
     <a class="btn-ghost" href="{{ url_for('clientes.lista') }}">Cancelar</a>
-    <button type="submit" class="btn-primary">
-      {{ 'Guardar cambios' if editando else 'Guardar cliente' }}
-    </button>
+    {% if editando %}
+      <button type="submit" class="btn-primary">Guardar cambios</button>
+    {% else %}
+      <button type="submit" class="btn-ghost">Guardar</button>
+      <button type="submit" class="btn-primary" name="cobrar_ahora" value="1">
+        Guardar y cobrar ahora
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    {% endif %}
   </div>
 </form>
 
@@ -157,10 +220,16 @@
 <script>
   function alternar(nombre, check){
     document.getElementById('bloque-' + nombre).style.display = check.checked ? 'block' : 'none';
+    // El campo oculto es lo que el servidor lee para saber si agendar.
+    const bandera = document.getElementById('agendar_' + nombre);
+    if (bandera) bandera.value = check.checked ? 'on' : '';
   }
   function alternarMenores(check){
     document.getElementById('bloque-menores').style.display = check.checked ? 'block' : 'none';
     if (check.checked && !document.getElementById('lista-menores').children.length) agregarMenor();
+  }
+  function elegirPrueba(modo){
+    document.getElementById('campos-prueba').style.display = modo === 'nueva' ? 'grid' : 'none';
   }
   function agregarMenor(){
     const plantilla = document.getElementById('plantilla-menor');

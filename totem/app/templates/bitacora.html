@@ -2,36 +2,84 @@
 {% block titulo %}Bitácora — Totem Climb Gym{% endblock %}
 {% block nav_bitacora %}active{% endblock %}
 
-{% block contenido %}
-  <div class="page-title">Bitácora</div>
-  <div class="page-sub">Últimos 100 movimientos registrados en el sistema.</div>
+{% set NOMBRES = {
+  'CLIENTE_CREADO': 'Cliente creado',
+  'CLIENTE_EDITADO': 'Cliente editado',
+  'FACTURA_EMITIDA': 'Factura emitida',
+  'FACTURA_ANULADA': 'Factura anulada',
+  'ABONO_REGISTRADO': 'Abono registrado',
+  'INSCRIPCION_REGISTRADA': 'Inscripción registrada',
+  'INSCRIPCION_CANCELADA': 'Inscripción cancelada',
+  'IVA_CAMBIADO': 'IVA cambiado',
+  'ITEM_CREADO': 'Ítem creado',
+  'ITEM_EDITADO': 'Ítem editado',
+  'ITEM_DESACTIVADO': 'Ítem desactivado',
+  'ITEM_REACTIVADO': 'Ítem reactivado',
+  'EMPLEADO_CREADO': 'Empleado creado',
+  'EMPLEADO_EDITADO': 'Empleado editado',
+  'EMPLEADO_DESACTIVADO': 'Empleado desactivado',
+  'EMPLEADO_REACTIVADO': 'Empleado reactivado',
+  'PASSWORD_CAMBIADA': 'Contraseña cambiada'
+} %}
 
-  <div class="card" style="padding:0; overflow:hidden;">
-    <table>
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Empleado</th>
-          <th>Acción</th>
-          <th>Entidad</th>
-          <th>Detalle</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for m in movimientos %}
-        <tr>
-          <td>{{ m.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-          <td>{{ m.empleado }}</td>
-          <td>{{ m.accion.replace('_', ' ')|capitalize }}</td>
-          <td>{{ m.entidad|capitalize }}{% if m.id_entidad %} #{{ m.id_entidad }}{% endif %}</td>
-          <td style="color:var(--ink-soft); font-size:12.5px;">
-            {{ m.detalle if m.detalle else '—' }}
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="5" style="color:var(--ink-soft);">Todavía no hay movimientos registrados.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Bitácora</div>
+    <div class="page-sub">Qué hizo cada empleado y cuándo. Últimos 150 movimientos.</div>
   </div>
+  <a class="btn-ghost" href="{{ url_for('main.configuracion') }}">Configuración</a>
+</div>
+
+<form class="panel-filtros" method="get">
+  <div class="campo-filtro" style="flex:1;">
+    <label>Acción</label>
+    <select name="accion" onchange="this.form.submit()">
+      <option value="">Todas</option>
+      {% for clave, etiqueta in NOMBRES.items() %}
+        <option value="{{ clave }}" {{ 'selected' if accion == clave }}>{{ etiqueta }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</form>
+
+<div class="card tabla">
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th>Empleado</th><th>Acción</th><th>Sobre</th><th>Detalle</th></tr>
+    </thead>
+    <tbody>
+      {% for m in movimientos %}
+      <tr>
+        <td>
+          {{ m.fecha.strftime('%d/%m/%Y') }}
+          <div class="meta">{{ m.fecha.strftime('%H:%M') }}</div>
+        </td>
+        <td class="nombre">{{ m.empleado }}</td>
+        <td>{{ NOMBRES.get(m.accion, m.accion) }}</td>
+        <td class="meta">
+          {{ m.entidad|capitalize }}{% if m.id_entidad %} #{{ m.id_entidad }}{% endif %}
+        </td>
+        <td class="meta detalle-bitacora">
+          {% if m.detalle %}
+            {% for clave, valor in m.detalle.items() %}
+              {% if clave == 'cambios' %}
+                {% for campo, c in valor.items() %}
+                  <div><b>{{ campo }}:</b> {{ c.antes or '—' }} → {{ c.despues or '—' }}</div>
+                {% endfor %}
+              {% elif valor is not mapping and valor is not sequence or valor is string %}
+                <div><b>{{ clave }}:</b> {{ valor }}</div>
+              {% elif valor is sequence and valor is not string %}
+                <div><b>{{ clave }}:</b> {{ valor|join(', ') }}</div>
+              {% endif %}
+            {% endfor %}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="vacio">No hay movimientos registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

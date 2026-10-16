@@ -150,6 +150,7 @@ class ClienteService:
         datos_formulario: dict,
         menores: list[dict],
         id_empleado: int,
+        clase_prueba: dict | None = None,
     ) -> int:
         """Da de alta un cliente y, si los hay, sus menores a cargo.
 
@@ -177,6 +178,13 @@ class ClienteService:
                 datos_menor["id_representante"] = id_cliente
                 self.repositorio.crear(datos_menor, cursor=cursor)
 
+            # La clase de prueba va en la misma transacción: si falla,
+            # no queda el cliente creado sin su clase.
+            if clase_prueba:
+                self._agendar_clase_prueba(
+                    clase_prueba, id_cliente, id_empleado, cursor
+                )
+
         self.bitacora.registrar(
             id_empleado,
             bit.CLIENTE_CREADO,
@@ -188,6 +196,72 @@ class ClienteService:
             },
         )
         return id_cliente
+
+    def _agendar_clase_prueba(
+        self, datos: dict, id_cliente: int, id_empleado: int, cursor
+    ) -> None:
+        """Inscribe al cliente nuevo en una clase de prueba.
+
+        Puede unirse a una que ya exista o crear un horario nuevo. Vive
+        aquí y no en el calendario porque ocurre dentro de la misma
+        transacción del alta.
+        """
+        from datetime import datetime
+
+        from app.repositories.evento_repo import (
+            EventoRepositorio,
+            InscripcionRepositorio,
+        )
+
+        eventos = EventoRepositorio()
+        inscripciones = InscripcionRepositorio()
+
+        if datos.get("id_evento"):
+            id_evento = int(datos["id_evento"])
+            # El cupo se revisa dentro de la transacción.
+            cursor.execute(
+                "SELECT cupo_maximo, titulo FROM eventos WHERE id_evento = %s "
+                "FOR UPDATE",
+                (id_evento,),
+            )
+            evento = cursor.fetchone()
+            if evento is None:
+                raise ErrorValidacion(
+                    {"clase_prueba": "La clase elegida ya no existe."}
+                )
+            if evento["cupo_maximo"]:
+                ocupados = inscripciones.contar_en(id_evento, cursor)
+                if ocupados >= evento["cupo_maximo"]:
+                    raise ErrorValidacion(
+                        {
+                            "clase_prueba": (
+                                f"'{evento['titulo']}' se llenó mientras "
+                                "completabas el formulario."
+                            )
+                        }
+                    )
+        else:
+            fecha = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
+            inicio = datetime.strptime(datos["hora_inicio"], "%H:%M").time()
+            fin = datetime.strptime(datos["hora_fin"], "%H:%M").time()
+            if fin <= inicio:
+                raise ErrorValidacion(
+                    {"clase_prueba": "La hora de fin debe ser posterior a la de inicio."}
+                )
+            id_evento = eventos.crear(
+                {
+                    "titulo": f"Clase de prueba — {fecha.strftime('%d/%m')}",
+                    "id_categoria": int(datos["id_categoria"]),
+                    "fecha": fecha,
+                    "hora_inicio": inicio,
+                    "hora_fin": fin,
+                    "descripcion": None,
+                    "cupo_maximo": None,
+                },
+                cursor,
+            )
+
+        inscripciones.inscribir(id_evento, id_cliente, id_empleado, cursor)
 
     def actualizar(
         self, id_cliente: int, datos_formulario: dict, id_empleado: int

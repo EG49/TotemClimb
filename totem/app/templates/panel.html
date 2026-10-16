@@ -3,16 +3,158 @@
 {% block nav_panel %}active{% endblock %}
 
 {% block contenido %}
-  <div class="page-title">Hola, {{ empleado.nombre.split(' ')[0] }}</div>
-  <div class="page-sub">
-    Entraste como {{ 'administrador' if empleado.es_admin else 'vendedor' }}.
+<div class="page-title">Hola, {{ empleado.nombre.split(' ')[0] }}</div>
+<div class="page-sub">{{ fecha_larga }}</div>
+
+<div class="accesos-rapidos">
+  <a class="acceso" href="{{ url_for('cobrar.cobrar') }}">
+    <div class="acceso-icono">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>
+    </div>
+    <div>
+      <div class="acceso-titulo">Cobrar</div>
+      <div class="acceso-sub">Registrar una venta o renovación</div>
+    </div>
+  </a>
+  <a class="acceso" href="{{ url_for('clientes.nuevo') }}">
+    <div class="acceso-icono">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+    </div>
+    <div>
+      <div class="acceso-titulo">Nuevo cliente</div>
+      <div class="acceso-sub">Registrar a alguien que llega hoy</div>
+    </div>
+  </a>
+</div>
+
+<div class="estadisticas">
+  <div class="summary-card">
+    <div class="summary-label">Membresías activas</div>
+    <div class="summary-value">{{ stats.membresias_activas }}</div>
+    <div class="summary-note">de {{ stats.total_clientes }} clientes registrados</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Vencen esta semana</div>
+    <div class="summary-value">{{ stats.vencen_pronto }}</div>
+    <div class="summary-note">próximos 7 días</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Ingreso de hoy</div>
+    <div class="summary-value">
+      <span class="dinero oculto" data-valor="${{ '%.2f'|format(stats.ingreso_hoy) }}">••••••</span>
+      <button type="button" class="ojo" onclick="alternarDinero(this)" aria-label="Mostrar u ocultar">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <div class="summary-note">{{ stats.facturas_hoy }} factura{{ 's' if stats.facturas_hoy != 1 }} cobrada{{ 's' if stats.facturas_hoy != 1 }}</div>
+  </div>
+</div>
+
+<div class="disposicion-panel">
+  <!-- AVISOS -->
+  <div class="card tabla">
+    <div class="card-cabecera">
+      <div>
+        <div class="seccion">Avisos</div>
+        <div class="seccion-nota">Lo que necesita atención hoy</div>
+      </div>
+    </div>
+
+    <div class="chips" style="padding:0 20px 14px;">
+      {% for clave, etiqueta, n in [
+            ('todos', 'Todos', avisos|length),
+            ('membresia', 'Membresías', n_membresias),
+            ('mayoria', 'Mayoría de edad', n_mayoria),
+            ('fiado', 'Fiado', n_fiado)] %}
+        <button type="button" class="chip {{ 'active' if clave == 'todos' }}"
+                data-filtro="{{ clave }}" onclick="filtrarAvisos('{{ clave }}', this)">
+          {{ etiqueta }} <span>{{ n }}</span>
+        </button>
+      {% endfor %}
+    </div>
+
+    <table>
+      <thead><tr><th>Tipo</th><th>Cliente</th><th>Detalle</th><th></th></tr></thead>
+      <tbody>
+        {% for a in avisos %}
+        <tr data-tipo="{{ a.tipo }}">
+          <td>
+            <span class="pill {{ a.clase }}">{{ a.etiqueta }}</span>
+          </td>
+          <td>
+            <div class="nombre">{{ a.cliente }}</div>
+            {% if a.subtitulo %}<div class="meta">{{ a.subtitulo }}</div>{% endif %}
+          </td>
+          <td class="meta">{{ a.detalle }}</td>
+          <td>
+            <div class="acciones">
+              {% for texto, enlace, estilo in a.acciones %}
+                <a class="{{ estilo }}" href="{{ enlace }}">{{ texto }}</a>
+              {% endfor %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="vacio">Todo en orden. No hay avisos pendientes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 
-  <div class="card">
-    <p style="font-size:14px; color:var(--ink-soft);">
-      Aquí van las tarjetas de acceso rápido, las estadísticas, el panel de
-      Avisos y el calendario, tal como están en la maqueta del Inicio. Se
-      irán conectando conforme se construyan los módulos.
-    </p>
-  </div>
+  <!-- CALENDARIO DEL MES -->
+  <aside class="card panel-dia">
+    <div class="card-cabecera" style="padding:0 0 12px;">
+      <div class="seccion">{{ nombre_mes }}</div>
+      <a class="enlace-sutil" href="{{ url_for('calendario.ver') }}">Ver calendario</a>
+    </div>
+
+    <div class="mini-rejilla">
+      {% for d in dias_semana %}<div class="mini-cabeza">{{ d[0]|upper }}</div>{% endfor %}
+      {% for _ in range(huecos) %}<div></div>{% endfor %}
+      {% for dia in dias_mes %}
+        {% set del_dia = marcas.get(dia, []) %}
+        <a class="mini-dia {{ 'hoy' if dia == hoy }}"
+           href="{{ url_for('calendario.ver', vista='mes', fecha=dia) }}"
+           title="{{ del_dia|map(attribute='titulo')|join(' · ') }}">
+          {{ dia.day }}
+          {% if del_dia %}
+            <span class="puntos">
+              {% for m in del_dia[:3] %}
+                <i style="background:{{ '#fff' if dia == hoy else m.categoria_color }}"></i>
+              {% endfor %}
+            </span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+
+    <div class="seccion" style="font-size:15px; margin-top:20px;">Lo que viene</div>
+    {% for e in proximos %}
+      <div class="item-dia" style="border-color:{{ e.categoria_color }}">
+        <div class="t">{{ e.titulo }}</div>
+        <div class="m">{{ e.fecha.strftime('%d/%m') }} · {{ e.horario }} · {{ e.cupo_texto }}</div>
+      </div>
+    {% else %}
+      <div class="vacio" style="padding:14px 0;">Nada agendado próximamente.</div>
+    {% endfor %}
+  </aside>
+</div>
+
+<script>
+  function alternarDinero(boton){
+    const valor = boton.parentElement.querySelector('.dinero');
+    const oculto = valor.classList.toggle('oculto');
+    valor.textContent = oculto ? '••••••' : valor.dataset.valor;
+    boton.classList.toggle('activo', !oculto);
+  }
+
+  function filtrarAvisos(tipo, boton){
+    boton.parentElement.querySelectorAll('.chip')
+      .forEach(c => c.classList.remove('active'));
+    boton.classList.add('active');
+    document.querySelectorAll('tr[data-tipo]').forEach(fila => {
+      fila.style.display = (tipo === 'todos' || fila.dataset.tipo === tipo) ? '' : 'none';
+    });
+  }
+</script>
 {% endblock %}

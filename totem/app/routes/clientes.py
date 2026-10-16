@@ -11,9 +11,16 @@ from flask import (
     url_for,
 )
 
+from datetime import date, timedelta
+
 from app.security import login_requerido
+from app.services.calendario_service import CalendarioService
 from app.services.cliente_service import ClienteService
 from app.services.validaciones import ErrorValidacion
+
+# Categoría que se usa para las clases de prueba agendadas desde el alta.
+NOMBRE_CATEGORIA_PRUEBA = "Clase de prueba"
+DIAS_VISIBLES_PRUEBA = 60
 
 bp = Blueprint("clientes", __name__, url_prefix="/clientes")
 
@@ -33,6 +40,51 @@ def _a_formulario(cliente) -> dict:
         datos["fecha_nacimiento"] = datos["fecha_nacimiento"].isoformat()
     return datos
 
+
+
+def _categoria_prueba():
+    """Devuelve la categoría 'Clase de prueba', si existe."""
+    for c in CalendarioService().listar_categorias():
+        if c.nombre.strip().lower() == NOMBRE_CATEGORIA_PRUEBA.lower():
+            return c
+    return None
+
+
+def _clases_de_prueba_disponibles():
+    """Clases de prueba próximas, para el mini-calendario del alta."""
+    categoria = _categoria_prueba()
+    if categoria is None:
+        return categoria, []
+    hoy = date.today()
+    eventos = CalendarioService().eventos.de_categoria_entre(
+        categoria.id_categoria, hoy, hoy + timedelta(days=DIAS_VISIBLES_PRUEBA)
+    )
+    return categoria, [e for e in eventos if not e.cupo_lleno]
+
+
+def _extraer_clase_prueba(formulario) -> dict | None:
+    """Lee la sección de clase de prueba del formulario de alta."""
+    if formulario.get("agendar_prueba") != "on":
+        return None
+
+    id_evento = formulario.get("id_evento_prueba")
+    if id_evento and id_evento.isdigit():
+        return {"id_evento": id_evento}
+
+    fecha = formulario.get("fecha_prueba")
+    if not fecha:
+        return None
+
+    categoria = _categoria_prueba()
+    if categoria is None:
+        return None
+
+    return {
+        "fecha": fecha,
+        "hora_inicio": formulario.get("hora_inicio_prueba") or "10:00",
+        "hora_fin": formulario.get("hora_fin_prueba") or "11:00",
+        "id_categoria": categoria.id_categoria,
+    }
 
 
 def _extraer_menores(formulario) -> list[dict]:
@@ -91,25 +143,35 @@ def nuevo():
                 request.form.to_dict(),
                 _extraer_menores(request.form),
                 g.empleado["id_empleado"],
+                _extraer_clase_prueba(request.form),
             )
         except ErrorValidacion as e:
             flash("Revisa los campos marcados.", "error")
+            categoria, clases = _clases_de_prueba_disponibles()
             return render_template(
                 "clientes/formulario.html",
                 cliente=None,
                 datos=request.form,
                 menores=_extraer_menores(request.form),
                 errores=e.errores,
+                clases_prueba=clases,
+                hay_categoria_prueba=categoria is not None,
             )
 
         flash("Cliente registrado.", "ok")
-        # El botón del formulario es "Guardar y cobrar ahora": en cuanto
-        # exista el módulo de cobro, aquí se redirige hacia allá con el
-        # cliente precargado.
+        if request.form.get("cobrar_ahora") == "1":
+            return redirect(url_for("cobrar.cobrar", cliente=id_cliente))
         return redirect(url_for("clientes.editar", id_cliente=id_cliente))
 
+    categoria, clases = _clases_de_prueba_disponibles()
     return render_template(
-        "clientes/formulario.html", cliente=None, datos={}, menores=[], errores={}
+        "clientes/formulario.html",
+        cliente=None,
+        datos={},
+        menores=[],
+        errores={},
+        clases_prueba=clases,
+        hay_categoria_prueba=categoria is not None,
     )
 
 
@@ -139,6 +201,8 @@ def editar(id_cliente):
                 datos=request.form,
                 menores=servicio.menores_de(id_cliente),
                 errores=e.errores,
+                clases_prueba=[],
+                hay_categoria_prueba=False,
             )
 
         flash("Cambios guardados.", "ok")
@@ -150,6 +214,8 @@ def editar(id_cliente):
         datos=_a_formulario(cliente),
         menores=servicio.menores_de(id_cliente),
         errores={},
+        clases_prueba=[],
+        hay_categoria_prueba=False,
     )
 
 

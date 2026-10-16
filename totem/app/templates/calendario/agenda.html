@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block titulo %}Agenda por cliente — Totem Climb Gym{% endblock %}
+{% block nav_calendario %}active{% endblock %}
+
+{% block contenido %}
+<div class="migas">
+  <a href="{{ url_for('calendario.ver') }}">Calendario</a> / Agenda por cliente
+</div>
+<div class="encabezado">
+  <div>
+    <div class="page-title">Agenda por cliente</div>
+    <div class="page-sub">
+      Qué tiene agendado cada cliente y quién lo inscribió
+    </div>
+  </div>
+  <a class="btn-primary" href="{{ url_for('calendario.ver') }}">Ir al calendario</a>
+</div>
+
+<form class="panel-filtros filtros-amplios" method="get">
+  <div class="buscador">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="text" name="q" value="{{ filtros.busqueda or '' }}" placeholder="Cliente o cédula...">
+  </div>
+  <div class="campo-filtro">
+    <label>Tipo</label>
+    <select name="categoria">
+      <option value="">Todos</option>
+      {% for c in categorias %}
+        <option value="{{ c.id_categoria }}" {{ 'selected' if filtros.id_categoria == c.id_categoria }}>
+          {{ c.nombre }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo-filtro">
+    <label>Estado</label>
+    <select name="estado">
+      {% for v, e in [('proximas','Próximas'), ('realizadas','Realizadas'), ('todas','Todas')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.estado == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn-ghost">Filtrar</button>
+</form>
+
+<div class="resumen-tarjetas" style="grid-template-columns:repeat(3,1fr);">
+  <div class="summary-card">
+    <div class="summary-label">Clientes con agenda</div>
+    <div class="summary-value">{{ clientes|length }}</div>
+    <div class="summary-note">según los filtros actuales</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Inscripciones</div>
+    <div class="summary-value">{{ total_inscripciones }}</div>
+    <div class="summary-note">según los filtros actuales</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Próximas</div>
+    <div class="summary-value">{{ proximas }}</div>
+    <div class="summary-note">pendientes de realizarse</div>
+  </div>
+</div>
+
+{% for c in clientes %}
+<div class="card ficha-cliente">
+  <div class="ficha-cabeza">
+    <div class="avatar {{ 'menor' if c.es_menor }}">
+      {{ c.nombre.split(' ')|map('first')|join()|upper|truncate(2, true, '') }}
+    </div>
+    <div class="tarjeta-menor-datos">
+      <div class="nombre">
+        {{ c.nombre }}
+        {% if c.es_menor %}<span class="etiqueta-menor">Menor</span>{% endif %}
+      </div>
+      <div class="meta">CI {{ c.cedula or '—' }}</div>
+    </div>
+    <span class="tag-total">{{ c.eventos|length }} inscripci{{ 'ón' if c.eventos|length == 1 else 'ones' }}</span>
+  </div>
+
+  <table class="tabla-items" style="display:table;">
+    <thead>
+      <tr><th>Clase o evento</th><th>Tipo</th><th>Fecha</th><th>Estado</th><th>Agendado por</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for e in c.eventos %}
+      <tr>
+        <td><b>{{ e.titulo }}</b></td>
+        <td>
+          <span class="categoria-mini">
+            <i style="background:{{ e.categoria_color }}"></i>{{ e.categoria_nombre }}
+          </span>
+        </td>
+        <td>
+          {{ e.fecha.strftime('%d/%m/%Y') }}
+          <div class="meta">
+            {% if e.hora_inicio.strftime('%H:%M') == '00:00' and e.hora_fin.strftime('%H:%M') >= '23:59' %}
+              Todo el día
+            {% else %}
+              {{ e.hora_inicio.strftime('%H:%M') }} – {{ e.hora_fin.strftime('%H:%M') }}
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          <span class="pill {{ 'vigente' if e.es_proxima else 'sin_membresia' }}">
+            {{ 'Próxima' if e.es_proxima else 'Realizada' }}
+          </span>
+        </td>
+        <td>
+          {{ e.agendado_por }}
+          <div class="meta">{{ e.fecha_inscripcion.strftime('%d/%m/%Y %H:%M') }}</div>
+        </td>
+        <td>
+          {% if e.es_proxima %}
+          <form method="post"
+                action="{{ url_for('calendario.quitar_inscrito', id_evento=e.id_evento, id_cliente=c.id_cliente) }}"
+                onsubmit="return confirm('¿Quitar a {{ c.nombre }} de «{{ e.titulo }}»?');">
+            <button type="submit" class="btn-quieto chico">Quitar</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card"><div class="vacio">No hay inscripciones con estos filtros.</div></div>
+{% endfor %}
+{% endblock %}

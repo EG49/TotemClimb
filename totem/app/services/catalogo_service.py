@@ -20,6 +20,8 @@ from app.models.catalogo import (
     Producto,
 )
 from app.repositories.catalogo_repo import PlanRepositorio, ProductoRepositorio
+from app.services import bitacora_service as bit
+from app.services.bitacora_service import BitacoraService
 from app.services.validaciones import ErrorValidacion, limpiar
 
 PRECIO_MAXIMO = Decimal("99999999")
@@ -44,9 +46,15 @@ def _a_entero(valor) -> int | None:
 
 class CatalogoService:
 
-    def __init__(self, productos=None, planes=None):
+    def __init__(self, productos=None, planes=None, bitacora=None):
         self.productos = productos or ProductoRepositorio()
         self.planes = planes or PlanRepositorio()
+        self.bitacora = bitacora or BitacoraService()
+
+    def _anotar(self, id_empleado, accion, entidad, id_entidad, detalle):
+        """Registra el movimiento, si se sabe quién lo hizo."""
+        if id_empleado:
+            self.bitacora.registrar(id_empleado, accion, entidad, id_entidad, detalle)
 
     # --- Productos ----------------------------------------------------
 
@@ -75,7 +83,8 @@ class CatalogoService:
 
         return errores
 
-    def guardar_producto(self, formulario: dict, id_producto: int | None = None) -> int:
+    def guardar_producto(self, formulario: dict, id_producto: int | None = None,
+                         id_empleado: int | None = None) -> int:
         datos = {
             "nombre": limpiar(formulario.get("nombre")),
             "precio": _a_decimal(formulario.get("precio")),
@@ -85,12 +94,32 @@ class CatalogoService:
             raise ErrorValidacion(errores)
 
         if id_producto:
+            anterior = self.productos.obtener(id_producto)
             self.productos.actualizar(id_producto, datos)
+            cambios = {}
+            if anterior.nombre != datos["nombre"]:
+                cambios["nombre"] = {"antes": anterior.nombre, "despues": datos["nombre"]}
+            if anterior.precio != datos["precio"]:
+                cambios["precio"] = {"antes": str(anterior.precio),
+                                     "despues": str(datos["precio"])}
+            if cambios:
+                self._anotar(id_empleado, bit.ITEM_EDITADO, bit.PRODUCTO,
+                             id_producto, {"cambios": cambios})
             return id_producto
-        return self.productos.crear(datos)
 
-    def cambiar_estado_producto(self, id_producto: int, activo: bool) -> None:
+        nuevo = self.productos.crear(datos)
+        self._anotar(id_empleado, bit.ITEM_CREADO, bit.PRODUCTO, nuevo,
+                     {"nombre": datos["nombre"], "precio": str(datos["precio"])})
+        return nuevo
+
+    def cambiar_estado_producto(self, id_producto: int, activo: bool,
+                                id_empleado: int | None = None) -> None:
+        producto = self.productos.obtener(id_producto)
         self.productos.cambiar_estado(id_producto, activo)
+        self._anotar(id_empleado,
+                     bit.ITEM_REACTIVADO if activo else bit.ITEM_DESACTIVADO,
+                     bit.PRODUCTO, id_producto,
+                     {"nombre": producto.nombre if producto else None})
 
     # --- Planes -------------------------------------------------------
 
@@ -138,7 +167,8 @@ class CatalogoService:
 
         return errores
 
-    def guardar_plan(self, formulario: dict, id_plan: int | None = None) -> int:
+    def guardar_plan(self, formulario: dict, id_plan: int | None = None,
+                     id_empleado: int | None = None) -> int:
         tipo = limpiar(formulario.get("tipo"))
         datos = {
             "nombre": limpiar(formulario.get("nombre")),
@@ -158,12 +188,31 @@ class CatalogoService:
             raise ErrorValidacion(errores)
 
         if id_plan:
+            anterior = self.planes.obtener(id_plan)
             self.planes.actualizar(id_plan, datos)
+            cambios = {}
+            for campo in ("nombre", "precio", "duracion", "dias_incluidos",
+                          "permite_pareja", "permite_descuento"):
+                antes, despues = getattr(anterior, campo), datos[campo]
+                if antes != despues:
+                    cambios[campo] = {"antes": str(antes), "despues": str(despues)}
+            if cambios:
+                self._anotar(id_empleado, bit.ITEM_EDITADO, bit.PLAN,
+                             id_plan, {"cambios": cambios})
             return id_plan
-        return self.planes.crear(datos)
 
-    def cambiar_estado_plan(self, id_plan: int, activo: bool) -> None:
+        nuevo = self.planes.crear(datos)
+        self._anotar(id_empleado, bit.ITEM_CREADO, bit.PLAN, nuevo,
+                     {"nombre": datos["nombre"], "precio": str(datos["precio"])})
+        return nuevo
+
+    def cambiar_estado_plan(self, id_plan: int, activo: bool,
+                            id_empleado: int | None = None) -> None:
+        plan = self.planes.obtener(id_plan)
         self.planes.cambiar_estado(id_plan, activo)
+        self._anotar(id_empleado,
+                     bit.ITEM_REACTIVADO if activo else bit.ITEM_DESACTIVADO,
+                     bit.PLAN, id_plan, {"nombre": plan.nombre if plan else None})
 
     # --- Para "Cobrar" ------------------------------------------------
 

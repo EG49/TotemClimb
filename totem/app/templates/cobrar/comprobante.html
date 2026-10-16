@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block titulo %}Factura {{ factura.numero_factura }} — Totem Climb Gym{% endblock %}
+{% block nav_cobrar %}active{% endblock %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Factura {{ factura.numero_factura }}</div>
+    <div class="page-sub">
+      {{ factura.fecha.strftime('%d/%m/%Y %H:%M') }} · Atendió {{ factura.empleado_nombre }}
+    </div>
+  </div>
+  <a class="btn-primary" href="{{ url_for('cobrar.cobrar') }}">Cobrar otra</a>
+</div>
+
+<div class="comprobante card">
+  <div class="comp-cabecera">
+    <div>
+      <div class="meta">Cliente</div>
+      <div class="nombre">{{ factura.cliente_nombre }}</div>
+    </div>
+    <span class="pill {{ 'por_vencer' if factura.esta_fiada else 'vigente' }}">
+      {{ 'Pendiente' if factura.esta_fiada else 'Pagada' }}
+    </span>
+  </div>
+
+  <table class="tabla-items" style="display:table; margin-top:18px;">
+    <thead><tr><th>Ítem</th><th>Cant.</th><th>P. unit.</th><th>Subtotal</th></tr></thead>
+    <tbody>
+      {% for d in factura.detalle %}
+      <tr>
+        <td>
+          {{ d.nombre }}
+          {% if d.tipo == 'plan' %}<span class="etiqueta-menor">Membresía</span>{% endif %}
+        </td>
+        <td>{{ d.cantidad }}</td>
+        <td>${{ '%.2f'|format(d.precio_unitario) }}</td>
+        <td><b>${{ '%.2f'|format(d.subtotal) }}</b></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="totales comp-totales">
+    <div class="linea"><span>Subtotal</span><b>${{ '%.2f'|format(factura.subtotal) }}</b></div>
+    {% if factura.descuento_porcentaje %}
+      <div class="linea">
+        <span>Descuento {{ factura.descuento_porcentaje }}%</span>
+        <b>−${{ '%.2f'|format(factura.subtotal * factura.descuento_porcentaje / 100) }}</b>
+      </div>
+    {% endif %}
+    <div class="linea"><span>IVA {{ factura.iva_porcentaje }}%</span><b>${{ '%.2f'|format(factura.iva) }}</b></div>
+    <div class="linea total"><span>Total</span><b>${{ '%.2f'|format(factura.total) }}</b></div>
+    {% if factura.esta_fiada %}
+      <div class="linea"><span>Abonado</span><b>${{ '%.2f'|format(factura.abonado) }}</b></div>
+      <div class="linea saldo"><span>Saldo pendiente</span><b>${{ '%.2f'|format(factura.saldo_pendiente) }}</b></div>
+    {% else %}
+      <div class="linea"><span>Pagado con</span><b>{{ factura.metodo_etiqueta }}</b></div>
+    {% endif %}
+  </div>
+
+  {% if factura.esta_fiada %}
+  <div class="nota-fiado">
+    Esta venta quedó fiada. No cuenta como ingreso en Contabilidad hasta
+    que se termine de pagar.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

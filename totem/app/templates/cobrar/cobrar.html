@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% block titulo %}Cobrar — Totem Climb Gym{% endblock %}
+{% block nav_cobrar %}active{% endblock %}
+
+{% block contenido %}
+<div class="page-title">Cobrar</div>
+<div class="page-sub">Registra una venta y genera el comprobante.</div>
+
+<form method="post" id="form-cobro" class="cobro">
+  <input type="hidden" name="items_json" id="items_json" value="[]">
+  <input type="hidden" name="id_cliente" id="id_cliente" value="{{ cliente.id_cliente if cliente else '' }}">
+  <input type="hidden" name="id_cliente_pareja" id="id_cliente_pareja" value="">
+
+  <div class="cobro-izquierda">
+
+    <!-- CLIENTE -->
+    <div class="card">
+      <div class="seccion">Cliente</div>
+      <div class="seccion-nota">Busca por nombre o cédula.</div>
+
+      <div class="picker" id="picker-cliente" style="{{ 'display:none' if cliente }}">
+        <input type="text" id="buscar-cliente" placeholder="Buscar cliente..."
+               autocomplete="off" class="{{ 'con-error' if errores.get('id_cliente') }}">
+        <div class="picker-list" id="lista-clientes"></div>
+      </div>
+      {% if errores.get('id_cliente') %}<div class="error">{{ errores['id_cliente'] }}</div>{% endif %}
+
+      <div id="tarjeta-cliente" class="tarjeta-cliente" style="{{ '' if cliente else 'display:none' }}">
+        {% if cliente %}
+          <div class="avatar">{{ cliente.iniciales }}</div>
+          <div class="tarjeta-menor-datos">
+            <div class="nombre">{{ cliente.nombre_completo }}</div>
+            <div class="meta">CI {{ cliente.cedula or '—' }} · {{ cliente.estado_etiqueta }}</div>
+          </div>
+        {% endif %}
+        <button type="button" class="btn-ghost small" onclick="quitarCliente()">Cambiar</button>
+      </div>
+    </div>
+
+    <!-- ÍTEMS -->
+    <div class="card">
+      <div class="seccion">Qué se lleva</div>
+      <div class="seccion-nota">Productos y planes de membresía en una sola lista.</div>
+
+      <div class="fila-agregar">
+        <select id="sel-item">
+          <option value="">Seleccionar ítem...</option>
+          {% if catalogo.productos %}
+          <optgroup label="Productos">
+            {% for p in catalogo.productos %}
+              <option value="producto|{{ p.id_producto }}" data-precio="{{ p.precio }}"
+                      data-nombre="{{ p.nombre }}" data-descuento="1" data-pareja="0">
+                {{ p.nombre }} — {{ p.precio_texto }}
+              </option>
+            {% endfor %}
+          </optgroup>
+          {% endif %}
+          {% if catalogo.planes %}
+          <optgroup label="Planes de membresía">
+            {% for p in catalogo.planes %}
+              <option value="plan|{{ p.id_plan }}" data-precio="{{ p.precio }}"
+                      data-nombre="{{ p.nombre }}"
+                      data-descuento="{{ 1 if p.permite_descuento else 0 }}"
+                      data-pareja="{{ 1 if p.permite_pareja else 0 }}">
+                {{ p.nombre }} — {{ p.precio_texto }}
+              </option>
+            {% endfor %}
+          </optgroup>
+          {% endif %}
+        </select>
+        <input type="number" id="cantidad" value="1" min="1" max="99" title="Cantidad">
+        <button type="button" class="btn-ghost" onclick="agregarItem()">Agregar</button>
+      </div>
+
+      <table class="tabla-items" id="tabla-items">
+        <thead>
+          <tr><th>Ítem</th><th>Cant.</th><th>P. unit.</th><th>Subtotal</th><th></th></tr>
+        </thead>
+        <tbody id="cuerpo-items"></tbody>
+      </table>
+      <div class="vacio" id="items-vacio">Todavía no has agregado nada.</div>
+
+      <!-- Segunda persona, solo para la promo de pareja -->
+      <div id="bloque-pareja" class="bloque-pareja" style="display:none">
+        <div class="seccion" style="font-size:15px;">Segunda persona</div>
+        <div class="seccion-nota" id="nota-pareja">Este plan cubre a dos personas.</div>
+        <div class="picker" id="picker-pareja">
+          <input type="text" id="buscar-pareja" placeholder="Buscar al segundo cliente..."
+                 autocomplete="off" class="{{ 'con-error' if errores.get('id_cliente_pareja') }}">
+          <div class="picker-list" id="lista-pareja"></div>
+        </div>
+        {% if errores.get('id_cliente_pareja') %}<div class="error">{{ errores['id_cliente_pareja'] }}</div>{% endif %}
+        <div id="tarjeta-pareja" class="tarjeta-cliente" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESUMEN -->
+  <aside class="cobro-derecha">
+    <div class="card resumen">
+      <div class="seccion">Resumen</div>
+
+      <label class="fila-check compacta" id="fila-descuento">
+        <input type="checkbox" name="aplica_descuento" id="chk-descuento" onchange="recalcular()">
+        <span><b>Aplicar descuento</b></span>
+      </label>
+      <div id="campo-descuento" style="display:none; margin-top:8px;">
+        <div class="campo-porcentaje">
+          <input type="number" name="descuento_porcentaje" id="descuento" value="10"
+                 min="0" max="100" step="1" oninput="recalcular()">
+          <span>%</span>
+        </div>
+      </div>
+      <div class="aviso-bloqueo" id="aviso-descuento" style="display:none"></div>
+      {% if errores.get('descuento_porcentaje') %}
+        <div class="error">{{ errores['descuento_porcentaje'] }}</div>
+      {% endif %}
+
+      <div class="totales">
+        <div class="linea"><span>Subtotal</span><b id="t-subtotal">$0.00</b></div>
+        <div class="linea" id="linea-descuento" style="display:none">
+          <span>Descuento</span><b id="t-descuento">−$0.00</b>
+        </div>
+        <div class="linea"><span>IVA {{ iva }}%</span><b id="t-iva">$0.00</b></div>
+        <div class="linea total"><span>Total</span><b id="t-total">$0.00</b></div>
+      </div>
+
+      <hr class="divisor">
+
+      <div class="seccion" style="font-size:15px;">Forma de cobro</div>
+      <div class="selector-tipo compacto">
+        <button type="button" class="opcion-tipo active" id="op-completo" onclick="elegirCobro('completo')">
+          <span class="t-titulo">Pagar completo</span>
+        </button>
+        <button type="button" class="opcion-tipo" id="op-fiar" onclick="elegirCobro('fiar')">
+          <span class="t-titulo">Fiar</span>
+        </button>
+      </div>
+      <input type="hidden" name="forma_cobro" id="forma_cobro" value="completo">
+
+      <div id="bloque-fiado" style="display:none; margin-top:14px;">
+        <div class="campo">
+          <label for="monto_recibido">Monto recibido ahora</label>
+          <input type="number" name="monto_recibido" id="monto_recibido"
+                 value="0" min="0" step="0.01" oninput="recalcular()">
+        </div>
+        <div class="saldo-preview" id="saldo-preview">Saldo pendiente: $0.00</div>
+        {% if errores.get('monto_recibido') %}<div class="error">{{ errores['monto_recibido'] }}</div>{% endif %}
+      </div>
+
+      <div class="campo" id="campo-metodo" style="margin-top:14px;">
+        <label for="metodo_pago" id="etiqueta-metodo">Método de pago</label>
+        <select name="metodo_pago" id="metodo_pago"
+                class="{{ 'con-error' if errores.get('metodo_pago') }}">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+        </select>
+        {% if errores.get('metodo_pago') %}<div class="error">{{ errores['metodo_pago'] }}</div>{% endif %}
+      </div>
+
+      <button type="submit" class="btn-primary ancho" id="btn-cobrar" disabled>
+        Generar factura
+      </button>
+    </div>
+  </aside>
+</form>
+
+<script>
+  const IVA = {{ iva }};
+  let items = [];
+
+  // Punto decimal, igual que el comprobante que arma el servidor.
+  const dinero = n => '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  function agregarItem(){
+    const sel = document.getElementById('sel-item');
+    const opcion = sel.selectedOptions[0];
+    if (!sel.value) return;
+
+    const [tipo, id] = sel.value.split('|');
+    const esPlan = tipo === 'plan';
+    // Un plan se vende de a uno; la cantidad solo aplica a productos.
+    const cantidad = esPlan ? 1 : Math.max(1, parseInt(document.getElementById('cantidad').value) || 1);
+
+    const yaEsta = items.find(i => i.tipo === tipo && i.id_item == id);
+    if (yaEsta) {
+      if (esPlan) return;           // no tiene sentido repetir un plan
+      yaEsta.cantidad += cantidad;
+    } else {
+      items.push({
+        tipo, id_item: parseInt(id), cantidad,
+        nombre: opcion.dataset.nombre,
+        precio: parseFloat(opcion.dataset.precio),
+        descuento: opcion.dataset.descuento === '1',
+        pareja: opcion.dataset.pareja === '1'
+      });
+    }
+    sel.value = ''; document.getElementById('cantidad').value = 1;
+    pintar();
+  }
+
+  function quitarItem(indice){ items.splice(indice, 1); pintar(); }
+
+  function pintar(){
+    const cuerpo = document.getElementById('cuerpo-items');
+    cuerpo.innerHTML = items.map((i, n) => `
+      <tr>
+        <td>${i.nombre}${i.pareja ? ' <span class="etiqueta-aviso">Pareja</span>' : ''}</td>
+        <td>${i.cantidad}</td>
+        <td>${dinero(i.precio)}</td>
+        <td><b>${dinero(i.precio * i.cantidad)}</b></td>
+        <td><button type="button" class="quitar-item" onclick="quitarItem(${n})" aria-label="Quitar">&times;</button></td>
+      </tr>`).join('');
+
+    document.getElementById('tabla-items').style.display = items.length ? 'table' : 'none';
+    document.getElementById('items-vacio').style.display = items.length ? 'none' : 'block';
+    document.getElementById('items_json').value = JSON.stringify(
+      items.map(i => ({tipo: i.tipo, id_item: i.id_item, cantidad: i.cantidad}))
+    );
+
+    // Segunda persona
+    const conPareja = items.find(i => i.pareja);
+    document.getElementById('bloque-pareja').style.display = conPareja ? 'block' : 'none';
+    if (conPareja) {
+      document.getElementById('nota-pareja').textContent =
+        `"${conPareja.nombre}" cubre a dos personas. Elige quién es la segunda.`;
+    } else {
+      document.getElementById('id_cliente_pareja').value = '';
+    }
+
+    recalcular();
+  }
+
+  function recalcular(){
+    const subtotal = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
+
+    // Un solo ítem que no permita descuento lo bloquea para toda la factura.
+    const bloqueante = items.find(i => !i.descuento);
+    const chk = document.getElementById('chk-descuento');
+    const aviso = document.getElementById('aviso-descuento');
+
+    if (bloqueante) {
+      chk.checked = false; chk.disabled = true;
+      aviso.textContent = `"${bloqueante.nombre}" no permite descuento, así que no se puede aplicar a esta factura.`;
+      aviso.style.display = 'block';
+    } else {
+      chk.disabled = false;
+      aviso.style.display = 'none';
+    }
+
+    const aplica = chk.checked && !bloqueante;
+    document.getElementById('campo-descuento').style.display = aplica ? 'block' : 'none';
+
+    const pct = aplica ? (parseFloat(document.getElementById('descuento').value) || 0) : 0;
+    const descuento = subtotal * pct / 100;
+    const base = subtotal - descuento;
+    const iva = base * IVA / 100;
+    const total = base + iva;
+
+    document.getElementById('t-subtotal').textContent = dinero(subtotal);
+    document.getElementById('t-descuento').textContent = '−' + dinero(descuento);
+    document.getElementById('linea-descuento').style.display = aplica ? 'flex' : 'none';
+    document.getElementById('t-iva').textContent = dinero(iva);
+    document.getElementById('t-total').textContent = dinero(total);
+
+    // Saldo si es fiado
+    const fiar = document.getElementById('forma_cobro').value === 'fiar';
+    if (fiar) {
+      const recibido = parseFloat(document.getElementById('monto_recibido').value) || 0;
+      document.getElementById('saldo-preview').textContent =
+        'Saldo pendiente: ' + dinero(Math.max(0, total - recibido));
+    }
+
+    document.getElementById('btn-cobrar').disabled = items.length === 0;
+    document.getElementById('btn-cobrar').textContent = fiar ? 'Generar factura (fiada)' : 'Generar factura';
+  }
+
+  function elegirCobro(modo){
+    document.getElementById('forma_cobro').value = modo;
+    const fiar = modo === 'fiar';
+    document.getElementById('op-completo').classList.toggle('active', !fiar);
+    document.getElementById('op-fiar').classList.toggle('active', fiar);
+    document.getElementById('bloque-fiado').style.display = fiar ? 'block' : 'none';
+    document.getElementById('etiqueta-metodo').textContent =
+      fiar ? 'Método del abono' : 'Método de pago';
+    recalcular();
+  }
+
+  // --- Buscadores de cliente ---
+  function montarBuscador(campoId, listaId, alElegir){
+    const campo = document.getElementById(campoId);
+    const lista = document.getElementById(listaId);
+    let temporizador;
+
+    campo.addEventListener('input', () => {
+      clearTimeout(temporizador);
+      const termino = campo.value.trim();
+      if (termino.length < 2) { lista.classList.remove('open'); return; }
+
+      temporizador = setTimeout(async () => {
+        const respuesta = await fetch('{{ url_for("cobrar.buscar_clientes") }}?q=' + encodeURIComponent(termino));
+        const datos = await respuesta.json();
+        lista.innerHTML = datos.clientes.length
+          ? datos.clientes.map(c => `
+              <div class="picker-opt" data-id="${c.id}" data-nombre="${c.nombre}" data-cedula="${c.cedula}" data-estado="${c.estado}">
+                <span>${c.nombre}${c.menor ? ' <span class="etiqueta-menor">Menor</span>' : ''}</span>
+                <small>${c.cedula}</small>
+              </div>`).join('')
+          : '<div class="picker-opt vacia">Sin resultados</div>';
+
+        lista.querySelectorAll('.picker-opt[data-id]').forEach(opcion => {
+          opcion.addEventListener('click', () => {
+            alElegir(opcion.dataset);
+            lista.classList.remove('open');
+          });
+        });
+        lista.classList.add('open');
+      }, 250);
+    });
+  }
+
+  function pintarTarjeta(contenedorId, datos){
+    const iniciales = datos.nombre.split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
+    document.getElementById(contenedorId).innerHTML = `
+      <div class="avatar">${iniciales}</div>
+      <div class="tarjeta-menor-datos">
+        <div class="nombre">${datos.nombre}</div>
+        <div class="meta">CI ${datos.cedula} · ${datos.estado}</div>
+      </div>`;
+    document.getElementById(contenedorId).style.display = 'flex';
+  }
+
+  montarBuscador('buscar-cliente', 'lista-clientes', datos => {
+    document.getElementById('id_cliente').value = datos.id;
+    pintarTarjeta('tarjeta-cliente', datos);
+    document.getElementById('tarjeta-cliente').insertAdjacentHTML('beforeend',
+      '<button type="button" class="btn-ghost small" onclick="quitarCliente()">Cambiar</button>');
+    document.getElementById('picker-cliente').style.display = 'none';
+  });
+
+  montarBuscador('buscar-pareja', 'lista-pareja', datos => {
+    document.getElementById('id_cliente_pareja').value = datos.id;
+    pintarTarjeta('tarjeta-pareja', datos);
+    document.getElementById('picker-pareja').style.display = 'none';
+  });
+
+  function quitarCliente(){
+    document.getElementById('id_cliente').value = '';
+    document.getElementById('tarjeta-cliente').style.display = 'none';
+    document.getElementById('picker-cliente').style.display = 'block';
+    document.getElementById('buscar-cliente').value = '';
+    document.getElementById('buscar-cliente').focus();
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.picker')) {
+      document.querySelectorAll('.picker-list').forEach(l => l.classList.remove('open'));
+    }
+  });
+
+  pintar();
+</script>
+{% endblock %}
