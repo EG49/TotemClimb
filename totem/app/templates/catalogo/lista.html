@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block titulo %}Productos — Totem Climb Gym{% endblock %}
+{% block nav_catalogo %}active{% endblock %}
+
+{% macro boton_estado(url, activo, nombre) %}
+  <form method="post" action="{{ url }}" style="display:inline"
+        onsubmit="return confirm({{ ('¿Reactivar ' ~ nombre ~ '?') if not activo else ('¿Desactivar ' ~ nombre ~ '? Dejará de aparecer al cobrar, pero las facturas anteriores no se tocan.') | tojson }});">
+    <input type="hidden" name="activo" value="{{ '1' if not activo else '0' }}">
+    <button type="submit" class="btn-quieto chico">{{ 'Reactivar' if not activo else 'Desactivar' }}</button>
+  </form>
+{% endmacro %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Productos</div>
+    <div class="page-sub">
+      {% if pestana == 'productos' %}
+        Artículos que se venden en el gimnasio.
+      {% else %}
+        Planes que generan una membresía al facturarse.
+      {% endif %}
+    </div>
+  </div>
+  <a class="btn-primary" href="{{ url_for('catalogo.nuevo', tipo_item='producto' if pestana == 'productos' else 'membresia') }}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+    Nuevo ítem
+  </a>
+</div>
+
+<div class="pestanas">
+  <a class="pestana {{ 'active' if pestana == 'productos' }}"
+     href="{{ url_for('catalogo.lista', pestana='productos', inactivos='1' if ver_inactivos else None) }}">Catálogo</a>
+  <a class="pestana {{ 'active' if pestana == 'planes' }}"
+     href="{{ url_for('catalogo.lista', pestana='planes', inactivos='1' if ver_inactivos else None) }}">Planes de membresía</a>
+</div>
+
+<div class="barra-opciones">
+  <a class="enlace-sutil" href="{{ url_for('catalogo.lista', pestana=pestana, inactivos=None if ver_inactivos else '1') }}">
+    {{ 'Ocultar inactivos' if ver_inactivos else 'Mostrar también los inactivos' }}
+  </a>
+</div>
+
+{% if pestana == 'productos' %}
+<div class="card tabla">
+  <table>
+    <thead><tr><th>Nombre</th><th>Precio</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+      {% for p in productos %}
+      <tr class="{{ 'inactiva' if not p.activo }}">
+        <td class="nombre">{{ p.nombre }}</td>
+        <td><b>{{ p.precio_texto }}</b></td>
+        <td>
+          <span class="pill {{ 'vigente' if p.activo else 'sin_membresia' }}">
+            {{ 'Activo' if p.activo else 'Inactivo' }}
+          </span>
+        </td>
+        <td>
+          <div class="acciones">
+            <a class="btn-ghost small" href="{{ url_for('catalogo.editar_producto', id_producto=p.id_producto) }}">Editar</a>
+            {{ boton_estado(url_for('catalogo.estado_producto', id_producto=p.id_producto), p.activo, p.nombre) }}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="vacio">Todavía no hay productos en el catálogo.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<div class="card tabla">
+  <table>
+    <thead>
+      <tr><th>Nombre</th><th>Tipo</th><th>Precio</th><th>Duración</th>
+          <th>Pareja</th><th>Descuento</th><th>Estado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in planes %}
+      <tr class="{{ 'inactiva' if not p.activo }}">
+        <td class="nombre">{{ p.nombre }}</td>
+        <td><span class="plan-tag {{ p.tipo|lower }}">{{ p.tipo_etiqueta }}</span></td>
+        <td><b>{{ p.precio_texto }}</b></td>
+        <td>{{ p.duracion_texto }}</td>
+        <td>{{ 'Sí' if p.permite_pareja else '—' }}</td>
+        <td>{{ 'Sí' if p.permite_descuento else 'No' }}</td>
+        <td>
+          <span class="pill {{ 'vigente' if p.activo else 'sin_membresia' }}">
+            {{ 'Activo' if p.activo else 'Inactivo' }}
+          </span>
+        </td>
+        <td>
+          <div class="acciones">
+            <a class="btn-ghost small" href="{{ url_for('catalogo.editar_plan', id_plan=p.id_plan) }}">Editar</a>
+            {{ boton_estado(url_for('catalogo.estado_plan', id_plan=p.id_plan), p.activo, p.nombre) }}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="vacio">Todavía no hay planes de membresía.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

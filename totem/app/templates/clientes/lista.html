@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block titulo %}Clientes — Totem Climb Gym{% endblock %}
+{% block nav_clientes %}active{% endblock %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Clientes</div>
+    <div class="page-sub">{{ total }} cliente{{ 's' if total != 1 }} con los filtros actuales</div>
+  </div>
+  <a class="btn-primary" href="{{ url_for('clientes.nuevo') }}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+    Nuevo cliente
+  </a>
+</div>
+
+<form class="panel-filtros" method="get" action="{{ url_for('clientes.lista') }}">
+  <div class="buscador">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="text" name="q" value="{{ busqueda }}" placeholder="Buscar por nombre, cédula o correo...">
+  </div>
+  <input type="hidden" name="filtro" value="{{ filtro }}">
+  <button type="submit" class="btn-ghost">Buscar</button>
+  {% if busqueda %}
+    <a class="btn-ghost" href="{{ url_for('clientes.lista', filtro=filtro) }}">Limpiar</a>
+  {% endif %}
+</form>
+
+<div class="chips">
+  {% for clave, etiqueta in [('todos','Todos'), ('vigentes','Vigentes'),
+                             ('por_vencer','Por vencer'), ('vencidos','Vencidos'),
+                             ('menores','Menores')] %}
+    <a class="chip {{ 'active' if filtro == clave }}"
+       href="{{ url_for('clientes.lista', filtro=clave, q=busqueda) }}">
+      {{ etiqueta }} <span>{{ conteos[clave] }}</span>
+    </a>
+  {% endfor %}
+</div>
+
+<div class="card tabla">
+  <table>
+    <thead>
+      <tr>
+        <th>Cliente</th><th>Plan</th><th>Estado</th><th>Vence</th>
+        <th>Celular</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in clientes %}
+      <tr>
+        <td>
+          <div class="celda-cliente">
+            <div class="avatar {{ 'menor' if c.tiene_representante }}">{{ c.iniciales }}</div>
+            <div>
+              <div class="nombre">
+                {{ c.nombre_completo }}
+                {% if c.tiene_representante %}<span class="etiqueta-menor">Menor</span>{% endif %}
+                {% if c.cumplio_mayoria %}<span class="etiqueta-aviso">Cumplió 18</span>{% endif %}
+              </div>
+              <div class="meta">
+                CI {{ c.cedula or '—' }}
+                {% if c.tiene_representante %}
+                  · Representado por {{ c.representante_nombre }}
+                {% elif c.correo %}
+                  · {{ c.correo }}
+                {% endif %}
+              </div>
+              {% if c.menores_a_cargo %}
+                <div class="meta nota">
+                  +{{ c.menores_a_cargo }}
+                  menor{{ 'es' if c.menores_a_cargo != 1 }} a cargo
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </td>
+        <td>
+          {% if c.plan_nombre %}
+            <span class="plan-tag {{ c.plan_tipo|lower }}">{{ c.plan_nombre }}</span>
+            {% if c.dias_restantes is not none %}
+              <div class="meta">{{ c.dias_restantes }} de {{ c.dias_totales }} días</div>
+            {% endif %}
+          {% else %}
+            <span class="meta">—</span>
+          {% endif %}
+        </td>
+        <td><span class="pill {{ c.estado_membresia|lower }}">{{ c.estado_etiqueta }}</span></td>
+        <td>
+          {% if c.fecha_fin %}
+            {{ c.vencimiento_relativo }}
+            <div class="meta">{{ c.fecha_fin.strftime('%d/%m/%Y') }}</div>
+          {% else %}
+            <span class="meta">—</span>
+          {% endif %}
+        </td>
+        <td>{{ c.telefono or '—' }}</td>
+        <td>
+          <div class="acciones">
+            <button class="btn-ghost small" disabled title="Disponible con el módulo de cobros">Renovar</button>
+            <a class="btn-ghost small" href="{{ url_for('clientes.editar', id_cliente=c.id_cliente) }}">Editar</a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="vacio">
+        {% if busqueda %}
+          No hay clientes que coincidan con "{{ busqueda }}".
+        {% else %}
+          Todavía no hay clientes registrados.
+        {% endif %}
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if paginas > 1 %}
+<div class="paginacion">
+  {% if pagina > 1 %}
+    <a class="btn-ghost small" href="{{ url_for('clientes.lista', filtro=filtro, q=busqueda, pagina=pagina-1) }}">Anterior</a>
+  {% endif %}
+  <span class="meta">Página {{ pagina }} de {{ paginas }}</span>
+  {% if pagina < paginas %}
+    <a class="btn-ghost small" href="{{ url_for('clientes.lista', filtro=filtro, q=busqueda, pagina=pagina+1) }}">Siguiente</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -20,6 +20,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         Panel general
       </a>
+      <a class="nav-item {% block nav_clientes %}{% endblock %}" href="{{ url_for('clientes.lista') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Clientes
+      </a>
+      <a class="nav-item {% block nav_catalogo %}{% endblock %}" href="{{ url_for('catalogo.lista') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        Productos
+      </a>
       {% if empleado and empleado.es_admin %}
       <a class="nav-item {% block nav_bitacora %}{% endblock %}" href="{{ url_for('main.bitacora') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>

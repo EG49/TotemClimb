@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% set editando = item is not none %}
+{% set es_membresia = tipo_item == 'membresia' %}
+{% block titulo %}{{ 'Editar ítem' if editando else 'Nuevo ítem' }} — Totem Climb Gym{% endblock %}
+{% block nav_catalogo %}active{% endblock %}
+
+{% macro campo(nombre, etiqueta, tipo='text', marcador='', paso=None) %}
+  <div class="campo">
+    <label for="{{ nombre }}">{{ etiqueta }}</label>
+    <input id="{{ nombre }}" name="{{ nombre }}" type="{{ tipo }}"
+           placeholder="{{ marcador }}" {% if paso %}step="{{ paso }}" min="0"{% endif %}
+           value="{{ datos.get(nombre) if datos.get(nombre) is not none else '' }}"
+           class="{{ 'con-error' if errores.get(nombre) }}">
+    {% if errores.get(nombre) %}<div class="error">{{ errores[nombre] }}</div>{% endif %}
+  </div>
+{% endmacro %}
+
+{% block contenido %}
+<div class="migas">
+  <a href="{{ url_for('catalogo.lista') }}">Productos</a> /
+  {{ 'Editar' if editando else 'Nuevo ítem' }}
+</div>
+<div class="page-title">{{ item.nombre if editando else 'Nuevo ítem' }}</div>
+<div class="page-sub">
+  {% if editando %}
+    {{ 'Plan de membresía' if es_membresia else 'Producto del catálogo' }}
+  {% else %}
+    Elige qué vas a agregar: un artículo del catálogo o un plan de membresía.
+  {% endif %}
+</div>
+
+<form method="post" class="card">
+  <input type="hidden" name="tipo_item" id="tipo_item" value="{{ tipo_item }}">
+
+  {% if not editando %}
+  <div class="selector-tipo">
+    <button type="button" class="opcion-tipo {{ 'active' if not es_membresia }}"
+            onclick="elegirTipo('producto')">
+      <span class="t-titulo">Producto</span>
+      <span class="t-sub">Un artículo que se vende</span>
+    </button>
+    <button type="button" class="opcion-tipo {{ 'active' if es_membresia }}"
+            onclick="elegirTipo('membresia')">
+      <span class="t-titulo">Membresía</span>
+      <span class="t-sub">Un plan con vigencia</span>
+    </button>
+  </div>
+  {% endif %}
+
+  <div class="rejilla">
+    {{ campo('nombre', 'Nombre', marcador='Ej. Magnesio (bolsa 56g)') }}
+    {{ campo('precio', 'Precio', tipo='number', marcador='0.00', paso='0.01') }}
+  </div>
+
+  <div id="bloque-membresia" style="{{ '' if es_membresia else 'display:none' }}">
+    <hr class="divisor">
+    <div class="seccion">Datos del plan</div>
+    <div class="seccion-nota">
+      La duración es el plazo máximo de validez. En un pase, además, se
+      indica cuántas entradas incluye.
+    </div>
+
+    <div class="rejilla">
+      <div class="campo">
+        <label for="tipo">Tipo</label>
+        <select id="tipo" name="tipo" onchange="alternarPases()">
+          {% for valor, etiqueta in [('JUNIOR','Junior'), ('SENIOR','Senior'), ('PASES','Pases')] %}
+            <option value="{{ valor }}" {{ 'selected' if datos.get('tipo') == valor }}>{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+        {% if errores.get('tipo') %}<div class="error">{{ errores['tipo'] }}</div>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label>Duración</label>
+        <div class="duracion">
+          <input name="duracion" type="number" min="1"
+                 value="{{ datos.get('duracion') or 1 }}"
+                 class="{{ 'con-error' if errores.get('duracion') }}">
+          <select name="unidad_duracion">
+            {% for valor, etiqueta in [('DIA','Día'), ('MES','Mes')] %}
+              <option value="{{ valor }}" {{ 'selected' if datos.get('unidad_duracion') == valor }}>{{ etiqueta }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if errores.get('duracion') %}<div class="error">{{ errores['duracion'] }}</div>{% endif %}
+      </div>
+
+      <div class="campo" id="campo-entradas" style="{{ '' if datos.get('tipo') == 'PASES' else 'display:none' }}">
+        <label for="dias_incluidos">Entradas incluidas</label>
+        <input id="dias_incluidos" name="dias_incluidos" type="number" min="1"
+               placeholder="Ej. 10"
+               value="{{ datos.get('dias_incluidos') if datos.get('dias_incluidos') is not none else '' }}"
+               class="{{ 'con-error' if errores.get('dias_incluidos') }}">
+        {% if errores.get('dias_incluidos') %}<div class="error">{{ errores['dias_incluidos'] }}</div>{% endif %}
+        <div class="pista">Cuántas visitas trae el pase antes de agotarse.</div>
+      </div>
+    </div>
+
+    <label class="fila-check" style="margin-top:16px;">
+      <input type="checkbox" name="permite_pareja" {{ 'checked' if datos.get('permite_pareja') }}>
+      <span>
+        <b>Permite promoción de pareja</b>
+        <small>Al venderlo se generan dos membresías enlazadas entre sí.</small>
+      </span>
+    </label>
+
+    <label class="fila-check" style="margin-top:10px;">
+      <input type="checkbox" name="permite_descuento" {{ 'checked' if datos.get('permite_descuento') }}>
+      <span>
+        <b>Permite descuento</b>
+        <small>Si se desmarca, cualquier factura que lo incluya no podrá llevar descuento.</small>
+      </span>
+    </label>
+  </div>
+
+  <div class="acciones-formulario">
+    <a class="btn-ghost" href="{{ url_for('catalogo.lista') }}">Cancelar</a>
+    <button type="submit" class="btn-primary">
+      {{ 'Guardar cambios' if editando else 'Guardar ítem' }}
+    </button>
+  </div>
+</form>
+
+<script>
+  function elegirTipo(tipo){
+    document.getElementById('tipo_item').value = tipo;
+    document.getElementById('bloque-membresia').style.display = tipo === 'membresia' ? 'block' : 'none';
+    document.querySelectorAll('.opcion-tipo').forEach(function(b, i){
+      b.classList.toggle('active', (i === 0) === (tipo === 'producto'));
+    });
+  }
+  function alternarPases(){
+    const esPase = document.getElementById('tipo').value === 'PASES';
+    document.getElementById('campo-entradas').style.display = esPase ? 'block' : 'none';
+  }
+</script>
+{% endblock %}

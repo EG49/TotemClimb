@@ -29,10 +29,12 @@ def crear_app(config_clase=Config) -> Flask:
     )
     atexit.register(cerrar_pool)
 
-    from app.routes import auth, main
+    from app.routes import auth, catalogo, clientes, main
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
+    app.register_blueprint(clientes.bp)
+    app.register_blueprint(catalogo.bp)
 
     registrar_contexto(app)
 

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block titulo %}{{ cliente.nombre_completo }} — Totem Climb Gym{% endblock %}
+{% block nav_clientes %}active{% endblock %}
+
+{% macro campo(nombre, etiqueta, tipo='text', marcador='', opcional=false) %}
+  <div class="campo">
+    <label for="{{ nombre }}">
+      {{ etiqueta }}{% if opcional %} <span class="opcional">(opcional)</span>{% endif %}
+    </label>
+    <input id="{{ nombre }}" name="{{ nombre }}" type="{{ tipo }}"
+           placeholder="{{ marcador }}" value="{{ datos.get(nombre) or '' }}"
+           class="{{ 'con-error' if errores.get(nombre) }}">
+    {% if errores.get(nombre) %}<div class="error">{{ errores[nombre] }}</div>{% endif %}
+  </div>
+{% endmacro %}
+
+{% block contenido %}
+<div class="migas">
+  <a href="{{ url_for('clientes.lista') }}">Clientes</a> / Menor a cargo
+</div>
+<div class="page-title">
+  {{ cliente.nombre_completo }}
+  <span class="etiqueta-menor grande">Menor</span>
+</div>
+<div class="page-sub">
+  {% if cliente.edad is not none %}{{ cliente.edad }} años · {% endif %}
+  Representado por {{ cliente.representante_nombre }}
+</div>
+
+{% if cliente.cumplio_mayoria %}
+<div class="aviso-mayoria">
+  <div>
+    <b>Cumplió 18 años</b>
+    <p>
+      Ya es mayor de edad y debe firmar su propio contrato de deslinde como
+      adulto. Una vez firmado en físico, quítale el representante para que
+      quede como titular independiente.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+<form method="post" class="card">
+  <div class="seccion">Datos del menor</div>
+  <div class="seccion-nota">
+    El contacto se hace a través del representante, por eso no se le piden
+    celular ni correo propios.
+  </div>
+  <div class="rejilla">
+    {{ campo('nombre', 'Nombre') }}
+    {{ campo('apellido', 'Apellido') }}
+    {{ campo('fecha_nacimiento', 'Fecha de nacimiento', tipo='date') }}
+    {{ campo('cedula', 'Cédula', marcador='0912345679', opcional=true) }}
+  </div>
+
+  <div class="acciones-formulario">
+    <a class="btn-ghost" href="{{ url_for('clientes.lista') }}">Cancelar</a>
+    <button type="submit" class="btn-primary">Guardar cambios</button>
+  </div>
+</form>
+
+<div class="card" style="margin-top:20px;">
+  <div class="seccion">Representante legal</div>
+  <div class="tarjeta-menor">
+    <div class="avatar">{{ cliente.representante_nombre.split(' ')|map('first')|join()|upper }}</div>
+    <div class="tarjeta-menor-datos">
+      <div class="nombre">{{ cliente.representante_nombre }}</div>
+      <div class="meta">Firma el contrato de deslinde por este menor</div>
+    </div>
+    <a class="btn-ghost small" href="{{ url_for('clientes.editar', id_cliente=cliente.id_representante) }}">
+      Ver perfil
+    </a>
+  </div>
+
+  <details class="zona-delicada">
+    <summary>Quitar representante</summary>
+    <p>
+      Deja al cliente como titular independiente, con su propia membresía e
+      historial. Se usa cuando cumple la mayoría de edad y ya firmó su
+      contrato. La acción queda registrada en la bitácora.
+    </p>
+    <form method="post" action="{{ url_for('clientes.quitar_representante', id_cliente=cliente.id_cliente) }}"
+          onsubmit="return confirm('¿Quitar a {{ cliente.representante_nombre }} como representante de {{ cliente.nombre_completo }}?');">
+      <button type="submit" class="btn-quieto">Quitar representante</button>
+    </form>
+  </details>
+</div>
+{% endblock %}
