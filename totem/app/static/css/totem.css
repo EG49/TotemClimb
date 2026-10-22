@@ -95,7 +95,7 @@ td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px;
     var(--cream);
 }
 .login-card{
-  background:#fff; border:1px solid var(--gray-light); border-radius:16px;
+  background:#C2DD58; border:1px solid var(--gray-light); border-radius:16px;
   padding:38px 36px; width:100%; max-width:390px;
   box-shadow:0 18px 50px rgba(43,50,16,0.10);
 }
