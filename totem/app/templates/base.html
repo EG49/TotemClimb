@@ -11,7 +11,18 @@
 <body>
 <div class="app">
 
-  <aside class="sidebar">
+  {# Barra superior: solo aparece en pantallas angostas, donde el menú
+     lateral se esconde y se abre como cajón. #}
+  <header class="barra-movil">
+    <button type="button" class="btn-menu" id="btn-menu"
+            aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-lateral">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <img class="barra-movil-logo" src="{{ url_for('static', filename='img/totem-logo.png') }}" alt="Totem Climb Gym">
+  </header>
+  <div class="velo" id="velo" hidden></div>
+
+  <aside class="sidebar" id="menu-lateral">
     <div class="brand">
       <img class="brand-logo-img" src="{{ url_for('static', filename='img/totem-logo.png') }}" alt="Totem Climb Gym">
     </div>
@@ -85,5 +96,40 @@
     {% block contenido %}{% endblock %}
   </main>
 </div>
+
+<script>
+// Cajón del menú en pantallas angostas. En escritorio no hace nada:
+// el botón está oculto y la barra lateral siempre está visible.
+(function () {
+  var boton = document.getElementById('btn-menu');
+  var menu  = document.getElementById('menu-lateral');
+  var velo  = document.getElementById('velo');
+  if (!boton || !menu || !velo) return;
+
+  function abrir(si) {
+    menu.classList.toggle('abierto', si);
+    velo.hidden = !si;
+    boton.setAttribute('aria-expanded', si ? 'true' : 'false');
+    // Evita que la página de atrás se desplace mientras el menú está abierto.
+    document.body.classList.toggle('sin-scroll', si);
+  }
+
+  boton.addEventListener('click', function () {
+    abrir(!menu.classList.contains('abierto'));
+  });
+  velo.addEventListener('click', function () { abrir(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') abrir(false);
+  });
+  // Al tocar una opción el menú se cierra solo.
+  menu.addEventListener('click', function (e) {
+    if (e.target.closest('.nav-item')) abrir(false);
+  });
+  // Si la ventana se agranda, el cajón deja de tener sentido.
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 900) abrir(false);
+  });
+})();
+</script>
 </body>
 </html>

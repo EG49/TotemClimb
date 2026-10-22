@@ -27,8 +27,19 @@ body{
     radial-gradient(circle at 80% 85%, rgba(255,255,255,0.03), transparent 45%),
     var(--ink);
   color:var(--cream); display:flex; flex-direction:column;
-  padding:28px 22px; position:sticky; top:0; height:100vh;
+  padding:28px 22px; position:sticky; top:0;
+  /* dvh y no vh: en móvil la barra del navegador cambia la altura y con
+     vh el menú queda cortado por debajo. */
+  height:100dvh;
+  /* Si la ventana es más baja que el menú, la barra se desplaza por
+     dentro. Sin esto el pie se sale del fondo oscuro y "Cerrar sesión"
+     queda fuera de alcance. */
+  overflow-y:auto; overscroll-behavior:contain;
 }
+/* Barra de desplazamiento discreta, para que no corte el fondo oscuro. */
+.sidebar::-webkit-scrollbar{ width:6px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.18); border-radius:3px; }
+.sidebar{ scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.18) transparent; }
 .brand{ display:flex; justify-content:center; margin-bottom:40px; padding:4px 0; }
 .brand-logo-img{ width:100%; max-width:170px; height:auto; object-fit:contain; }
 nav{ display:flex; flex-direction:column; gap:4px; }
@@ -54,7 +65,13 @@ nav{ display:flex; flex-direction:column; gap:4px; }
 .btn-salir:hover{ border-color:var(--lime); color:var(--lime); }
 
 /* MAIN */
-main{ padding:36px 44px; max-width:1220px; }
+main{
+  padding:36px 44px; max-width:1220px;
+  /* Sin esto, una celda de grid no se encoge por debajo del ancho de su
+     contenido: una tabla ancha estira la página entera y aparece scroll
+     horizontal en vez de desplazarse solo la tabla. */
+  min-width:0;
+}
 .page-title{ font-family:'Bebas Neue',sans-serif; font-size:38px; letter-spacing:.5px; }
 .page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; margin-bottom:26px; }
 
@@ -95,7 +112,7 @@ td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px;
     var(--cream);
 }
 .login-card{
-  background:#C2DD58; border:1px solid var(--gray-light); border-radius:16px;
+  background:#fff; border:1px solid var(--gray-light); border-radius:16px;
   padding:38px 36px; width:100%; max-width:390px;
   box-shadow:0 18px 50px rgba(43,50,16,0.10);
 }
@@ -115,10 +132,51 @@ td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px;
   text-align:center; margin-top:24px;
 }
 
+/* ===== BARRA SUPERIOR Y CAJÓN (pantallas angostas) ===== */
+
+.barra-movil{ display:none; }
+.velo{ display:none; }
+body.sin-scroll{ overflow:hidden; }
+
 @media (max-width:900px){
   .app{ grid-template-columns:1fr; }
-  .sidebar{ position:relative; height:auto; }
-  main{ padding:24px; }
+
+  .barra-movil{
+    display:flex; align-items:center; gap:14px;
+    position:sticky; top:0; z-index:30;
+    background:var(--ink); padding:10px 14px;
+  }
+  .barra-movil-logo{ height:30px; width:auto; }
+  .btn-menu{
+    display:flex; align-items:center; justify-content:center;
+    width:42px; height:42px; flex:none;   /* objetivo táctil cómodo */
+    background:none; border:1px solid rgba(255,255,255,0.25);
+    border-radius:9px; color:var(--cream); cursor:pointer;
+  }
+  .btn-menu svg{ width:21px; height:21px; }
+
+  /* El menú deja de ocupar espacio y pasa a ser un cajón que entra
+     desde la izquierda. */
+  .sidebar{
+    position:fixed; top:0; left:0; z-index:40;
+    width:270px; max-width:85vw; height:100dvh;
+    transform:translateX(-100%); transition:transform .22s ease;
+    box-shadow:2px 0 18px rgba(0,0,0,0.25);
+  }
+  .sidebar.abierto{ transform:translateX(0); }
+
+  .velo{
+    display:block; position:fixed; inset:0; z-index:35;
+    background:rgba(0,0,0,0.45);
+  }
+  .velo[hidden]{ display:none; }
+
+  main{ padding:20px 16px; }
+  .page-title{ font-size:30px; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .sidebar{ transition:none; }
 }
 
 /* ===== MÓDULO DE CLIENTES ===== */
@@ -675,4 +733,75 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
   .disposicion-panel{ grid-template-columns:1fr; }
   .estadisticas{ grid-template-columns:1fr; }
   .accesos-rapidos{ grid-template-columns:1fr; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Impresión del comprobante
+   En pantalla la barra lateral da el contexto de marca; al imprimir
+   desaparece, así que el comprobante lleva su propio membrete.
+   ───────────────────────────────────────────────────────────── */
+.solo-impresion{ display:none; }
+
+@media print{
+  @page{ size:A4 portrait; margin:14mm; }
+
+  /* Fuera todo lo que no es el comprobante. */
+  .sidebar, .encabezado, .flash, .acciones, .nota-fiado,
+  .barra-movil, .velo{ display:none !important; }
+
+  body{ background:#fff; color:#000; }
+  .app{ display:block; }
+  main{ padding:0; margin:0; }
+
+  /* La tarjeta pierde sombra y bordes: en papel estorban. */
+  .comprobante{
+    max-width:none; width:100%;
+    border:none; box-shadow:none; border-radius:0; padding:0; margin:0;
+  }
+
+  .solo-impresion{ display:block; }
+
+  .comp-membrete{
+    display:flex; align-items:flex-start; gap:16px;
+    padding-bottom:12px; margin-bottom:18px;
+    border-bottom:2px solid var(--ink);
+  }
+  .comp-logo{ height:46px; width:auto; }
+  .comp-membrete > div:first-child{ flex:1; }
+  .comp-marca{
+    font-family:'Bebas Neue',system-ui,sans-serif;
+    font-size:26px; letter-spacing:1px; line-height:1.1; color:var(--ink);
+  }
+  .comp-datos{ font-size:11px; color:var(--gray); }
+  .comp-numero{ text-align:right; }
+  .comp-numero .nombre{ font-size:15px; font-weight:700; }
+
+  /* Tabla legible en blanco y negro: sin fondos de color. */
+  .tabla-items{ width:100%; border-collapse:collapse; }
+  .tabla-items th{
+    background:none !important; color:#000 !important;
+    border-bottom:1px solid #000; font-size:11px; text-transform:uppercase;
+  }
+  .tabla-items td, .tabla-items th{ padding:7px 6px; }
+  .tabla-items tbody tr{ border-bottom:1px solid #ddd; }
+
+  /* Las etiquetas y pastillas pierden el color de fondo, que en una
+     impresora en blanco y negro sale como un bloque gris. */
+  .etiqueta-menor, .pill{
+    background:none !important; border:1px solid #777; color:#000 !important;
+  }
+
+  .comp-totales{ max-width:300px; margin-left:auto; }
+  .comp-totales .linea.total{ border-top:2px solid var(--ink); font-size:15px; }
+
+  .comp-pie{ margin-top:34px; font-size:11px; color:#000; }
+  .comp-aviso{ margin-top:6px; font-style:italic; color:#333; }
+  .comp-firma{
+    margin-top:46px; width:230px; padding-top:5px;
+    border-top:1px solid #000; text-align:center; font-size:10px;
+  }
+
+  /* Que no se parta una fila de la tabla ni los totales entre páginas. */
+  tr, .comp-totales, .comp-pie{ break-inside:avoid; }
+  a[href]:after{ content:none !important; }
 }
