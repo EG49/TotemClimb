@@ -16,6 +16,7 @@ from flask import (
 from app.security import login_requerido
 from app.services.cliente_service import ClienteService
 from app.services.cobro_service import CobroService
+from app.services.correo_service import CorreoNoConfigurado, ServicioCorreo
 from app.services.validaciones import ErrorValidacion
 
 bp = Blueprint("cobrar", __name__, url_prefix="/cobrar")
@@ -91,7 +92,39 @@ def comprobante(id_factura):
     factura = CobroService().facturas.obtener(id_factura)
     if factura is None:
         abort(404)
-    return render_template("cobrar/comprobante.html", factura=factura)
+    return render_template(
+        "cobrar/comprobante.html",
+        factura=factura,
+        correo_disponible=ServicioCorreo.configurado(),
+    )
+
+
+@bp.route("/comprobante/<int:id_factura>/enviar", methods=["POST"])
+@login_requerido
+def enviar_comprobante(id_factura):
+    """Manda el comprobante al correo del cliente.
+
+    Es una acción del vendedor, nunca automática: mandar un recibo con
+    nombre y cédula a una dirección equivocada es filtrar un dato
+    personal, así que alguien decide hacerlo y queda en la bitácora.
+    """
+    factura = CobroService().facturas.obtener(id_factura)
+    if factura is None:
+        abort(404)
+
+    try:
+        destino = ServicioCorreo().enviar_comprobante(
+            factura, g.empleado["id_empleado"]
+        )
+    except CorreoNoConfigurado:
+        flash("El envío de correos todavía no está configurado.", "error")
+    except ValueError as error:
+        flash(str(error), "error")
+    else:
+        # El envío va en segundo plano: aquí solo se confirma que salió.
+        flash(f"Enviando el comprobante a {destino}.", "ok")
+
+    return redirect(url_for("cobrar.comprobante", id_factura=id_factura))
 
 
 @bp.route("/buscar-clientes")

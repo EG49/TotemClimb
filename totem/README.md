@@ -289,6 +289,53 @@ sistema y donde se le quita el acceso cuando deja de trabajar.
 - Altas, ediciones, cambios de contraseña y cambios de estado quedan en
   la bitácora.
 
+## Envío del comprobante por correo
+
+Es opcional. Si las variables `MAIL_*` del `.env` están vacías, el botón
+no aparece y todo lo demás funciona igual.
+
+**Con Gmail (provisional, mientras no haya dominio propio):**
+
+1. La cuenta necesita **verificación en dos pasos** activada.
+2. Genera una **contraseña de aplicación** en Cuenta de Google →
+   Seguridad → Contraseñas de aplicaciones. Son 16 letras. **No** sirve
+   la contraseña normal de la cuenta: Google dejó de aceptarla.
+3. Cópiala en `MAIL_PASSWORD` y pon la dirección en `MAIL_USUARIO`.
+
+Gmail permite unos 500 envíos diarios, de sobra para el gimnasio, y
+siempre muestra como remitente la propia cuenta aunque pongas otra en
+`MAIL_REMITENTE`. Cuando exista el dominio se cambia a un proveedor
+transaccional: son cuatro variables del `.env`, sin tocar código.
+
+**Comprobar que funciona:**
+
+```bash
+python -m scripts.probar_correo                    # conecta y autentica
+python -m scripts.probar_correo --a tu@correo.com  # además manda una prueba
+```
+
+Hay que usar este script y no el botón de la aplicación. El botón dice
+"Enviando..." siempre, porque el envío sale en segundo plano y la
+pantalla no espera el resultado. El script sí espera, y cuando falla
+explica cuál de las causas conocidas es.
+
+**Cómo está pensado:**
+
+- **El envío nunca bloquea el cobro.** Sale en un hilo aparte. Si el
+  servidor de correo tarda o se cae, el vendedor no se queda esperando
+  con el cliente enfrente: la factura ya quedó guardada.
+- **Lo manda el vendedor, nunca el sistema solo.** Un recibo lleva
+  nombre y montos; mandarlo a una dirección equivocada es filtrar un
+  dato personal. Por eso es un botón, con confirmación.
+- **Cada intento queda en la bitácora**, el que sale y el que falla, con
+  el motivo del fallo. Si un cliente dice que no le llegó, ahí está la
+  respuesta.
+- El mensaje va en **dos versiones, HTML y texto plano**. Sin la de
+  texto, varios filtros lo marcan como sospechoso.
+- Si falla, **no se reintenta solo**: el vendedor vuelve a darle al
+  botón. Con el volumen del gimnasio, una cola de reintentos sería más
+  complejidad de la que hace falta.
+
 ## Configuración
 
 Pantalla solo para el ADMIN donde se cambia el IVA. El valor anterior y

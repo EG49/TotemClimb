@@ -10,10 +10,47 @@
       {{ factura.fecha.strftime('%d/%m/%Y %H:%M') }} · Atendió {{ factura.empleado_nombre }}
     </div>
   </div>
-  <a class="btn-primary" href="{{ url_for('cobrar.cobrar') }}">Cobrar otra</a>
+  <div class="acciones">
+    {% if correo_disponible and factura.cliente_correo %}
+      <form method="post"
+            action="{{ url_for('cobrar.enviar_comprobante', id_factura=factura.id_factura) }}"
+            style="display:inline"
+            onsubmit="return confirm({{ ('¿Enviar el comprobante a ' ~ factura.cliente_correo ~ '?')|tojson }});">
+        <button type="submit" class="btn-ghost">Enviar por correo</button>
+      </form>
+    {% elif correo_disponible %}
+      {# Sin correo registrado no hay a dónde mandarlo; se dice por qué
+         en vez de dejar un botón que falla al tocarlo. #}
+      <span class="meta" title="Este cliente no tiene correo registrado">
+        Sin correo registrado
+      </span>
+    {% endif %}
+    <button type="button" class="btn-ghost" onclick="window.print()">Imprimir</button>
+    <a class="btn-primary" href="{{ url_for('cobrar.cobrar') }}">Cobrar otra</a>
+  </div>
 </div>
 
 <div class="comprobante card">
+  {# Cabecera que solo aparece al imprimir: en pantalla el logo ya está
+     en la barra lateral, pero al imprimir la barra desaparece. #}
+  <div class="solo-impresion comp-membrete">
+    <div>
+      {# Si tienes una versión del logo en oscuro sobre fondo claro,
+         ponla en static/img/totem-logo-oscuro.png y reemplaza esta
+         línea por: <img class="comp-logo" src="{{ url_for('static', filename='img/totem-logo-oscuro.png') }}" alt="Totem Climb Gym">
+         El logo de la barra lateral no sirve: es claro sobre oscuro y
+         en papel blanco desaparece. #}
+      <div class="comp-marca">TOTEM CLIMB GYM</div>
+      {# Agrega aquí la dirección y el teléfono del gimnasio. #}
+      <div class="comp-datos">Recibo interno de control</div>
+    </div>
+    <div class="comp-numero">
+      <div class="meta">Factura</div>
+      <div class="nombre">{{ factura.numero_factura }}</div>
+      <div class="meta">{{ factura.fecha.strftime('%d/%m/%Y %H:%M') }}</div>
+    </div>
+  </div>
+
   <div class="comp-cabecera">
     <div>
       <div class="meta">Cliente</div>
@@ -65,5 +102,14 @@
     que se termine de pagar.
   </div>
   {% endif %}
+
+  <div class="solo-impresion comp-pie">
+    <div>Atendió: {{ factura.empleado_nombre }}</div>
+    <div class="comp-aviso">
+      Documento interno de control. No constituye comprobante de venta
+      autorizado por el SRI.
+    </div>
+    <div class="comp-firma">Firma / recibí conforme</div>
+  </div>
 </div>
 {% endblock %}
