@@ -124,7 +124,12 @@ def enviar_comprobante(id_factura):
         # El envío va en segundo plano: aquí solo se confirma que salió.
         flash(f"Enviando el comprobante a {destino}.", "ok")
 
-    return redirect(url_for("cobrar.comprobante", id_factura=id_factura))
+    # Se vuelve a donde estaba: el botón vive en dos pantallas (el
+    # comprobante del cobro y el detalle de la factura), y saltar de una
+    # a otra al enviar desorienta.
+    return redirect(
+        request.referrer or url_for("cobrar.comprobante", id_factura=id_factura)
+    )
 
 
 @bp.route("/buscar-clientes")

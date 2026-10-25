@@ -75,6 +75,7 @@ class Factura:
 
     # Datos traídos con JOIN para mostrar
     cliente_nombre: str | None = None
+    cliente_correo: str | None = None
     empleado_nombre: str | None = None
     detalle: list = field(default_factory=list)
 

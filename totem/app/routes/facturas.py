@@ -17,6 +17,7 @@ from flask import (
 )
 
 from app.security import login_requerido
+from app.services.correo_service import ServicioCorreo
 from app.services.factura_service import FacturaService
 from app.services.validaciones import ErrorValidacion
 
@@ -122,6 +123,7 @@ def detalle(id_factura):
         "facturas/detalle.html",
         factura=factura,
         abonos=servicio.abonos_de(id_factura),
+        correo_disponible=ServicioCorreo.configurado(),
     )
 
 

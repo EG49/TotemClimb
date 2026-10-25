@@ -13,9 +13,29 @@
       {{ factura.fecha.strftime('%d/%m/%Y %H:%M') }} · Atendió {{ factura.empleado_nombre }}
     </div>
   </div>
-  <span class="pill {{ {'EMITIDA':'vigente','PENDIENTE':'por_vencer','ANULADA':'sin_membresia'}[factura.estado] }}">
-    {{ {'EMITIDA':'Pagada','PENDIENTE':'Pendiente','ANULADA':'Anulada'}[factura.estado] }}
-  </span>
+  <div class="acciones">
+    {# Reenviar el recibo días después es el caso normal: el cliente lo
+       pide cuando ya no está la pantalla del cobro. Una factura anulada
+       no se manda: ya no vale. #}
+    {% if correo_disponible and factura.cliente_correo and factura.estado != 'ANULADA' %}
+      <form method="post"
+            action="{{ url_for('cobrar.enviar_comprobante', id_factura=factura.id_factura) }}"
+            style="display:inline"
+            onsubmit="return confirm({{ ('¿Enviar el comprobante a ' ~ factura.cliente_correo ~ '?')|tojson }});">
+        <button type="submit" class="btn-ghost">Enviar por correo</button>
+      </form>
+    {% elif correo_disponible and factura.estado != 'ANULADA' %}
+      <span class="meta" title="Este cliente no tiene correo registrado">
+        Sin correo registrado
+      </span>
+    {% endif %}
+    <a class="btn-ghost" href="{{ url_for('cobrar.comprobante', id_factura=factura.id_factura) }}">
+      Ver comprobante
+    </a>
+    <span class="pill {{ {'EMITIDA':'vigente','PENDIENTE':'por_vencer','ANULADA':'sin_membresia'}[factura.estado] }}">
+      {{ {'EMITIDA':'Pagada','PENDIENTE':'Pendiente','ANULADA':'Anulada'}[factura.estado] }}
+    </span>
+  </div>
 </div>
 
 {% if factura.estado == 'ANULADA' %}
