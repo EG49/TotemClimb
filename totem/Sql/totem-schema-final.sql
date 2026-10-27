@@ -1,0 +1,655 @@
+-- ============================================================
+-- BASE DE DATOS: SISTEMA DE FACTURACIÓN Y MEMBRESÍAS (Totem Climb Gym)
+-- PostgreSQL — Script consolidado v3
+-- Incluye todos los cambios acordados hasta la fecha, más:
+--   * detalle_factura admite productos O planes de membresía
+--   * planes_membresia.dias_incluidos (pases por día)
+--   * facturas.iva_porcentaje + tabla configuracion (IVA editable)
+--   * tabla bitacora (trazabilidad: cobros, anulaciones, abonos,
+--     clientes creados/editados, inscripciones, cambios de IVA)
+--   * evento_inscritos.id_empleado (quién agendó al cliente)
+--   * CHECK de coherencia estado/saldo en facturas
+--   * empleados.password -> password_hash; roles ADMIN y VENDEDOR
+--   * datos iniciales al final del script
+-- ============================================================
+
+
+-- ============================================================
+-- 1. EMPLEADOS
+-- ============================================================
+-- ADMIN: todo lo del VENDEDOR + ver la bitácora y cambiar el IVA.
+-- password_hash: guarda el hash (bcrypt), nunca texto plano.
+
+CREATE TABLE empleados (
+    id_empleado SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    usuario VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    rol VARCHAR(30) NOT NULL DEFAULT 'VENDEDOR',
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_empleado_rol
+        CHECK (rol IN ('ADMIN', 'VENDEDOR'))
+);
+
+
+-- ============================================================
+-- 2. CLIENTES
+-- ============================================================
+-- id_representante: auto-referencia. NULL para un cliente
+-- normal; apunta al padre/madre cuando el registro es un
+-- menor a cargo (el menor es un cliente más, con su propia
+-- membresía e historial).
+-- cedula: opcional. UNIQUE sigue aplicando; Postgres permite
+-- múltiples NULL sin conflicto.
+-- contacto_emergencia: solo el celular del contacto.
+-- referencia: relación del contacto con el cliente (ej. Mamá).
+-- seguro_nombre / seguro_numero: opcionales.
+-- vigente_hasta: caché de la vigencia; la fuente de verdad es
+-- la tabla membresias.
+-- Quién creó o editó un cliente queda en bitacora.
+
+CREATE TABLE clientes (
+    id_cliente SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    cedula VARCHAR(10) UNIQUE,
+    fecha_nacimiento DATE,
+    correo VARCHAR(150),
+    telefono VARCHAR(10),
+    genero VARCHAR(30),
+    contacto_emergencia VARCHAR(10),
+    referencia VARCHAR(50),
+    seguro_nombre VARCHAR(100),
+    seguro_numero VARCHAR(50),
+    id_representante INTEGER,
+    vigente_hasta DATE,
+    fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_cliente_representante
+        FOREIGN KEY (id_representante)
+        REFERENCES clientes(id_cliente),
+
+    CONSTRAINT chk_cliente_no_auto_representante
+        CHECK (
+            id_representante IS NULL
+            OR id_representante <> id_cliente
+        ),
+
+    CONSTRAINT chk_genero
+        CHECK (genero IN ('MASCULINO', 'FEMENINO', 'OTRO'))
+);
+
+
+-- ============================================================
+-- 3. PRODUCTOS
+-- ============================================================
+-- Solo artículos físicos que se venden (nombre y precio).
+-- Las membresías viven aparte, en planes_membresia.
+
+CREATE TABLE productos (
+    id_producto SERIAL PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    precio NUMERIC(10,2) NOT NULL,
+
+    CONSTRAINT chk_producto_precio
+        CHECK (precio >= 0)
+);
+
+
+-- ============================================================
+-- 4. PLANES DE MEMBRESÍA
+-- ============================================================
+-- duracion + unidad_duracion: plazo máximo de validez.
+-- dias_incluidos: solo para tipo PASES (cuántas entradas trae
+-- el pase); se copia a membresias.dias_totales al vender.
+-- Ej.: Pase 10 días = dias_incluidos 10, duracion 30 DIA.
+-- La Promo pareja es un plan SENIOR con permite_pareja = TRUE.
+
+CREATE TABLE planes_membresia (
+    id_plan SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    tipo VARCHAR(20) NOT NULL,
+    precio NUMERIC(10,2) NOT NULL,
+    duracion INTEGER NOT NULL,
+    unidad_duracion VARCHAR(10) NOT NULL,
+    dias_incluidos INTEGER,
+    permite_pareja BOOLEAN NOT NULL DEFAULT FALSE,
+    permite_descuento BOOLEAN NOT NULL DEFAULT FALSE,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT chk_plan_tipo
+        CHECK (tipo IN ('JUNIOR', 'SENIOR', 'PASES')),
+
+    CONSTRAINT chk_plan_precio
+        CHECK (precio >= 0),
+
+    CONSTRAINT chk_plan_duracion
+        CHECK (duracion > 0),
+
+    CONSTRAINT chk_plan_unidad
+        CHECK (unidad_duracion IN ('DIA', 'MES')),
+
+    CONSTRAINT chk_plan_dias_incluidos
+        CHECK (
+            (tipo = 'PASES' AND dias_incluidos IS NOT NULL AND dias_incluidos > 0)
+            OR
+            (tipo <> 'PASES' AND dias_incluidos IS NULL)
+        )
+);
+
+
+-- ============================================================
+-- 5. CONFIGURACIÓN
+-- ============================================================
+-- Parámetros editables por el ADMIN (hoy: iva_porcentaje).
+-- Cada cambio se registra en bitacora.
+
+CREATE TABLE configuracion (
+    clave VARCHAR(50) PRIMARY KEY,
+    valor VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(200),
+    fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- ============================================================
+-- 6. FACTURAS
+-- ============================================================
+-- subtotal: monto ANTES del descuento. El descuento en dinero
+-- se calcula: subtotal * descuento_porcentaje / 100.
+-- iva_porcentaje: tasa con la que se emitió esta factura (así
+-- un cambio de IVA no altera facturas anteriores).
+-- estado PENDIENTE = factura fiada (a crédito).
+-- metodo_pago es opcional (una fiada se paga con abonos, ver
+-- pagos_fiado, que pueden usar métodos distintos).
+-- saldo_pendiente: se inicializa en el total si es fiada, baja
+-- con cada abono; al llegar a 0 el estado pasa a EMITIDA.
+-- No cuenta como ingreso en Contabilidad mientras esté
+-- PENDIENTE (regla de negocio, no de esquema).
+-- Anulación: motivo obligatorio; quién y cuándo anuló queda en
+-- bitacora.
+
+CREATE TABLE facturas (
+    id_factura SERIAL PRIMARY KEY,
+    numero_factura VARCHAR(30) NOT NULL UNIQUE,
+
+    id_cliente INTEGER NOT NULL,
+    id_empleado INTEGER NOT NULL,
+
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    metodo_pago VARCHAR(30),
+
+    descuento_porcentaje NUMERIC(5,2) NOT NULL DEFAULT 0,
+    iva_porcentaje NUMERIC(5,2) NOT NULL DEFAULT 15,
+
+    subtotal NUMERIC(10,2) NOT NULL,
+    iva NUMERIC(10,2) NOT NULL,
+    total NUMERIC(10,2) NOT NULL,
+
+    estado VARCHAR(30) NOT NULL DEFAULT 'EMITIDA',
+    motivo_anulacion VARCHAR(255),
+
+    saldo_pendiente NUMERIC(10,2) NOT NULL DEFAULT 0,
+
+    CONSTRAINT fk_factura_cliente
+        FOREIGN KEY (id_cliente)
+        REFERENCES clientes(id_cliente),
+
+    CONSTRAINT fk_factura_empleado
+        FOREIGN KEY (id_empleado)
+        REFERENCES empleados(id_empleado),
+
+    CONSTRAINT chk_factura_metodo_pago
+        CHECK (metodo_pago IN ('EFECTIVO', 'TRANSFERENCIA')),
+
+    CONSTRAINT chk_factura_descuento
+        CHECK (
+            descuento_porcentaje >= 0
+            AND descuento_porcentaje <= 100
+        ),
+
+    CONSTRAINT chk_factura_iva_porcentaje
+        CHECK (
+            iva_porcentaje >= 0
+            AND iva_porcentaje <= 100
+        ),
+
+    CONSTRAINT chk_factura_subtotal
+        CHECK (subtotal >= 0),
+
+    CONSTRAINT chk_factura_iva
+        CHECK (iva >= 0),
+
+    CONSTRAINT chk_factura_total
+        CHECK (total >= 0),
+
+    CONSTRAINT chk_factura_estado
+        CHECK (
+            estado IN ('EMITIDA', 'ANULADA', 'PENDIENTE')
+        ),
+
+    CONSTRAINT chk_factura_anulacion
+        CHECK (
+            (estado = 'ANULADA' AND motivo_anulacion IS NOT NULL)
+            OR
+            (estado <> 'ANULADA')
+        ),
+
+    CONSTRAINT chk_factura_saldo_pendiente
+        CHECK (
+            saldo_pendiente >= 0
+            AND saldo_pendiente <= total
+        ),
+
+    -- PENDIENTE exige saldo > 0; EMITIDA exige saldo = 0.
+    CONSTRAINT chk_factura_estado_saldo
+        CHECK (
+            (estado = 'PENDIENTE' AND saldo_pendiente > 0)
+            OR
+            (estado = 'EMITIDA' AND saldo_pendiente = 0)
+            OR
+            (estado = 'ANULADA')
+        )
+);
+
+
+-- ============================================================
+-- 7. DETALLE DE FACTURA
+-- ============================================================
+-- Cada línea es un producto O un plan de membresía (exactamente
+-- uno de los dos). Una venta de plan además genera su registro
+-- en membresias.
+
+CREATE TABLE detalle_factura (
+    id_detalle SERIAL PRIMARY KEY,
+
+    id_factura INTEGER NOT NULL,
+    id_producto INTEGER,
+    id_plan INTEGER,
+
+    cantidad INTEGER NOT NULL,
+    precio_unitario NUMERIC(10,2) NOT NULL,
+    subtotal NUMERIC(10,2) NOT NULL,
+
+    CONSTRAINT fk_detalle_factura
+        FOREIGN KEY (id_factura)
+        REFERENCES facturas(id_factura)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_detalle_producto
+        FOREIGN KEY (id_producto)
+        REFERENCES productos(id_producto),
+
+    CONSTRAINT fk_detalle_plan
+        FOREIGN KEY (id_plan)
+        REFERENCES planes_membresia(id_plan),
+
+    CONSTRAINT chk_detalle_item
+        CHECK (
+            (id_producto IS NOT NULL AND id_plan IS NULL)
+            OR
+            (id_producto IS NULL AND id_plan IS NOT NULL)
+        ),
+
+    CONSTRAINT chk_detalle_cantidad
+        CHECK (cantidad > 0),
+
+    CONSTRAINT chk_detalle_precio
+        CHECK (precio_unitario >= 0),
+
+    CONSTRAINT chk_detalle_subtotal
+        CHECK (subtotal >= 0)
+);
+
+
+-- ============================================================
+-- 8. MEMBRESÍAS
+-- ============================================================
+-- id_cliente: quien usa la membresía (puede ser un menor). La
+-- factura puede estar a nombre del representante.
+-- dias_totales / dias_restantes: solo para planes PASES; NULL
+-- para Junior/Senior. dias_totales se copia de
+-- planes_membresia.dias_incluidos al vender.
+-- id_membresia_pareja: enlaza dos membresías entre sí (promo
+-- pareja), generadas desde la misma factura. Se insertan las
+-- dos y luego se enlazan con UPDATE.
+
+CREATE TABLE membresias (
+    id_membresia SERIAL PRIMARY KEY,
+
+    id_cliente INTEGER NOT NULL,
+    id_plan INTEGER NOT NULL,
+    id_factura INTEGER NOT NULL,
+
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+
+    dias_totales INTEGER,
+    dias_restantes INTEGER,
+
+    estado VARCHAR(30) NOT NULL DEFAULT 'ACTIVA',
+
+    id_membresia_pareja INTEGER UNIQUE,
+
+    CONSTRAINT fk_membresia_cliente
+        FOREIGN KEY (id_cliente)
+        REFERENCES clientes(id_cliente),
+
+    CONSTRAINT fk_membresia_plan
+        FOREIGN KEY (id_plan)
+        REFERENCES planes_membresia(id_plan),
+
+    CONSTRAINT fk_membresia_factura
+        FOREIGN KEY (id_factura)
+        REFERENCES facturas(id_factura),
+
+    CONSTRAINT fk_membresia_pareja
+        FOREIGN KEY (id_membresia_pareja)
+        REFERENCES membresias(id_membresia),
+
+    CONSTRAINT chk_membresia_fechas
+        CHECK (fecha_fin >= fecha_inicio),
+
+    CONSTRAINT chk_membresia_dias
+        CHECK (dias_totales IS NULL OR dias_totales > 0),
+
+    CONSTRAINT chk_membresia_dias_restantes
+        CHECK (
+            dias_restantes IS NULL
+            OR (
+                dias_restantes >= 0
+                AND dias_restantes <= dias_totales
+            )
+        ),
+
+    CONSTRAINT chk_membresia_estado
+        CHECK (
+            estado IN ('ACTIVA', 'VENCIDA', 'CANCELADA')
+        ),
+
+    CONSTRAINT chk_membresia_no_auto_pareja
+        CHECK (
+            id_membresia_pareja IS NULL
+            OR id_membresia_pareja <> id_membresia
+        )
+);
+
+
+-- ============================================================
+-- 9. CATEGORÍAS DE EVENTOS
+-- ============================================================
+-- Los cumpleaños NO son una categoría: se calculan al vuelo
+-- desde clientes.fecha_nacimiento.
+
+CREATE TABLE categorias_evento (
+    id_categoria SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    color VARCHAR(30) NOT NULL
+);
+
+
+-- ============================================================
+-- 10. EVENTOS
+-- ============================================================
+-- Convención para "evento de todo el día": hora_inicio =
+-- 00:00:00, hora_fin = 23:59:59, e indicar "(todo el día)"
+-- en el título al crear el evento.
+
+CREATE TABLE eventos (
+    id_evento SERIAL PRIMARY KEY,
+
+    titulo VARCHAR(150) NOT NULL,
+    id_categoria INTEGER NOT NULL,
+
+    fecha DATE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+
+    descripcion TEXT,
+    cupo_maximo INTEGER,
+
+    CONSTRAINT fk_evento_categoria
+        FOREIGN KEY (id_categoria)
+        REFERENCES categorias_evento(id_categoria),
+
+    CONSTRAINT chk_evento_horas
+        CHECK (hora_fin > hora_inicio),
+
+    CONSTRAINT chk_evento_cupo
+        CHECK (
+            cupo_maximo IS NULL
+            OR cupo_maximo > 0
+        )
+);
+
+
+-- ============================================================
+-- 11. INSCRITOS A EVENTOS
+-- ============================================================
+-- Relación muchos-a-muchos entre eventos y clientes (clases de
+-- prueba y cualquier evento con cupo). El cupo se valida en la
+-- capa de servicios al inscribir.
+-- id_empleado: vendedor que agendó al cliente (vista "Agenda por
+-- cliente"). Si se quita una inscripción, la fila se borra y la
+-- acción queda en bitacora.
+
+CREATE TABLE evento_inscritos (
+    id_evento_inscrito SERIAL PRIMARY KEY,
+
+    id_evento INTEGER NOT NULL,
+    id_cliente INTEGER NOT NULL,
+    id_empleado INTEGER NOT NULL,
+
+    fecha_inscripcion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_inscrito_evento
+        FOREIGN KEY (id_evento)
+        REFERENCES eventos(id_evento)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_inscrito_cliente
+        FOREIGN KEY (id_cliente)
+        REFERENCES clientes(id_cliente),
+
+    CONSTRAINT fk_inscrito_empleado
+        FOREIGN KEY (id_empleado)
+        REFERENCES empleados(id_empleado),
+
+    CONSTRAINT uq_inscrito_evento_cliente
+        UNIQUE (id_evento, id_cliente)
+);
+
+
+-- ============================================================
+-- 12. PAGOS DE FACTURAS FIADAS
+-- ============================================================
+-- Historial de abonos de una factura PENDIENTE. El primer
+-- abono (monto recibido al fiar) también se guarda aquí.
+
+CREATE TABLE pagos_fiado (
+    id_pago SERIAL PRIMARY KEY,
+
+    id_factura INTEGER NOT NULL,
+    id_empleado INTEGER NOT NULL,
+
+    monto NUMERIC(10,2) NOT NULL,
+    metodo_pago VARCHAR(30) NOT NULL,
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_pago_fiado_factura
+        FOREIGN KEY (id_factura)
+        REFERENCES facturas(id_factura),
+
+    CONSTRAINT fk_pago_fiado_empleado
+        FOREIGN KEY (id_empleado)
+        REFERENCES empleados(id_empleado),
+
+    CONSTRAINT chk_pago_fiado_monto
+        CHECK (monto > 0),
+
+    CONSTRAINT chk_pago_fiado_metodo
+        CHECK (metodo_pago IN ('EFECTIVO', 'TRANSFERENCIA'))
+);
+
+
+-- ============================================================
+-- 13. BITÁCORA (trazabilidad)
+-- ============================================================
+-- Registro de solo lectura para el ADMIN: qué empleado hizo qué
+-- y cuándo. Lo escribe la capa de servicios en cada acción.
+-- entidad + id_entidad apuntan al registro afectado (id_entidad
+-- es NULL para CONFIGURACION).
+-- detalle (JSONB): datos útiles de la acción, p. ej. en
+-- CLIENTE_EDITADO los campos antes/después; en IVA_CAMBIADO el
+-- valor anterior y el nuevo; en FACTURA_ANULADA el motivo.
+
+CREATE TABLE bitacora (
+    id_bitacora SERIAL PRIMARY KEY,
+
+    id_empleado INTEGER NOT NULL,
+    accion VARCHAR(30) NOT NULL,
+    entidad VARCHAR(20) NOT NULL,
+    id_entidad INTEGER,
+    detalle JSONB,
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_bitacora_empleado
+        FOREIGN KEY (id_empleado)
+        REFERENCES empleados(id_empleado),
+
+    CONSTRAINT chk_bitacora_accion
+        CHECK (accion IN (
+            'CLIENTE_CREADO',
+            'CLIENTE_EDITADO',
+            'FACTURA_EMITIDA',
+            'FACTURA_ANULADA',
+            'ABONO_REGISTRADO',
+            'INSCRIPCION_REGISTRADA',
+            'INSCRIPCION_CANCELADA',
+            'IVA_CAMBIADO'
+        )),
+
+    CONSTRAINT chk_bitacora_entidad
+        CHECK (entidad IN (
+            'CLIENTE',
+            'FACTURA',
+            'PAGO_FIADO',
+            'INSCRIPCION',
+            'CONFIGURACION'
+        ))
+);
+
+
+-- ============================================================
+-- ÍNDICES
+-- ============================================================
+
+CREATE INDEX idx_clientes_representante
+    ON clientes(id_representante);
+
+
+CREATE INDEX idx_facturas_cliente
+    ON facturas(id_cliente);
+
+CREATE INDEX idx_facturas_empleado
+    ON facturas(id_empleado);
+
+CREATE INDEX idx_facturas_fecha
+    ON facturas(fecha);
+
+CREATE INDEX idx_facturas_estado
+    ON facturas(estado);
+
+
+CREATE INDEX idx_detalle_factura
+    ON detalle_factura(id_factura);
+
+CREATE INDEX idx_detalle_producto
+    ON detalle_factura(id_producto);
+
+CREATE INDEX idx_detalle_plan
+    ON detalle_factura(id_plan);
+
+
+CREATE INDEX idx_membresias_cliente
+    ON membresias(id_cliente);
+
+CREATE INDEX idx_membresias_plan
+    ON membresias(id_plan);
+
+CREATE INDEX idx_membresias_factura
+    ON membresias(id_factura);
+
+CREATE INDEX idx_membresias_estado
+    ON membresias(estado);
+
+
+CREATE INDEX idx_eventos_fecha
+    ON eventos(fecha);
+
+CREATE INDEX idx_eventos_categoria
+    ON eventos(id_categoria);
+
+
+CREATE INDEX idx_evento_inscritos_evento
+    ON evento_inscritos(id_evento);
+
+CREATE INDEX idx_evento_inscritos_cliente
+    ON evento_inscritos(id_cliente);
+
+CREATE INDEX idx_evento_inscritos_empleado
+    ON evento_inscritos(id_empleado);
+
+
+CREATE INDEX idx_pagos_fiado_factura
+    ON pagos_fiado(id_factura);
+
+CREATE INDEX idx_pagos_fiado_empleado
+    ON pagos_fiado(id_empleado);
+
+
+CREATE INDEX idx_bitacora_fecha
+    ON bitacora(fecha);
+
+CREATE INDEX idx_bitacora_empleado
+    ON bitacora(id_empleado);
+
+CREATE INDEX idx_bitacora_entidad
+    ON bitacora(entidad, id_entidad);
+
+
+-- ============================================================
+-- DATOS INICIALES
+-- ============================================================
+
+-- IVA vigente
+INSERT INTO configuracion (clave, valor, descripcion) VALUES
+    ('iva_porcentaje', '15', 'Porcentaje de IVA aplicado a las facturas nuevas');
+
+-- Planes de membresía
+-- (nombre, tipo, precio, duracion, unidad, dias_incluidos, pareja, descuento)
+INSERT INTO planes_membresia
+    (nombre, tipo, precio, duracion, unidad_duracion, dias_incluidos, permite_pareja, permite_descuento)
+VALUES
+    ('Membresía Junior',          'JUNIOR', 30.00,  1, 'MES', NULL, FALSE, TRUE),
+    ('Membresía Senior',          'SENIOR', 35.00,  1, 'MES', NULL, FALSE, TRUE),
+    ('Pase 1 día',                'PASES',  10.00,  1, 'DIA', 1,    FALSE, TRUE),
+    ('Pase 10 días',              'PASES',  49.00, 30, 'DIA', 10,   FALSE, TRUE),
+    ('Promo pareja (2 personas)', 'SENIOR', 111.00, 1, 'MES', NULL, TRUE,  FALSE);
+
+-- Categorías del calendario (los cumpleaños no se guardan)
+INSERT INTO categorias_evento (nombre, color) VALUES
+    ('Clase de prueba',  '#6A6A67'),
+    ('Clase grupal',     '#2B3210'),
+    ('Evento especial',  '#C2DD58');
+
+-- Usuario administrador inicial.
+-- IMPORTANTE: el hash es un marcador; no permite iniciar sesión.
+-- La aplicación debe reemplazarlo por un hash bcrypt real al
+-- configurar la primera contraseña.
+INSERT INTO empleados (nombre, apellido, usuario, password_hash, rol) VALUES
+    ('Administrador', 'Totem', 'admin', 'PENDIENTE_ESTABLECER_HASH_BCRYPT', 'ADMIN');

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block titulo %}Factura {{ factura.numero_factura }} — Totem Climb Gym{% endblock %}
+{% block nav_cobrar %}active{% endblock %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Factura {{ factura.numero_factura }}</div>
+    <div class="page-sub">
+      {{ factura.fecha.strftime('%d/%m/%Y %H:%M') }} · Atendió {{ factura.empleado_nombre }}
+    </div>
+  </div>
+  <div class="acciones">
+    {% if correo_disponible and factura.cliente_correo %}
+      <form method="post"
+            action="{{ url_for('cobrar.enviar_comprobante', id_factura=factura.id_factura) }}"
+            style="display:inline"
+            onsubmit="return confirm({{ ('¿Enviar el comprobante a ' ~ factura.cliente_correo ~ '?')|tojson }});">
+        <button type="submit" class="btn-ghost">Enviar por correo</button>
+      </form>
+    {% elif correo_disponible %}
+      {# Sin correo registrado no hay a dónde mandarlo; se dice por qué
+         en vez de dejar un botón que falla al tocarlo. #}
+      <span class="meta" title="Este cliente no tiene correo registrado">
+        Sin correo registrado
+      </span>
+    {% endif %}
+    <button type="button" class="btn-ghost" onclick="window.print()">Imprimir</button>
+    <a class="btn-primary" href="{{ url_for('cobrar.cobrar') }}">Cobrar otra</a>
+  </div>
+</div>
+
+<div class="comprobante card">
+  {# Cabecera que solo aparece al imprimir: en pantalla el logo ya está
+     en la barra lateral, pero al imprimir la barra desaparece. #}
+  <div class="solo-impresion comp-membrete">
+    <div>
+      {# Si tienes una versión del logo en oscuro sobre fondo claro,
+         ponla en static/img/totem-logo-oscuro.png y reemplaza esta
+         línea por: <img class="comp-logo" src="{{ url_for('static', filename='img/totem-logo-oscuro.png') }}" alt="Totem Climb Gym">
+         El logo de la barra lateral no sirve: es claro sobre oscuro y
+         en papel blanco desaparece. #}
+      <div class="comp-marca">TOTEM CLIMB GYM</div>
+      {# Agrega aquí la dirección y el teléfono del gimnasio. #}
+      <div class="comp-datos">Recibo interno de control</div>
+    </div>
+    <div class="comp-numero">
+      <div class="meta">Factura</div>
+      <div class="nombre">{{ factura.numero_factura }}</div>
+      <div class="meta">{{ factura.fecha.strftime('%d/%m/%Y %H:%M') }}</div>
+    </div>
+  </div>
+
+  <div class="comp-cabecera">
+    <div>
+      <div class="meta">Cliente</div>
+      <div class="nombre">{{ factura.cliente_nombre }}</div>
+    </div>
+    <span class="pill {{ 'por_vencer' if factura.esta_fiada else 'vigente' }}">
+      {{ 'Pendiente' if factura.esta_fiada else 'Pagada' }}
+    </span>
+  </div>
+
+  <table class="tabla-items" style="display:table; margin-top:18px;">
+    <thead><tr><th>Ítem</th><th>Cant.</th><th>P. unit.</th><th>Subtotal</th></tr></thead>
+    <tbody>
+      {% for d in factura.detalle %}
+      <tr>
+        <td>
+          {{ d.nombre }}
+          {% if d.tipo == 'plan' %}<span class="etiqueta-menor">Membresía</span>{% endif %}
+        </td>
+        <td>{{ d.cantidad }}</td>
+        <td>${{ '%.2f'|format(d.precio_unitario) }}</td>
+        <td><b>${{ '%.2f'|format(d.subtotal) }}</b></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="totales comp-totales">
+    <div class="linea"><span>Subtotal</span><b>${{ '%.2f'|format(factura.subtotal) }}</b></div>
+    {% if factura.descuento_porcentaje %}
+      <div class="linea">
+        <span>Descuento {{ factura.descuento_porcentaje }}%</span>
+        <b>−${{ '%.2f'|format(factura.subtotal * factura.descuento_porcentaje / 100) }}</b>
+      </div>
+    {% endif %}
+    <div class="linea"><span>IVA {{ factura.iva_porcentaje }}%</span><b>${{ '%.2f'|format(factura.iva) }}</b></div>
+    <div class="linea total"><span>Total</span><b>${{ '%.2f'|format(factura.total) }}</b></div>
+    {% if factura.esta_fiada %}
+      <div class="linea"><span>Abonado</span><b>${{ '%.2f'|format(factura.abonado) }}</b></div>
+      <div class="linea saldo"><span>Saldo pendiente</span><b>${{ '%.2f'|format(factura.saldo_pendiente) }}</b></div>
+    {% else %}
+      <div class="linea"><span>Pagado con</span><b>{{ factura.metodo_etiqueta }}</b></div>
+    {% endif %}
+  </div>
+
+  {% if factura.esta_fiada %}
+  <div class="nota-fiado">
+    Esta venta quedó fiada. No cuenta como ingreso en Contabilidad hasta
+    que se termine de pagar.
+  </div>
+  {% endif %}
+
+  <div class="solo-impresion comp-pie">
+    <div>Atendió: {{ factura.empleado_nombre }}</div>
+    <div class="comp-aviso">
+      Documento interno de control. No constituye comprobante de venta
+      autorizado por el SRI.
+    </div>
+    <div class="comp-firma">Firma / recibí conforme</div>
+  </div>
+</div>
+{% endblock %}

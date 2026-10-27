@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block titulo %}Totem Climb Gym{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/totem.css') }}">
+</head>
+<body>
+<div class="app">
+
+  {# Barra superior: solo aparece en pantallas angostas, donde el menú
+     lateral se esconde y se abre como cajón. #}
+  <header class="barra-movil">
+    <button type="button" class="btn-menu" id="btn-menu"
+            aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-lateral">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <img class="barra-movil-logo" src="{{ url_for('static', filename='img/totem-logo.png') }}" alt="Totem Climb Gym">
+  </header>
+  <div class="velo" id="velo" hidden></div>
+
+  <aside class="sidebar" id="menu-lateral">
+    <div class="brand">
+      <img class="brand-logo-img" src="{{ url_for('static', filename='img/totem-logo.png') }}" alt="Totem Climb Gym">
+    </div>
+    <nav>
+      <a class="nav-item {% block nav_panel %}{% endblock %}" href="{{ url_for('main.panel') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel general
+      </a>
+      <a class="nav-item {% block nav_cobrar %}{% endblock %}" href="{{ url_for('cobrar.cobrar') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>
+        Cobrar
+      </a>
+      <a class="nav-item {% block nav_clientes %}{% endblock %}" href="{{ url_for('clientes.lista') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Clientes
+      </a>
+      <a class="nav-item {% block nav_facturas %}{% endblock %}" href="{{ url_for('facturas.lista') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Facturas
+      </a>
+      <a class="nav-item {% block nav_calendario %}{% endblock %}" href="{{ url_for('calendario.ver') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Calendario
+      </a>
+      <a class="nav-item {% block nav_contabilidad %}{% endblock %}" href="{{ url_for('contabilidad.reporte') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Contabilidad
+      </a>
+      <a class="nav-item {% block nav_catalogo %}{% endblock %}" href="{{ url_for('catalogo.lista') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        Productos
+      </a>
+      {% if empleado and empleado.es_admin %}
+      <a class="nav-item {% block nav_bitacora %}{% endblock %}" href="{{ url_for('main.bitacora') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Bitácora
+      </a>
+      <a class="nav-item {% block nav_empleados %}{% endblock %}" href="{{ url_for('empleados.lista') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Empleados
+      </a>
+      <a class="nav-item {% block nav_configuracion %}{% endblock %}" href="{{ url_for('main.configuracion') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Configuración
+      </a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-footer">
+      {% if empleado %}
+      <div class="sesion">
+        Sesión de
+        <b>{{ empleado.nombre }}</b>
+        {{ 'Administrador' if empleado.es_admin else 'Vendedor' }}
+      </div>
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        <button type="submit" class="btn-salir">Cerrar sesión</button>
+      </form>
+      {% endif %}
+      <div class="tagline" style="margin-top:16px;">Totem = Familia</div>
+      <div class="tagline-sub">Cada miembro cuenta</div>
+    </div>
+  </aside>
+
+  <main>
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for categoria, mensaje in mensajes %}
+        <div class="flash {{ categoria }}">{{ mensaje }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    {% block contenido %}{% endblock %}
+  </main>
+</div>
+
+<script>
+// Cajón del menú en pantallas angostas. En escritorio no hace nada:
+// el botón está oculto y la barra lateral siempre está visible.
+(function () {
+  var boton = document.getElementById('btn-menu');
+  var menu  = document.getElementById('menu-lateral');
+  var velo  = document.getElementById('velo');
+  if (!boton || !menu || !velo) return;
+
+  function abrir(si) {
+    menu.classList.toggle('abierto', si);
+    velo.hidden = !si;
+    boton.setAttribute('aria-expanded', si ? 'true' : 'false');
+    // Evita que la página de atrás se desplace mientras el menú está abierto.
+    document.body.classList.toggle('sin-scroll', si);
+  }
+
+  boton.addEventListener('click', function () {
+    abrir(!menu.classList.contains('abierto'));
+  });
+  velo.addEventListener('click', function () { abrir(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') abrir(false);
+  });
+  // Al tocar una opción el menú se cierra solo.
+  menu.addEventListener('click', function (e) {
+    if (e.target.closest('.nav-item')) abrir(false);
+  });
+  // Si la ventana se agranda, el cajón deja de tener sentido.
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 900) abrir(false);
+  });
+})();
+</script>
+</body>
+</html>

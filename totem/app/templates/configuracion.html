@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titulo %}Configuración — Totem Climb Gym{% endblock %}
+{% block nav_configuracion %}active{% endblock %}
+
+{% block contenido %}
+<div class="page-title">Configuración</div>
+<div class="page-sub">Parámetros del sistema. Solo el administrador puede cambiarlos.</div>
+
+<div class="disposicion-evento">
+  <form method="post" class="card">
+    <div class="seccion">IVA</div>
+    <div class="seccion-nota">
+      Se aplica a las facturas nuevas. Cada factura guarda la tasa con la
+      que se emitió, así que cambiarlo no altera el historial.
+    </div>
+
+    <div class="campo" style="max-width:220px;">
+      <label for="iva_porcentaje">Porcentaje de IVA</label>
+      <div class="campo-porcentaje">
+        <input id="iva_porcentaje" name="iva_porcentaje" type="number"
+               step="0.01" min="0" max="100" value="{{ iva }}">
+        <span>%</span>
+      </div>
+    </div>
+
+    <div class="aviso-bloqueo" style="margin-top:14px;">
+      El cambio queda registrado en la bitácora, con el valor anterior y
+      el nuevo.
+    </div>
+
+    <div class="acciones-formulario">
+      <button type="submit" class="btn-primary">Guardar IVA</button>
+    </div>
+  </form>
+
+  <aside class="card">
+    <div class="seccion">Cambios anteriores</div>
+    <div class="seccion-nota">Últimas modificaciones del IVA.</div>
+    {% for h in historial %}
+      <div class="item-dia" style="border-color:var(--teal)">
+        <div class="t">{{ h.detalle.antes }}% → {{ h.detalle.despues }}%</div>
+        <div class="m">{{ h.fecha.strftime('%d/%m/%Y %H:%M') }} · {{ h.empleado }}</div>
+      </div>
+    {% else %}
+      <div class="vacio" style="padding:14px 0;">El IVA no se ha cambiado nunca.</div>
+    {% endfor %}
+  </aside>
+</div>
+{% endblock %}

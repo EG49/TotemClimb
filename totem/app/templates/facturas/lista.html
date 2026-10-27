@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block titulo %}Facturas — Totem Climb Gym{% endblock %}
+{% block nav_facturas %}active{% endblock %}
+
+{% macro enlace_vista(clave, etiqueta) %}
+  <a class="pestana {{ 'active' if vista == clave }}"
+     href="{{ url_for('facturas.lista', vista=clave, **filtros) }}">{{ etiqueta }}</a>
+{% endmacro %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Facturas</div>
+    <div class="page-sub">
+      {{ total }} factura{{ 's' if total != 1 }} entre
+      {{ filtros.desde }} y {{ filtros.hasta }}
+    </div>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn-ghost" href="{{ url_for('facturas.exportar', **filtros) }}">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M12 15l-4-4M12 15l4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      Exportar CSV
+    </a>
+    <a class="btn-primary" href="{{ url_for('cobrar.cobrar') }}">Cobrar</a>
+  </div>
+</div>
+
+<form class="panel-filtros filtros-amplios" method="get">
+  <input type="hidden" name="vista" value="{{ vista }}">
+  <div class="buscador">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="text" name="q" value="{{ filtros.q or '' }}" placeholder="Cliente, cédula o N° de factura...">
+  </div>
+  <div class="campo-filtro">
+    <label>Desde</label>
+    <input type="date" name="desde" value="{{ filtros.desde }}">
+  </div>
+  <div class="campo-filtro">
+    <label>Hasta</label>
+    <input type="date" name="hasta" value="{{ filtros.hasta }}">
+  </div>
+  <div class="campo-filtro">
+    <label>Estado</label>
+    <select name="estado">
+      {% for v, e in [('todas','Todas'), ('pagadas','Pagadas'),
+                      ('pendientes','Pendientes'), ('anuladas','Anuladas')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.estado == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo-filtro">
+    <label>Tipo</label>
+    <select name="tipo">
+      {% for v, e in [('todos','Todos'), ('membresias','Membresías'), ('productos','Productos')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.tipo == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo-filtro">
+    <label>Método</label>
+    <select name="metodo">
+      {% for v, e in [('todos','Todos'), ('EFECTIVO','Efectivo'), ('TRANSFERENCIA','Transferencia')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.metodo == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn-ghost">Filtrar</button>
+</form>
+
+<div class="pestanas">
+  {{ enlace_vista('factura', 'Por factura') }}
+  {{ enlace_vista('cliente', 'Agrupado por cliente') }}
+</div>
+
+<div class="resumen-tarjetas">
+  <div class="summary-card">
+    <div class="summary-label">Total facturado</div>
+    <div class="summary-value">${{ '%.2f'|format(resumen.facturado) }}</div>
+    <div class="summary-note">{{ resumen.n_pagadas }} factura{{ 's' if resumen.n_pagadas != 1 }} pagada{{ 's' if resumen.n_pagadas != 1 }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Facturas</div>
+    <div class="summary-value">{{ resumen.n_facturas }}</div>
+    <div class="summary-note">
+      {{ resumen.n_anuladas }} anulada{{ 's' if resumen.n_anuladas != 1 }} ·
+      {{ resumen.n_pendientes }} pendiente{{ 's' if resumen.n_pendientes != 1 }}
+    </div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Ticket promedio</div>
+    <div class="summary-value">${{ '%.2f'|format(resumen.ticket_promedio) }}</div>
+    <div class="summary-note">por factura pagada</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Por cobrar (fiado)</div>
+    <div class="summary-value">${{ '%.2f'|format(resumen.por_cobrar) }}</div>
+    <div class="summary-note">no cuenta como ingreso hasta cobrarse</div>
+  </div>
+</div>
+
+{% if vista == 'cliente' %}
+<div class="card tabla">
+  <table>
+    <thead><tr><th>Cliente</th><th>Facturas</th><th>Facturado</th><th>Por cobrar</th><th>Última</th><th></th></tr></thead>
+    <tbody>
+      {% for g in agrupado %}
+      <tr>
+        <td>
+          <div class="nombre">{{ g.cliente_nombre }}</div>
+          <div class="meta">CI {{ g.cliente_cedula or '—' }}</div>
+        </td>
+        <td>{{ g.n_facturas }}</td>
+        <td><b>${{ '%.2f'|format(g.facturado) }}</b></td>
+        <td>{% if g.por_cobrar %}<b style="color:var(--error)">${{ '%.2f'|format(g.por_cobrar) }}</b>{% else %}—{% endif %}</td>
+        <td class="meta">{{ g.ultima.strftime('%d/%m/%Y') }}</td>
+        <td>
+          <a class="btn-ghost small"
+             href="{{ url_for('facturas.lista', q=g.cliente_nombre, desde=filtros.desde, hasta=filtros.hasta) }}">
+            Ver facturas
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="vacio">No hay actividad en este período.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<div class="card tabla">
+  <table>
+    <thead>
+      <tr><th>N° factura</th><th>Cliente</th><th>Fecha</th><th>Ítems</th>
+          <th>Método</th><th>Monto</th><th>Estado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for f in facturas %}
+      <tr class="{{ 'inactiva' if f.estado == 'ANULADA' }}">
+        <td class="num-factura">{{ f.numero_factura }}</td>
+        <td>
+          <div class="nombre">{{ f.cliente_nombre }}</div>
+          <div class="meta">CI {{ f.cliente_cedula or '—' }}</div>
+        </td>
+        <td>
+          {{ f.fecha.strftime('%d/%m/%Y') }}
+          <div class="meta">{{ f.fecha.strftime('%H:%M') }} · {{ f.empleado_nombre }}</div>
+        </td>
+        <td>
+          {{ f.primer_item or '—' }}
+          {% if f.n_items > 1 %}
+            <span class="contador-items" title="{{ f.items_texto }}">+{{ f.n_items - 1 }} más</span>
+          {% endif %}
+        </td>
+        <td class="meta">
+          {% if f.metodo_pago %}{{ 'Efectivo' if f.metodo_pago == 'EFECTIVO' else 'Transferencia' }}{% else %}—{% endif %}
+        </td>
+        <td>
+          <b>${{ '%.2f'|format(f.total) }}</b>
+          {% if f.estado == 'PENDIENTE' %}
+            <div class="meta">Saldo: <b>${{ '%.2f'|format(f.saldo_pendiente) }}</b></div>
+          {% endif %}
+        </td>
+        <td>
+          <span class="pill {{ {'EMITIDA':'vigente','PENDIENTE':'por_vencer','ANULADA':'sin_membresia'}[f.estado] }}">
+            {{ {'EMITIDA':'Pagada','PENDIENTE':'Pendiente','ANULADA':'Anulada'}[f.estado] }}
+          </span>
+          {% if f.estado == 'ANULADA' and f.motivo_anulacion %}
+            <div class="meta" title="{{ f.motivo_anulacion }}">{{ f.motivo_anulacion|truncate(28) }}</div>
+          {% endif %}
+        </td>
+        <td>
+          <div class="acciones">
+            {% if f.n_abonos %}
+              <button class="btn-ghost small" onclick="alternar('abonos-{{ f.id_factura }}', this)">
+                Abonos ({{ f.n_abonos }})
+              </button>
+            {% endif %}
+            {% if f.estado == 'PENDIENTE' %}
+              <button class="btn-lima small" onclick="abrirAbono({{ f.id_factura }}, '{{ f.numero_factura }}', {{ f.saldo_pendiente }})">
+                Cobrar saldo
+              </button>
+            {% endif %}
+            <a class="btn-ghost small" href="{{ url_for('facturas.detalle', id_factura=f.id_factura) }}">Ver</a>
+            {% if f.estado != 'ANULADA' %}
+              <button class="btn-quieto chico" onclick="abrirAnulacion({{ f.id_factura }}, '{{ f.numero_factura }}')">Anular</button>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+
+      {% if f.n_abonos %}
+      <tr class="fila-abonos" id="abonos-{{ f.id_factura }}" style="display:none">
+        <td colspan="8">
+          <div class="abonos-titulo">Historial de abonos · {{ f.numero_factura }}</div>
+          <ul class="lista-abonos">
+            {% for a in abonos.get(f.id_factura, []) %}
+            <li>
+              <span>
+                {{ a.fecha.strftime('%d/%m/%Y %H:%M') }} ·
+                {{ 'Efectivo' if a.metodo_pago == 'EFECTIVO' else 'Transferencia' }} ·
+                Recibió {{ a.empleado_nombre }}
+              </span>
+              <b>${{ '%.2f'|format(a.monto) }}</b>
+            </li>
+            {% endfor %}
+          </ul>
+          <div class="abonos-total">
+            Total ${{ '%.2f'|format(f.total) }} ·
+            Abonado <b>${{ '%.2f'|format(f.total - f.saldo_pendiente) }}</b> ·
+            Saldo pendiente <b>${{ '%.2f'|format(f.saldo_pendiente) }}</b>
+          </div>
+        </td>
+      </tr>
+      {% endif %}
+
+      {% else %}
+      <tr><td colspan="8" class="vacio">No hay facturas con estos filtros.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if paginas > 1 %}
+<div class="paginacion">
+  {% if pagina > 1 %}
+    <a class="btn-ghost small" href="{{ url_for('facturas.lista', pagina=pagina-1, vista=vista, **filtros) }}">Anterior</a>
+  {% endif %}
+  <span class="meta">Página {{ pagina }} de {{ paginas }}</span>
+  {% if pagina < paginas %}
+    <a class="btn-ghost small" href="{{ url_for('facturas.lista', pagina=pagina+1, vista=vista, **filtros) }}">Siguiente</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Cobrar saldo -->
+<div class="overlay" id="modal-abono" onclick="if(event.target===this) cerrar('modal-abono')">
+  <form class="modal" method="post" id="form-abono">
+    <h2>Cobrar saldo</h2>
+    <p class="hint" id="texto-abono"></p>
+    <div class="campo">
+      <label for="monto">Monto a abonar</label>
+      <input type="number" name="monto" id="monto" step="0.01" min="0.01" required>
+    </div>
+    <div class="campo">
+      <label for="metodo-abono">Método</label>
+      <select name="metodo_pago" id="metodo-abono">
+        <option value="EFECTIVO">Efectivo</option>
+        <option value="TRANSFERENCIA">Transferencia</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" onclick="cerrar('modal-abono')">Cancelar</button>
+      <button type="submit" class="btn-primary">Registrar abono</button>
+    </div>
+  </form>
+</div>
+
+<!-- Anular -->
+<div class="overlay" id="modal-anular" onclick="if(event.target===this) cerrar('modal-anular')">
+  <form class="modal" method="post" id="form-anular">
+    <h2>Anular factura</h2>
+    <p class="hint" id="texto-anular"></p>
+    <div class="aviso-bloqueo">
+      La factura no se borra: queda en el historial marcada como anulada.
+      Si generó membresías, también se cancelan.
+    </div>
+    <div class="campo" style="margin-top:14px;">
+      <label for="motivo">Motivo de la anulación</label>
+      <input type="text" name="motivo" id="motivo" required minlength="5"
+             placeholder="Ej. Cobro duplicado por error">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" onclick="cerrar('modal-anular')">Cancelar</button>
+      <button type="submit" class="btn-quieto">Anular factura</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function alternar(id, boton){
+    const fila = document.getElementById(id);
+    const abierta = fila.style.display === 'none';
+    fila.style.display = abierta ? 'table-row' : 'none';
+    boton.style.borderColor = abierta ? 'var(--teal)' : '';
+    boton.style.color = abierta ? 'var(--teal)' : '';
+  }
+  function cerrar(id){ document.getElementById(id).classList.remove('open'); }
+
+  function abrirAbono(id, numero, saldo){
+    const form = document.getElementById('form-abono');
+    form.action = '/facturas/' + id + '/abonar';
+    document.getElementById('texto-abono').textContent =
+      `Factura ${numero} · Saldo pendiente $${saldo.toFixed(2)}`;
+    const monto = document.getElementById('monto');
+    monto.max = saldo; monto.value = saldo.toFixed(2);
+    document.getElementById('modal-abono').classList.add('open');
+    monto.focus(); monto.select();
+  }
+
+  function abrirAnulacion(id, numero){
+    const form = document.getElementById('form-anular');
+    form.action = '/facturas/' + id + '/anular';
+    document.getElementById('texto-anular').textContent = `Factura ${numero}`;
+    document.getElementById('motivo').value = '';
+    document.getElementById('modal-anular').classList.add('open');
+    document.getElementById('motivo').focus();
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.overlay.open')
+      .forEach(o => o.classList.remove('open'));
+  });
+</script>
+{% endblock %}

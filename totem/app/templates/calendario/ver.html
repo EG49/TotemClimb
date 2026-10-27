@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block titulo %}Calendario — Totem Climb Gym{% endblock %}
+{% block nav_calendario %}active{% endblock %}
+
+{% macro marca(m) %}
+  <div class="marca" style="background:{{ m.categoria_color }}22; color:{{ '#2B3210' if m.categoria_color == '#C2DD58' else m.categoria_color }}"
+       title="{{ m.titulo }} · {{ m.horario }}">
+    <i style="background:{{ m.categoria_color }}"></i>{{ m.titulo }}
+  </div>
+{% endmacro %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Calendario</div>
+    <div class="page-sub">Cumpleaños, clases y eventos del gimnasio</div>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn-ghost" href="{{ url_for('calendario.agenda') }}">Agenda por cliente</a>
+    <a class="btn-primary" href="{{ url_for('calendario.nuevo_evento', fecha=seleccionado) }}">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      Nuevo evento
+    </a>
+  </div>
+</div>
+
+<div class="barra-calendario">
+  <div class="navegacion">
+    <a class="icono-boton" href="{{ url_for('calendario.ver', vista=vista, fecha=anterior) }}" aria-label="Anterior">‹</a>
+    <a class="icono-boton" href="{{ url_for('calendario.ver', vista=vista, fecha=siguiente) }}" aria-label="Siguiente">›</a>
+    <a class="btn-ghost small" href="{{ url_for('calendario.ver', vista=vista) }}">Hoy</a>
+    <div class="titulo-rango">{{ titulo }}</div>
+  </div>
+  <div class="selector-periodo">
+    {% for v, e in [('semana','Semana'), ('mes','Mes'), ('anio','Año')] %}
+      <a class="opcion-periodo {{ 'active' if vista == v }}"
+         href="{{ url_for('calendario.ver', vista=v, fecha=ancla) }}">{{ e }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="disposicion-calendario">
+  <div class="card cuadricula">
+
+    {% if vista == 'mes' %}
+      <div class="fila-dias">
+        {% for d in dias_semana %}<div>{{ d }}</div>{% endfor %}
+      </div>
+      <div class="rejilla-mes">
+        {% for dia in dias %}
+          {% set del_dia = marcas.get(dia, []) %}
+          <a class="celda
+                    {{ 'fuera' if dia.month != mes_actual }}
+                    {{ 'hoy' if dia == hoy }}
+                    {{ 'elegida' if dia == seleccionado }}"
+             href="{{ url_for('calendario.ver', vista='mes', fecha=dia) }}">
+            <div class="numero">{{ dia.day }}</div>
+            {% for m in del_dia[:3] %}{{ marca(m) }}{% endfor %}
+            {% if del_dia|length > 3 %}
+              <div class="mas">+{{ del_dia|length - 3 }} más</div>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+
+    {% elif vista == 'semana' %}
+      <div class="rejilla-semana">
+        {% for dia in dias %}
+          {% set del_dia = marcas.get(dia, []) %}
+          <a class="columna {{ 'hoy' if dia == hoy }} {{ 'elegida' if dia == seleccionado }}"
+             href="{{ url_for('calendario.ver', vista='semana', fecha=dia) }}">
+            <div class="cabeza">
+              <div class="nombre-dia">{{ dias_semana[loop.index0] }}</div>
+              <div class="numero-dia">{{ dia.day }}</div>
+            </div>
+            {% if not del_dia %}<div class="sin-nada">—</div>{% endif %}
+            {% for m in del_dia %}
+              <div class="evento-semana" style="border-color:{{ m.categoria_color }}">
+                <div class="t">{{ m.titulo }}</div>
+                <div class="h">{{ m.horario }}</div>
+              </div>
+            {% endfor %}
+          </a>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <div class="rejilla-anio">
+        {% for m in meses_del_anio %}
+          <div class="mini-mes">
+            <a class="mini-titulo"
+               href="{{ url_for('calendario.ver', vista='mes', fecha=m.primero) }}">{{ m.nombre }}</a>
+            <div class="mini-rejilla">
+              {% for d in dias_semana %}<div class="mini-cabeza">{{ d[0]|upper }}</div>{% endfor %}
+              {% for _ in range(m.huecos) %}<div></div>{% endfor %}
+              {% for dia in m.dias %}
+                {% set del_dia = marcas.get(dia, []) %}
+                <a class="mini-dia {{ 'hoy' if dia == hoy }}"
+                   href="{{ url_for('calendario.ver', vista='mes', fecha=dia) }}"
+                   title="{{ del_dia|map(attribute='titulo')|join(' · ') }}">
+                  {{ dia.day }}
+                  {% if del_dia %}
+                    <span class="puntos">
+                      {% for mk in del_dia[:3] %}
+                        <i style="background:{{ '#fff' if dia == hoy else mk.categoria_color }}"></i>
+                      {% endfor %}
+                    </span>
+                  {% endif %}
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+    {% endif %}
+  </div>
+
+  <aside class="card panel-dia">
+    <div class="seccion">
+      {{ seleccionado.strftime('%d') }} de {{ meses[seleccionado.month - 1] }}
+    </div>
+    <div class="seccion-nota">
+      {% if marcas_del_dia %}
+        {{ marcas_del_dia|length }} cosa{{ 's' if marcas_del_dia|length != 1 }} este día
+      {% else %}
+        Sin nada agendado
+      {% endif %}
+    </div>
+
+    {% for m in marcas_del_dia %}
+      <div class="item-dia" style="border-color:{{ m.categoria_color }}">
+        <div class="t">{{ m.titulo }}</div>
+        <div class="m">{{ m.categoria_nombre }} · {{ m.horario }}</div>
+        {% if m.es_cumple is not defined %}
+          {% if m.descripcion %}<div class="m">{{ m.descripcion }}</div>{% endif %}
+          <div class="m"><b>{{ m.cupo_texto }}</b>{% if m.cupo_lleno %} · cupo completo{% endif %}</div>
+          <a class="btn-ghost small" style="margin-top:8px;"
+             href="{{ url_for('calendario.editar_evento', id_evento=m.id_evento) }}">
+            Ver y gestionar
+          </a>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="vacio">No hay nada este día.</div>
+    {% endfor %}
+
+    <a class="btn-ghost ancho" style="margin-top:12px;"
+       href="{{ url_for('calendario.nuevo_evento', fecha=seleccionado) }}">
+      + Evento este día
+    </a>
+
+    <div class="leyenda">
+      <div><i style="background:#3395A0"></i>Cumpleaños de cliente (automático)</div>
+      <div><i style="background:#C2DD58"></i>Cumpleaños del equipo (automático)</div>
+      {% for c in categorias %}
+        <div><i style="background:{{ c.color }}"></i>{{ c.nombre }}</div>
+      {% endfor %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

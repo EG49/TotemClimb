@@ -1,0 +1,190 @@
+{#
+  Cuerpo del correo con el comprobante.
+
+  No extiende base.html ni usa totem.css a propósito: los clientes de
+  correo descartan las hojas externas y no entienden flex ni grid. Por eso
+  esto va con tablas y estilos escritos en cada etiqueta, que es feo de
+  leer pero es lo único que se ve igual en Gmail, Outlook y el correo del
+  teléfono.
+#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comprobante {{ factura.numero_factura }}</title>
+</head>
+<body style="margin:0; padding:0; background:#F4F4F1;">
+
+{# Texto de vista previa: es lo que se lee en la bandeja antes de abrir. #}
+<div style="display:none; max-height:0; overflow:hidden; opacity:0;">
+  Comprobante {{ factura.numero_factura }} por ${{ '%.2f'|format(factura.total) }}
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+       style="background:#F4F4F1; padding:24px 12px;">
+<tr><td align="center">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="max-width:560px; background:#FFFFFF; border-radius:12px; overflow:hidden;
+                font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#2B3210;">
+
+    <!-- Membrete -->
+    <tr>
+      <td style="background:#2B3210; padding:22px 28px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="font-size:22px; font-weight:bold; letter-spacing:1px; color:#FFFFFF;">
+            TOTEM CLIMB GYM
+          </td>
+          <td align="right" style="font-size:12px; color:#C2DD58;">
+            {{ factura.numero_factura }}<br>
+            <span style="color:rgba(255,255,255,0.65);">
+              {{ factura.fecha.strftime('%d/%m/%Y %H:%M') }}
+            </span>
+          </td>
+        </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Saludo -->
+    <tr>
+      <td style="padding:26px 28px 6px;">
+        <p style="margin:0 0 6px; font-size:16px;">
+          Hola {{ factura.cliente_nombre.split(' ')[0] }},
+        </p>
+        <p style="margin:0; font-size:14px; line-height:1.5; color:#5A5F45;">
+          {% if factura.esta_fiada %}
+            Este es el detalle de tu compra. Queda un saldo pendiente, que
+            puedes abonar en el gimnasio cuando gustes.
+          {% else %}
+            Gracias por tu compra. Este es el detalle de lo que pagaste.
+          {% endif %}
+        </p>
+      </td>
+    </tr>
+
+    <!-- Detalle -->
+    <tr>
+      <td style="padding:20px 28px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               style="font-size:14px; border-collapse:collapse;">
+          <tr>
+            <th align="left" style="padding:0 0 7px; font-size:11px; letter-spacing:.6px;
+                                    text-transform:uppercase; color:#6A6A67;
+                                    border-bottom:1px solid #2B3210;">Ítem</th>
+            <th align="center" style="padding:0 0 7px; font-size:11px; letter-spacing:.6px;
+                                      text-transform:uppercase; color:#6A6A67;
+                                      border-bottom:1px solid #2B3210;">Cant.</th>
+            <th align="right" style="padding:0 0 7px; font-size:11px; letter-spacing:.6px;
+                                     text-transform:uppercase; color:#6A6A67;
+                                     border-bottom:1px solid #2B3210;">Subtotal</th>
+          </tr>
+          {% for d in factura.detalle %}
+          <tr>
+            <td style="padding:10px 0; border-bottom:1px solid #EDEDE8;">
+              {{ d.nombre }}
+              {% if d.tipo == 'plan' %}
+                <span style="font-size:11px; color:#3395A0;">· Membresía</span>
+              {% endif %}
+            </td>
+            <td align="center" style="padding:10px 0; border-bottom:1px solid #EDEDE8;">
+              {{ d.cantidad }}
+            </td>
+            <td align="right" style="padding:10px 0; border-bottom:1px solid #EDEDE8;
+                                     font-weight:bold;">
+              ${{ '%.2f'|format(d.subtotal) }}
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </td>
+    </tr>
+
+    <!-- Totales -->
+    <tr>
+      <td style="padding:16px 28px 0;">
+        <table role="presentation" align="right" cellpadding="0" cellspacing="0"
+               style="font-size:14px;">
+          <tr>
+            <td style="padding:3px 0; color:#6A6A67;">Subtotal</td>
+            <td align="right" style="padding:3px 0 3px 26px;">
+              ${{ '%.2f'|format(factura.subtotal) }}
+            </td>
+          </tr>
+          {% if factura.descuento_porcentaje %}
+          <tr>
+            <td style="padding:3px 0; color:#6A6A67;">
+              Descuento {{ factura.descuento_porcentaje }}%
+            </td>
+            <td align="right" style="padding:3px 0 3px 26px;">
+              −${{ '%.2f'|format(factura.subtotal * factura.descuento_porcentaje / 100) }}
+            </td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td style="padding:3px 0; color:#6A6A67;">IVA {{ factura.iva_porcentaje }}%</td>
+            <td align="right" style="padding:3px 0 3px 26px;">
+              ${{ '%.2f'|format(factura.iva) }}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:9px 0 0; border-top:2px solid #2B3210;
+                       font-size:16px; font-weight:bold;">Total</td>
+            <td align="right" style="padding:9px 0 0 26px; border-top:2px solid #2B3210;
+                                     font-size:18px; font-weight:bold;">
+              ${{ '%.2f'|format(factura.total) }}
+            </td>
+          </tr>
+          {% if factura.esta_fiada %}
+          <tr>
+            <td style="padding:7px 0 0; color:#6A6A67;">Abonado</td>
+            <td align="right" style="padding:7px 0 0 26px;">
+              ${{ '%.2f'|format(factura.abonado) }}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0; font-weight:bold; color:#B3261E;">Saldo pendiente</td>
+            <td align="right" style="padding:3px 0 3px 26px; font-weight:bold; color:#B3261E;">
+              ${{ '%.2f'|format(factura.saldo_pendiente) }}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td style="padding:7px 0 0; color:#6A6A67;">Pagado con</td>
+            <td align="right" style="padding:7px 0 0 26px;">{{ factura.metodo_etiqueta }}</td>
+          </tr>
+          {% endif %}
+        </table>
+      </td>
+    </tr>
+
+    <!-- Pie -->
+    <tr>
+      <td style="padding:70px 28px 24px;">
+        <p style="margin:0 0 4px; font-size:12px; color:#6A6A67;">
+          Te atendió {{ factura.empleado_nombre }}.
+        </p>
+        <p style="margin:0; font-size:11px; font-style:italic; color:#8A8A85; line-height:1.5;">
+          Documento interno de control. No constituye comprobante de venta
+          autorizado por el SRI.
+        </p>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="background:#2B3210; padding:16px 28px; text-align:center;">
+        <div style="font-size:16px; color:#C2DD58;">Totem = Familia</div>
+        <div style="font-size:11px; color:rgba(255,255,255,0.45); margin-top:3px;">
+          Cada miembro cuenta
+        </div>
+      </td>
+    </tr>
+
+  </table>
+
+</td></tr>
+</table>
+</body>
+</html>

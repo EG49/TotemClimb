@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% set editando = ficha is not none %}
+{% block titulo %}{{ 'Editar empleado' if editando else 'Nuevo empleado' }} — Totem Climb Gym{% endblock %}
+{% block nav_empleados %}active{% endblock %}
+
+{% macro campo(nombre, etiqueta, tipo='text', marcador='', opcional=false) %}
+  <div class="campo">
+    <label for="{{ nombre }}">
+      {{ etiqueta }}{% if opcional %} <span class="opcional">(opcional)</span>{% endif %}
+    </label>
+    <input id="{{ nombre }}" name="{{ nombre }}" type="{{ tipo }}"
+           placeholder="{{ marcador }}" value="{{ datos.get(nombre) or '' }}"
+           class="{{ 'con-error' if errores.get(nombre) }}">
+    {% if errores.get(nombre) %}<div class="error">{{ errores[nombre] }}</div>{% endif %}
+  </div>
+{% endmacro %}
+
+{% block contenido %}
+<div class="migas">
+  <a href="{{ url_for('empleados.lista') }}">Empleados</a> /
+  {{ 'Editar' if editando else 'Nuevo empleado' }}
+</div>
+<div class="page-title">{{ ficha.nombre_completo if editando else 'Nuevo empleado' }}</div>
+<div class="page-sub">
+  {% if editando %}
+    Usuario {{ ficha.usuario }} · desde el {{ ficha.fecha_registro.strftime('%d/%m/%Y') }}
+  {% else %}
+    Crea el acceso de alguien que va a usar el sistema.
+  {% endif %}
+</div>
+
+<div class="disposicion-evento">
+  <form method="post" class="card">
+    <div class="seccion">Datos del empleado</div>
+    <div class="seccion-nota">
+      La fecha de nacimiento es opcional y solo sirve para que su
+      cumpleaños salga en el calendario.
+    </div>
+
+    <div class="rejilla">
+      {{ campo('nombre', 'Nombre', marcador='Ej. Camila') }}
+      {{ campo('apellido', 'Apellido', marcador='Ej. Rojas') }}
+      {{ campo('usuario', 'Usuario', marcador='camila') }}
+      {{ campo('fecha_nacimiento', 'Fecha de nacimiento', tipo='date', opcional=true) }}
+
+      <div class="campo ancho">
+        <label for="rol">Rol</label>
+        <select id="rol" name="rol">
+          <option value="VENDEDOR" {{ 'selected' if datos.get('rol') == 'VENDEDOR' }}>
+            Vendedor — trabajo diario
+          </option>
+          <option value="ADMIN" {{ 'selected' if datos.get('rol') == 'ADMIN' }}>
+            Administrador — además ve la bitácora y cambia el IVA
+          </option>
+        </select>
+        {% if errores.get('rol') %}<div class="error">{{ errores['rol'] }}</div>{% endif %}
+      </div>
+    </div>
+
+    {% if not editando %}
+    <hr class="divisor">
+    <div class="seccion">Contraseña</div>
+    <div class="seccion-nota">
+      Mínimo 8 caracteres. Se guarda cifrada; ni el administrador puede verla
+      después, solo reemplazarla.
+    </div>
+    <div class="rejilla">
+      <div class="campo">
+        <label for="password">Contraseña</label>
+        <input id="password" name="password" type="password" autocomplete="new-password"
+               class="{{ 'con-error' if errores.get('password') }}">
+        {% if errores.get('password') %}<div class="error">{{ errores['password'] }}</div>{% endif %}
+      </div>
+      <div class="campo">
+        <label for="password_repetida">Repetir contraseña</label>
+        <input id="password_repetida" name="password_repetida" type="password"
+               autocomplete="new-password"
+               class="{{ 'con-error' if errores.get('password_repetida') }}">
+        {% if errores.get('password_repetida') %}<div class="error">{{ errores['password_repetida'] }}</div>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="acciones-formulario">
+      <a class="btn-ghost" href="{{ url_for('empleados.lista') }}">Cancelar</a>
+      <button type="submit" class="btn-primary">
+        {{ 'Guardar cambios' if editando else 'Crear empleado' }}
+      </button>
+    </div>
+  </form>
+
+  {% if editando %}
+  <aside>
+    <div class="card">
+      <div class="seccion">Actividad</div>
+      <div class="seccion-nota">Lo que ha registrado en el sistema.</div>
+      <div class="totales">
+        <div class="linea"><span>Facturas emitidas</span><b>{{ actividad.facturas }}</b></div>
+        <div class="linea"><span>Total facturado</span><b>${{ '%.2f'|format(actividad.facturado) }}</b></div>
+        <div class="linea"><span>Abonos recibidos</span><b>{{ actividad.abonos }}</b></div>
+        <div class="linea"><span>Clientes agendados</span><b>{{ actividad.inscripciones }}</b></div>
+      </div>
+      {% if actividad.ultima_accion %}
+        <div class="meta" style="margin-top:10px;">
+          Última acción: {{ actividad.ultima_accion.strftime('%d/%m/%Y %H:%M') }}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="seccion">Cambiar contraseña</div>
+      <div class="seccion-nota">
+        {% if ficha.id_empleado == yo %}
+          Vas a cambiar tu propia contraseña.
+        {% else %}
+          La contraseña anterior no se puede recuperar, solo reemplazar.
+        {% endif %}
+      </div>
+      <form method="post" action="{{ url_for('empleados.cambiar_password', id_empleado=ficha.id_empleado) }}">
+        <div class="campo">
+          <label for="pwd1">Contraseña nueva</label>
+          <input id="pwd1" name="password" type="password" autocomplete="new-password">
+        </div>
+        <div class="campo">
+          <label for="pwd2">Repetir</label>
+          <input id="pwd2" name="password_repetida" type="password" autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn-ghost ancho">Cambiar contraseña</button>
+      </form>
+    </div>
+
+    {% if ficha.id_empleado != yo %}
+    <div class="card" style="margin-top:16px;">
+      <div class="seccion">{{ 'Reactivar' if not ficha.activo else 'Desactivar' }} acceso</div>
+      <div class="seccion-nota">
+        {% if ficha.activo %}
+          Pierde el acceso al sistema, pero sus facturas y su rastro en la
+          bitácora se conservan.
+        {% else %}
+          Vuelve a poder entrar con su usuario y contraseña de siempre.
+        {% endif %}
+      </div>
+      <form method="post" action="{{ url_for('empleados.estado', id_empleado=ficha.id_empleado) }}">
+        <input type="hidden" name="activo" value="{{ '1' if not ficha.activo else '0' }}">
+        <button type="submit" class="btn-quieto">
+          {{ 'Reactivar empleado' if not ficha.activo else 'Desactivar empleado' }}
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </aside>
+  {% endif %}
+</div>
+{% endblock %}

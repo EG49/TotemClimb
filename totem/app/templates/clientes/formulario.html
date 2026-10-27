@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% set editando = cliente is not none %}
+{% block titulo %}{{ 'Editar cliente' if editando else 'Nuevo cliente' }} — Totem Climb Gym{% endblock %}
+{% block nav_clientes %}active{% endblock %}
+
+{% macro campo(nombre, etiqueta, tipo='text', marcador='', opcional=false, ancho='') %}
+  <div class="campo {{ ancho }}">
+    <label for="{{ nombre }}">
+      {{ etiqueta }}{% if opcional %} <span class="opcional">(opcional)</span>{% endif %}
+    </label>
+    <input id="{{ nombre }}" name="{{ nombre }}" type="{{ tipo }}"
+           placeholder="{{ marcador }}"
+           value="{{ datos.get(nombre) or '' }}"
+           class="{{ 'con-error' if errores.get(nombre) }}">
+    {% if errores.get(nombre) %}<div class="error">{{ errores[nombre] }}</div>{% endif %}
+  </div>
+{% endmacro %}
+
+{% block contenido %}
+<div class="migas">
+  <a href="{{ url_for('clientes.lista') }}">Clientes</a> /
+  {{ 'Editar' if editando else 'Nuevo cliente' }}
+</div>
+<div class="page-title">{{ cliente.nombre_completo if editando else 'Nuevo cliente' }}</div>
+<div class="page-sub">
+  {% if editando %}
+    Registrado el {{ cliente.fecha_registro.strftime('%d/%m/%Y') }}.
+  {% else %}
+    El contrato de deslinde se firma en físico; el sistema solo guarda la fecha de registro.
+  {% endif %}
+</div>
+
+<form method="post" class="card">
+
+  <div class="seccion">Datos del cliente</div>
+  <div class="seccion-nota">Información básica de contacto e identificación.</div>
+  <div class="rejilla">
+    {{ campo('nombre', 'Nombre', marcador='Ej. Mariana') }}
+    {{ campo('apellido', 'Apellido', marcador='Ej. Lopez Vera') }}
+    {{ campo('fecha_nacimiento', 'Fecha de nacimiento', tipo='date') }}
+    {{ campo('cedula', 'Cédula', marcador='0912345678', opcional=true) }}
+    {{ campo('correo', 'Correo electrónico', tipo='email', marcador='cliente@correo.com', opcional=true) }}
+    {{ campo('telefono', 'Celular', tipo='tel', marcador='0991234567', opcional=true) }}
+    <div class="campo">
+      <label for="genero">Género <span class="opcional">(opcional)</span></label>
+      <select id="genero" name="genero">
+        <option value="">Seleccionar...</option>
+        {% for g in ['FEMENINO', 'MASCULINO', 'OTRO'] %}
+          <option value="{{ g }}" {{ 'selected' if datos.get('genero') == g }}>{{ g|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <hr class="divisor">
+
+  <div class="seccion">Contacto de emergencia <span class="opcional">(opcional)</span></div>
+  <div class="seccion-nota">Recomendado por el tipo de actividad.</div>
+  <div class="caja-emergencia">
+    <div class="rejilla">
+      {{ campo('contacto_emergencia', 'Celular del contacto', tipo='tel', marcador='0997654321') }}
+      {{ campo('referencia', 'Referencia', marcador='Ej. Mamá, esposo/a, hermano/a...') }}
+    </div>
+  </div>
+
+  <hr class="divisor">
+
+  <label class="fila-check">
+    <input type="checkbox" id="chk-seguro" onchange="alternar('seguro', this)"
+           {{ 'checked' if datos.get('seguro_nombre') or datos.get('seguro_numero') }}>
+    <span>
+      <b>¿Tiene seguro médico?</b>
+      <small>Útil en caso de una emergencia durante la práctica.</small>
+    </span>
+  </label>
+  <div id="bloque-seguro" class="bloque-plegable"
+       style="{{ '' if datos.get('seguro_nombre') or datos.get('seguro_numero') else 'display:none' }}">
+    <div class="rejilla">
+      {{ campo('seguro_nombre', 'Nombre del seguro', marcador='Ej. Seguros Equinoccial') }}
+      {{ campo('seguro_numero', 'Número del seguro', marcador='Ej. SE-0012345') }}
+    </div>
+  </div>
+
+  {% if not editando %}
+  <hr class="divisor">
+  <label class="fila-check">
+    <input type="checkbox" id="chk-menores" onchange="alternarMenores(this)">
+    <span>
+      <b>¿Tiene menores a su cargo?</b>
+      <small>Cada menor se registra como cliente, ligado a este representante.</small>
+    </span>
+  </label>
+  <div id="bloque-menores" class="bloque-plegable" style="display:none">
+    <div id="lista-menores"></div>
+    <button type="button" class="btn-ghost" onclick="agregarMenor()">+ Agregar menor</button>
+  </div>
+  {% endif %}
+
+  {% if not editando and hay_categoria_prueba %}
+  <hr class="divisor">
+  <label class="fila-check">
+    <input type="checkbox" id="chk-prueba" onchange="alternar('prueba', this)">
+    <span>
+      <b>¿Agendar clase de prueba?</b>
+      <small>Puede unirse a una clase ya creada o reservar un horario nuevo.</small>
+    </span>
+  </label>
+  <input type="hidden" name="agendar_prueba" id="agendar_prueba" value="">
+  <div id="bloque-prueba" class="bloque-plegable" style="display:none">
+    {% if clases_prueba %}
+    <div class="seccion-nota">Clases de prueba con cupo disponible:</div>
+    <div class="opciones-prueba">
+      {% for c in clases_prueba %}
+      <label class="opcion-prueba">
+        <input type="radio" name="id_evento_prueba" value="{{ c.id_evento }}"
+               onchange="elegirPrueba('existente')">
+        <span>
+          <b>{{ c.fecha.strftime('%d/%m/%Y') }} · {{ c.horario }}</b>
+          <small>{{ c.titulo }} · {{ c.cupo_texto }}</small>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="seccion-nota" style="margin-top:14px;">O reserva un horario nuevo:</div>
+    {% else %}
+    <div class="seccion-nota">
+      No hay clases de prueba programadas. Reserva un horario nuevo:
+    </div>
+    {% endif %}
+
+    <label class="opcion-prueba">
+      <input type="radio" name="id_evento_prueba" value="" onchange="elegirPrueba('nueva')">
+      <span><b>Crear horario nuevo</b><small>Se agrega al calendario como clase de prueba.</small></span>
+    </label>
+
+    <div id="campos-prueba" class="rejilla" style="display:none; margin-top:14px;">
+      <div class="campo">
+        <label for="fecha_prueba">Fecha</label>
+        <input id="fecha_prueba" name="fecha_prueba" type="date">
+      </div>
+      <div class="campo">
+        <label>Horario</label>
+        <div class="duracion">
+          <input name="hora_inicio_prueba" type="time" value="10:00">
+          <input name="hora_fin_prueba" type="time" value="11:00">
+        </div>
+      </div>
+    </div>
+
+    {% if errores.get('clase_prueba') %}
+      <div class="error">{{ errores['clase_prueba'] }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="acciones-formulario">
+    <a class="btn-ghost" href="{{ url_for('clientes.lista') }}">Cancelar</a>
+    {% if editando %}
+      <button type="submit" class="btn-primary">Guardar cambios</button>
+    {% else %}
+      <button type="submit" class="btn-ghost">Guardar</button>
+      <button type="submit" class="btn-primary" name="cobrar_ahora" value="1">
+        Guardar y cobrar ahora
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    {% endif %}
+  </div>
+</form>
+
+{% if editando and menores %}
+<div class="card" style="margin-top:20px;">
+  <div class="seccion">Menores a cargo</div>
+  <div class="seccion-nota">
+    Solo lectura. Para cambiar sus datos, entra al perfil del menor.
+  </div>
+  {% for m in menores %}
+  <div class="tarjeta-menor">
+    <div class="avatar menor">{{ m.iniciales }}</div>
+    <div class="tarjeta-menor-datos">
+      <div class="nombre">
+        {{ m.nombre_completo }}
+        {% if m.cumplio_mayoria %}<span class="etiqueta-aviso">Cumplió 18</span>{% endif %}
+      </div>
+      <div class="meta">
+        {{ m.edad }} años · CI {{ m.cedula or '—' }}
+        {% if m.plan_nombre %} · {{ m.plan_nombre }}{% endif %}
+      </div>
+    </div>
+    <span class="pill {{ m.estado_membresia|lower }}">{{ m.estado_etiqueta }}</span>
+    <a class="btn-ghost small" href="{{ url_for('clientes.menor', id_cliente=m.id_cliente) }}">Ver perfil</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<template id="plantilla-menor">
+  <div class="tarjeta-nuevo-menor">
+    <button type="button" class="quitar" onclick="this.closest('.tarjeta-nuevo-menor').remove()" aria-label="Quitar menor">&times;</button>
+    <div class="rejilla">
+      <div class="campo">
+        <label>Nombre</label>
+        <input name="menor_nombre" type="text" placeholder="Ej. Lucas">
+      </div>
+      <div class="campo">
+        <label>Apellido</label>
+        <input name="menor_apellido" type="text" placeholder="Ej. Lopez Vera">
+      </div>
+      <div class="campo">
+        <label>Fecha de nacimiento</label>
+        <input name="menor_fecha_nacimiento" type="date">
+      </div>
+      <div class="campo">
+        <label>Cédula <span class="opcional">(opcional)</span></label>
+        <input name="menor_cedula" type="text" placeholder="0912345679">
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  function alternar(nombre, check){
+    document.getElementById('bloque-' + nombre).style.display = check.checked ? 'block' : 'none';
+    // El campo oculto es lo que el servidor lee para saber si agendar.
+    const bandera = document.getElementById('agendar_' + nombre);
+    if (bandera) bandera.value = check.checked ? 'on' : '';
+  }
+  function alternarMenores(check){
+    document.getElementById('bloque-menores').style.display = check.checked ? 'block' : 'none';
+    if (check.checked && !document.getElementById('lista-menores').children.length) agregarMenor();
+  }
+  function elegirPrueba(modo){
+    document.getElementById('campos-prueba').style.display = modo === 'nueva' ? 'grid' : 'none';
+  }
+  function agregarMenor(){
+    const plantilla = document.getElementById('plantilla-menor');
+    document.getElementById('lista-menores').appendChild(plantilla.content.cloneNode(true));
+  }
+  // Si el formulario volvió con errores en algún menor, se reabre la sección.
+  {% if 'menor_' in errores.keys()|join(' ') %}
+    document.getElementById('chk-menores').checked = true;
+    document.getElementById('bloque-menores').style.display = 'block';
+  {% endif %}
+</script>
+{% endblock %}

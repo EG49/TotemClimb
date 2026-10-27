@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block titulo %}Contabilidad — Totem Climb Gym{% endblock %}
+{% block nav_contabilidad %}active{% endblock %}
+
+{% macro monto(valor) -%}
+<span class="dinero" data-valor="${{ '%.2f'|format(valor) }}">${{ '%.2f'|format(valor) }}</span>
+{%- endmacro %}
+
+{% macro barras(filas, vacio) %}
+  {% if filas %}
+    {% for f in filas %}
+    <div class="barra-fila">
+      <div class="barra-encabezado">
+        <span>{{ f.metodo and ('Efectivo' if f.metodo == 'EFECTIVO' else 'Transferencia')
+                 or f.categoria or f.vendedor }}</span>
+        <b>{{ monto(f.monto) }}</b>
+      </div>
+      <div class="barra"><div class="barra-relleno" style="width:{{ f.porcentaje }}%"></div></div>
+      <div class="barra-pie">
+        {{ f.porcentaje }}%
+        {% if f.n_facturas is defined %} · {{ f.n_facturas }} factura{{ 's' if f.n_facturas != 1 }}{% endif %}
+        {% if f.unidades is defined %} · {{ f.unidades }} unidad{{ 'es' if f.unidades != 1 }}{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="vacio">{{ vacio }}</div>
+  {% endif %}
+{% endmacro %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Contabilidad</div>
+    <div class="page-sub">
+      {{ etiqueta }}
+      {% if cliente %} · solo {{ cliente.nombre_completo }}{% endif %}
+    </div>
+  </div>
+  <button type="button" class="btn-ghost" id="btn-ojo" onclick="alternarMontos()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+    <span id="texto-ojo">Ocultar montos</span>
+  </button>
+</div>
+
+<form class="panel-filtros filtros-amplios" method="get">
+  <div class="selector-periodo">
+    {% for v, e in [('dia','Día'), ('mes','Mes'), ('personalizado','Personalizado')] %}
+      <button type="submit" name="periodo" value="{{ v }}"
+              class="opcion-periodo {{ 'active' if periodo == v }}">{{ e }}</button>
+    {% endfor %}
+  </div>
+  {% if periodo == 'dia' %}
+    <div class="campo-filtro">
+      <label>Día</label>
+      <input type="date" name="desde" value="{{ desde }}" onchange="this.form.submit()">
+    </div>
+  {% elif periodo == 'personalizado' %}
+    <div class="campo-filtro">
+      <label>Desde</label><input type="date" name="desde" value="{{ desde }}">
+    </div>
+    <div class="campo-filtro">
+      <label>Hasta</label><input type="date" name="hasta" value="{{ hasta }}">
+    </div>
+    <button type="submit" class="btn-ghost">Aplicar</button>
+  {% endif %}
+  {% if cliente %}
+    <input type="hidden" name="cliente" value="{{ cliente.id_cliente }}">
+    <a class="chip active" href="{{ url_for('contabilidad.reporte', periodo=periodo, desde=desde, hasta=hasta) }}">
+      {{ cliente.nombre_completo }} ×
+    </a>
+  {% endif %}
+</form>
+
+<div class="resumen-tarjetas">
+  <div class="summary-card destacada">
+    <div class="summary-label">Ingresos del período</div>
+    <div class="summary-value">{{ monto(datos.resumen.ingresos) }}</div>
+    <div class="summary-note">
+      {{ datos.resumen.n_pagadas }} factura{{ 's' if datos.resumen.n_pagadas != 1 }} cobrada{{ 's' if datos.resumen.n_pagadas != 1 }}
+    </div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Ticket promedio</div>
+    <div class="summary-value">{{ monto(datos.resumen.ticket_promedio) }}</div>
+    <div class="summary-note">por factura cobrada</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Descuentos otorgados</div>
+    <div class="summary-value">{{ monto(datos.resumen.descuentos) }}</div>
+    <div class="summary-note">ya restados de los ingresos</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Por cobrar (fiado)</div>
+    <div class="summary-value">{{ monto(datos.resumen.por_cobrar) }}</div>
+    <div class="summary-note">
+      {{ datos.resumen.n_pendientes }} factura{{ 's' if datos.resumen.n_pendientes != 1 }} pendiente{{ 's' if datos.resumen.n_pendientes != 1 }}
+    </div>
+  </div>
+</div>
+
+<div class="rejilla-reporte">
+  <div class="card">
+    <div class="seccion">Por método de pago</div>
+    <div class="seccion-nota">De qué forma entró el dinero.</div>
+    {{ barras(datos.metodos, 'No hubo cobros en este período.') }}
+  </div>
+
+  <div class="card">
+    <div class="seccion">Por categoría</div>
+    <div class="seccion-nota">Cuánto vino de membresías y cuánto de productos.</div>
+    {{ barras(datos.categorias, 'No hubo ventas en este período.') }}
+  </div>
+
+  <div class="card">
+    <div class="seccion">Por vendedor</div>
+    <div class="seccion-nota">Quién registró cada cobro.</div>
+    {{ barras(datos.vendedores, 'Sin actividad registrada.') }}
+  </div>
+
+  <div class="card">
+    <div class="seccion">Lo más vendido</div>
+    <div class="seccion-nota">Ítems con mayor monto en el período.</div>
+    {% if datos.mas_vendidos %}
+      <table class="tabla-items" style="display:table;">
+        <thead><tr><th>Ítem</th><th>Unid.</th><th>Monto</th></tr></thead>
+        <tbody>
+          {% for i in datos.mas_vendidos %}
+          <tr>
+            <td>
+              {{ i.nombre }}
+              {% if i.tipo == 'plan' %}<span class="etiqueta-menor">Membresía</span>{% endif %}
+            </td>
+            <td>{{ i.unidades }}</td>
+            <td><b>{{ monto(i.monto) }}</b></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="vacio">Sin ventas en este período.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if datos.por_dia|length > 1 %}
+<div class="card" style="margin-top:16px;">
+  <div class="seccion">Día a día</div>
+  <div class="seccion-nota">Ingresos de cada día del período.</div>
+  {% set maximo = datos.por_dia|map(attribute='monto')|max %}
+  <div class="serie-dias">
+    {% for d in datos.por_dia %}
+    <div class="dia-columna" title="{{ d.dia.strftime('%d/%m/%Y') }}: ${{ '%.2f'|format(d.monto) }} ({{ d.n_facturas }} facturas)">
+      <div class="dia-barra" style="height:{{ (d.monto / maximo * 100)|round(1) }}%"></div>
+      <div class="dia-etiqueta">{{ d.dia.strftime('%d/%m') }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if datos.resumen.n_anuladas %}
+<div class="nota-anuladas">
+  En este período hay {{ datos.resumen.n_anuladas }}
+  factura{{ 's' if datos.resumen.n_anuladas != 1 }} anulada{{ 's' if datos.resumen.n_anuladas != 1 }}
+  por {{ monto(datos.resumen.monto_anulado) }}. No se suman a los ingresos.
+</div>
+{% endif %}
+
+<script>
+  let ocultos = false;
+  function alternarMontos(){
+    ocultos = !ocultos;
+    document.querySelectorAll('.dinero').forEach(e => {
+      e.textContent = ocultos ? '••••••' : e.dataset.valor;
+    });
+    document.getElementById('texto-ojo').textContent =
+      ocultos ? 'Mostrar montos' : 'Ocultar montos';
+    document.getElementById('btn-ojo').classList.toggle('activo', ocultos);
+  }
+</script>
+{% endblock %}
