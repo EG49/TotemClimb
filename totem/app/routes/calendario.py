@@ -14,6 +14,7 @@ from flask import (
     url_for,
 )
 
+from app.repositories.evento_repo import InscripcionRepositorio
 from app.security import login_requerido
 from app.services.calendario_service import CalendarioService, lunes_de, rango_vista
 from app.services.validaciones import ErrorValidacion
@@ -227,6 +228,19 @@ def quitar_inscrito(id_evento, id_cliente):
         id_evento, id_cliente, g.empleado["id_empleado"]
     )
     flash("Inscripción quitada.", "ok")
+    return redirect(request.referrer or url_for("calendario.ver"))
+
+
+@bp.route("/evento/<int:id_evento>/quitar-posible/<int:id_posible>", methods=["POST"])
+@login_requerido
+def quitar_posible(id_evento, id_posible):
+    """Quita de un evento a un posible cliente.
+
+    La ficha del posible cliente no se borra: sigue existiendo, solo
+    deja de tener esa clase agendada.
+    """
+    InscripcionRepositorio().quitar_posible(id_evento, id_posible)
+    flash("Se quitó del evento. La ficha del posible cliente se conserva.", "ok")
     return redirect(request.referrer or url_for("calendario.ver"))
 
 

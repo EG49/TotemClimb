@@ -39,6 +39,7 @@ from app.repositories.factura_repo import (
     FacturaRepositorio,
     MembresiaRepositorio,
 )
+from app.repositories.posible_cliente_repo import PosibleClienteRepositorio
 from app.services import bitacora_service as bit
 from app.services.bitacora_service import BitacoraService
 from app.services.validaciones import ErrorValidacion
@@ -79,6 +80,7 @@ class CobroService:
         self.membresias = MembresiaRepositorio()
         self.configuracion = ConfiguracionRepositorio()
         self.bitacora = BitacoraService()
+        self.posibles = PosibleClienteRepositorio()
 
     # --- Lectura ------------------------------------------------------
 
@@ -326,6 +328,19 @@ class CobroService:
             for id_c in clientes_tocados:
                 self.membresias.actualizar_cache_cliente(id_c, cursor)
 
+            # ¿Esta persona venía de una clase de prueba?
+            # La conversión se cuenta al pagar la primera membresía,
+            # que es cuando entra el dinero, no al crearle la ficha.
+            # Se busca por correo: el nombre se escribe de mil formas.
+            convertido = None
+            if clientes_tocados and cliente.correo:
+                posible = self.posibles.pendiente_por_correo(cliente.correo)
+                if posible is not None:
+                    self.posibles.convertir(
+                        posible.id_posible, cliente.id_cliente, cursor
+                    )
+                    convertido = posible
+
         self.bitacora.registrar(
             id_empleado,
             bit.FACTURA_EMITIDA,
@@ -339,7 +354,22 @@ class CobroService:
                 "items": [f"{l.cantidad}x {l.nombre}" for l in lineas],
             },
         )
-        return id_factura
+
+        if convertido is not None:
+            self.bitacora.registrar(
+                id_empleado,
+                bit.POSIBLE_CONVERTIDO,
+                bit.POSIBLE_CLIENTE,
+                convertido.id_posible,
+                {
+                    "nombre": convertido.nombre_completo,
+                    "correo": convertido.correo,
+                    "coach": convertido.coach_nombre,
+                    "factura": numero,
+                },
+            )
+
+        return id_factura, convertido
 
     def _crear_membresia(self, plan, id_cliente: int, id_factura: int, cursor) -> int:
         """Crea la vigencia de un plan para un cliente.

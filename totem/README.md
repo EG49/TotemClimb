@@ -297,6 +297,62 @@ el formulario, no queda ni el cliente ni la inscripción a medias.
   cada uno lleva su acción directa.
 - Calendario del mes y los próximos eventos.
 
+## Posibles clientes y coaches
+
+Quien viene a una clase de prueba **ya no se registra como cliente**.
+Antes había que crearle una ficha completa, y el listado se llenaba de
+gente que probó una tarde y no volvió. Ahora se registra como posible
+cliente con nombre, apellido y correo, y se le agenda el día.
+
+**El correo es obligatorio.** No es burocracia: es la llave con la que
+el sistema reconoce después que esa persona se inscribió. Se busca por
+correo y no por nombre porque el nombre se escribe de mil formas
+—"Maria" y "María" no cruzarían— y el correo es lo único realmente
+distintivo que se pide al agendar.
+
+**El ciclo tiene tres momentos**, y los tres se guardan:
+
+    agendado  ->  ¿asistió?  ->  ¿se inscribió?
+
+Guardar el del medio importa: un coach que agenda veinte y asisten tres
+tiene un problema distinto al de uno que agenda cinco, asisten cinco y
+no compran. La asistencia se marca desde el calendario o desde el
+listado.
+
+**La conversión se cuenta al pagar la primera membresía**, no al crear
+la ficha de cliente, porque es cuando entra el dinero. El enlace se
+hace solo durante el cobro y la pantalla lo avisa: *"Marta Reyes venía
+de una clase de prueba. Cuenta como conversión de Diego Pazmiño."* Si
+el enlace juntó a dos personas que comparten correo, se deshace desde
+la ficha del posible cliente.
+
+Las clases de prueba del mismo día y hora **comparten un evento** en el
+calendario, en vez de crear una entrada por persona.
+
+### Coaches
+
+Un coach es un empleado que da clases. **Ser coach y tener un rol son
+cosas distintas:** el rol dice qué puede hacer alguien dentro del
+sistema y solo lo tiene quien inicia sesión; ser coach es una función
+del gimnasio que no habilita ningún acceso.
+
+Separarlos permite los tres casos reales:
+
+| Persona | Rol | Coach |
+|---|---|---|
+| Recepcionista | Vendedor | No |
+| Coach que no toca la computadora | *(ninguno)* | Sí |
+| Quien hace las dos cosas | Vendedor | Sí |
+
+Una restricción en la base impide que exista un empleado con rol pero
+sin credenciales, que sería una puerta de entrada sin contraseña. Y la
+consulta de login exige rol y contraseña, así que un coach puro no
+puede entrar aunque alguien le invente un usuario.
+
+En la ficha de un coach, en Empleados, aparece cuántos posibles
+clientes se le asignaron, cuántos vinieron y cuántos se inscribieron.
+El listado de Empleados cierra con el ranking de todos los coaches.
+
 ## Módulo de empleados
 
 Pantalla solo para el ADMIN. Es donde se da de alta a quien va a usar el

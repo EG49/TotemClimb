@@ -56,15 +56,22 @@ class EventoRepositorio:
                 return None
             evento = Evento.desde_fila(fila)
 
+            # Un inscrito es un cliente O un posible cliente. Los JOIN
+            # van por la izquierda porque solo uno de los dos existe en
+            # cada fila, y COALESCE arma un nombre único para mostrar.
             cursor.execute(
                 """
                 SELECT i.id_evento_inscrito, i.fecha_inscripcion,
-                       cl.id_cliente,
-                       cl.nombre || ' ' || cl.apellido AS cliente_nombre,
+                       i.id_cliente, i.id_posible,
+                       COALESCE(cl.nombre || ' ' || cl.apellido,
+                                po.nombre || ' ' || po.apellido) AS cliente_nombre,
                        cl.cedula,
+                       po.correo AS posible_correo,
+                       po.asistio,
                        em.nombre || ' ' || em.apellido AS agendado_por
                   FROM evento_inscritos i
-                  JOIN clientes cl ON cl.id_cliente = i.id_cliente
+             LEFT JOIN clientes cl ON cl.id_cliente = i.id_cliente
+             LEFT JOIN posibles_clientes po ON po.id_posible = i.id_posible
                   JOIN empleados em ON em.id_empleado = i.id_empleado
                  WHERE i.id_evento = %s
                  ORDER BY i.fecha_inscripcion
@@ -134,10 +141,15 @@ class EventoRepositorio:
 class InscripcionRepositorio:
 
     def inscribir(self, id_evento: int, id_cliente: int, id_empleado: int, cursor=None):
+        # El ON CONFLICT lleva el mismo WHERE que el índice único.
+        # Desde que un inscrito puede ser cliente O posible cliente, la
+        # unicidad se garantiza con índices parciales, y Postgres solo
+        # los reconoce aquí si se repite su condición.
         sql = """
             INSERT INTO evento_inscritos (id_evento, id_cliente, id_empleado)
             VALUES (%s, %s, %s)
-            ON CONFLICT (id_evento, id_cliente) DO NOTHING
+            ON CONFLICT (id_evento, id_cliente) WHERE id_cliente IS NOT NULL
+            DO NOTHING
             RETURNING id_evento_inscrito
         """
         if cursor is not None:
@@ -149,11 +161,37 @@ class InscripcionRepositorio:
             fila = c.fetchone()
             return fila["id_evento_inscrito"] if fila else None
 
+    def inscribir_posible(self, id_evento: int, id_posible: int,
+                          id_empleado: int, cursor=None):
+        """Inscribe a un posible cliente, que todavía no es cliente."""
+        sql = """
+            INSERT INTO evento_inscritos (id_evento, id_posible, id_empleado)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (id_evento, id_posible) WHERE id_posible IS NOT NULL
+            DO NOTHING
+            RETURNING id_evento_inscrito
+        """
+        if cursor is not None:
+            cursor.execute(sql, (id_evento, id_posible, id_empleado))
+            fila = cursor.fetchone()
+            return fila["id_evento_inscrito"] if fila else None
+        with obtener_cursor(commit=True) as c:
+            c.execute(sql, (id_evento, id_posible, id_empleado))
+            fila = c.fetchone()
+            return fila["id_evento_inscrito"] if fila else None
+
     def quitar(self, id_evento: int, id_cliente: int) -> None:
         with obtener_cursor(commit=True) as cursor:
             cursor.execute(
                 "DELETE FROM evento_inscritos WHERE id_evento = %s AND id_cliente = %s",
                 (id_evento, id_cliente),
+            )
+
+    def quitar_posible(self, id_evento: int, id_posible: int) -> None:
+        with obtener_cursor(commit=True) as cursor:
+            cursor.execute(
+                "DELETE FROM evento_inscritos WHERE id_evento = %s AND id_posible = %s",
+                (id_evento, id_posible),
             )
 
     def contar_en(self, id_evento: int, cursor) -> int:

@@ -44,6 +44,7 @@ def crear_app(config_clase=Config) -> Flask:
         empleados,
         facturas,
         main,
+        posibles,
     )
 
     app.register_blueprint(auth.bp)
@@ -55,6 +56,7 @@ def crear_app(config_clase=Config) -> Flask:
     app.register_blueprint(contabilidad.bp)
     app.register_blueprint(calendario.bp)
     app.register_blueprint(empleados.bp)
+    app.register_blueprint(posibles.bp)
 
     registrar_contexto(app)
     errores.registrar(app)

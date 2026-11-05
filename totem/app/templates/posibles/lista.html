@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block titulo %}Posibles clientes — Totem Climb Gym{% endblock %}
+{% block nav_posibles %}active{% endblock %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Posibles clientes</div>
+    <div class="page-sub">Quién vino a probar y en qué terminó</div>
+  </div>
+  <a class="btn-primary" href="{{ url_for('posibles.nuevo') }}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+    Agendar clase de prueba
+  </a>
+</div>
+
+<div class="tarjetas-resumen">
+  <div class="tarjeta-dato">
+    <div class="dato-etiqueta">Total</div>
+    <div class="dato-valor">{{ resumen.total }}</div>
+  </div>
+  <div class="tarjeta-dato">
+    <div class="dato-etiqueta">Por venir</div>
+    <div class="dato-valor">{{ resumen.agendados }}</div>
+  </div>
+  <div class="tarjeta-dato">
+    <div class="dato-etiqueta">Asistieron</div>
+    <div class="dato-valor">{{ resumen.asistieron }}</div>
+  </div>
+  <div class="tarjeta-dato destacada">
+    <div class="dato-etiqueta">Se inscribieron</div>
+    <div class="dato-valor">{{ resumen.convertidos }}</div>
+    <div class="dato-nota">
+      {{ (resumen.convertidos / resumen.total * 100)|round(1) if resumen.total else 0 }}%
+      de los que vinieron
+    </div>
+  </div>
+</div>
+
+<form class="filtros card" method="get">
+  <input type="search" name="q" value="{{ busqueda }}" placeholder="Nombre o correo">
+  <select name="estado">
+    <option value="">Todos los estados</option>
+    {% for valor, etiqueta in [('agendado','Por venir'), ('asistio','Asistieron'),
+                               ('no_asistio','No asistieron'), ('convertido','Se inscribieron')] %}
+      <option value="{{ valor }}" {{ 'selected' if estado == valor }}>{{ etiqueta }}</option>
+    {% endfor %}
+  </select>
+  <select name="coach">
+    <option value="">Cualquier coach</option>
+    {% for c in coaches %}
+      <option value="{{ c.id_empleado }}" {{ 'selected' if id_coach == c.id_empleado }}>
+        {{ c.nombre_completo }}
+      </option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn-ghost">Filtrar</button>
+</form>
+
+<div class="card tabla">
+  <table>
+    <thead>
+      <tr><th>Persona</th><th>Clase</th><th>Coach</th><th>Estado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in posibles %}
+      <tr>
+        <td>
+          <div class="celda-cliente">
+            <div class="avatar">{{ p.iniciales }}</div>
+            <div>
+              <div class="nombre">{{ p.nombre_completo }}</div>
+              <div class="meta">{{ p.correo }}{% if p.telefono %} · {{ p.telefono }}{% endif %}</div>
+            </div>
+          </div>
+        </td>
+        <td class="meta">
+          {% if p.fecha_clase %}{{ p.fecha_clase.strftime('%d/%m/%Y') }}
+          {% else %}<span class="meta">Sin clase agendada</span>{% endif %}
+        </td>
+        <td class="meta">
+          {% if p.coach_nombre %}{{ p.coach_nombre }}
+          {% else %}<span title="Todavía sin asignar">Sin asignar</span>{% endif %}
+        </td>
+        <td>
+          <span class="pill {{ {'convertido':'vigente', 'asistio':'por_vencer',
+                                'no_asistio':'vencido', 'agendado':'sin_membresia'}[p.estado] }}">
+            {{ p.estado_etiqueta }}
+          </span>
+        </td>
+        <td>
+          <div class="acciones">
+            {% if p.asistio is none and not p.convertido %}
+              <form method="post" style="display:inline"
+                    action="{{ url_for('posibles.asistencia', id_posible=p.id_posible) }}">
+                <input type="hidden" name="asistio" value="si">
+                <button type="submit" class="btn-quieto chico">Vino</button>
+              </form>
+              <form method="post" style="display:inline"
+                    action="{{ url_for('posibles.asistencia', id_posible=p.id_posible) }}">
+                <input type="hidden" name="asistio" value="no">
+                <button type="submit" class="btn-quieto chico">No vino</button>
+              </form>
+            {% endif %}
+            <a class="btn-ghost small" href="{{ url_for('posibles.editar', id_posible=p.id_posible) }}">Ver</a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="vacio">
+        Todavía no hay clases de prueba agendadas.
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

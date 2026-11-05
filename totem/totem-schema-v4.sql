@@ -847,9 +847,19 @@ INSERT INTO empleados (nombre, apellido, usuario, password_hash, rol) VALUES
 -- ============================================================
 -- PERMISOS
 -- ============================================================
--- Si la aplicación se conecta con un usuario distinto de
--- postgres, ese usuario necesita permiso sobre la secuencia.
--- Sin esto, al cobrar aparece "permission denied for sequence".
--- Descomenta y reemplaza 'mi_usuario':
+-- IMPORTANTE si la aplicación NO se conecta como postgres.
 --
--- GRANT USAGE, SELECT ON SEQUENCE seq_numero_factura TO mi_usuario;
+-- Las tablas que crea este script quedan a nombre de quien lo
+-- corre. Si la app usa otro usuario (mira DATABASE_URL en tu
+-- .env), ese usuario no puede ni leerlas: la aplicación arranca
+-- pero falla con "permission denied for table ..." en la primera
+-- pantalla.
+--
+-- Descomenta estas cuatro líneas y reemplaza 'mi_usuario' por el
+-- tuyo. Las dos últimas cubren las tablas que se creen después.
+--
+-- GRANT USAGE ON SCHEMA public TO mi_usuario;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO mi_usuario;
+-- GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO mi_usuario;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA public
+--     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO mi_usuario;

@@ -111,21 +111,44 @@
         {{ evento.cupo_texto }}{% if evento.cupo_lleno %} · cupo completo{% endif %}
       </div>
 
+      {# Un inscrito es un cliente O un posible cliente. De este último
+         no hay cédula, pero sí correo, y se le puede marcar si vino. #}
       {% for i in inscritos %}
       <div class="tarjeta-menor">
         <div class="tarjeta-menor-datos">
-          <div class="nombre">{{ i.cliente_nombre }}</div>
+          <div class="nombre">
+            {{ i.cliente_nombre }}
+            {% if i.id_posible %}<span class="etiqueta-menor">Posible cliente</span>{% endif %}
+          </div>
           <div class="meta">
-            CI {{ i.cedula or '—' }} ·
+            {% if i.id_posible %}{{ i.posible_correo }}{% else %}CI {{ i.cedula or '—' }}{% endif %} ·
             Agendado por {{ i.agendado_por }}
             el {{ i.fecha_inscripcion.strftime('%d/%m/%Y') }}
           </div>
         </div>
-        <form method="post" style="display:inline"
-              action="{{ url_for('calendario.quitar_inscrito', id_evento=evento.id_evento, id_cliente=i.id_cliente) }}"
-              onsubmit="return confirm('¿Quitar a {{ i.cliente_nombre }} de este evento?');">
-          <button type="submit" class="btn-quieto chico">Quitar</button>
-        </form>
+        <div class="acciones">
+          {% if i.id_posible and i.asistio is none %}
+            <form method="post" style="display:inline"
+                  action="{{ url_for('posibles.asistencia', id_posible=i.id_posible) }}">
+              <input type="hidden" name="asistio" value="si">
+              <button type="submit" class="btn-quieto chico">Vino</button>
+            </form>
+            <form method="post" style="display:inline"
+                  action="{{ url_for('posibles.asistencia', id_posible=i.id_posible) }}">
+              <input type="hidden" name="asistio" value="no">
+              <button type="submit" class="btn-quieto chico">No vino</button>
+            </form>
+          {% elif i.id_posible %}
+            <span class="pill {{ 'por_vencer' if i.asistio else 'vencido' }}">
+              {{ 'Asistió' if i.asistio else 'No asistió' }}
+            </span>
+          {% endif %}
+          <form method="post" style="display:inline"
+                action="{% if i.id_posible %}{{ url_for('calendario.quitar_posible', id_evento=evento.id_evento, id_posible=i.id_posible) }}{% else %}{{ url_for('calendario.quitar_inscrito', id_evento=evento.id_evento, id_cliente=i.id_cliente) }}{% endif %}"
+                onsubmit="return confirm('¿Quitar a {{ i.cliente_nombre }} de este evento?');">
+            <button type="submit" class="btn-quieto chico">Quitar</button>
+          </form>
+        </div>
       </div>
       {% else %}
       <div class="vacio">Todavía no hay nadie inscrito.</div>

@@ -59,7 +59,7 @@ def cobrar():
 
     if request.method == "POST":
         try:
-            id_factura = servicio.cobrar(
+            id_factura, convertido = servicio.cobrar(
                 request.form.to_dict(),
                 _extraer_items(request.form),
                 g.empleado["id_empleado"],
@@ -73,6 +73,21 @@ def cobrar():
                 iva=servicio.iva_vigente(),
                 cliente=clientes.obtener(seleccionado) if seleccionado else None,
                 errores=e.errores,
+            )
+
+        # El enlace se hace solo, pero tiene que verse: si juntó a dos
+        # personas distintas que comparten correo, hay que poder
+        # deshacerlo desde la ficha del posible cliente.
+        if convertido is not None:
+            coach = (
+                f" Cuenta como conversión de {convertido.coach_nombre}."
+                if convertido.coach_nombre
+                else " No tenía coach asignado."
+            )
+            flash(
+                f"{convertido.nombre_completo} venía de una clase de prueba."
+                + coach,
+                "ok",
             )
 
         return redirect(url_for("cobrar.comprobante", id_factura=id_factura))

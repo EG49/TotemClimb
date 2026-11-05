@@ -23,7 +23,8 @@
 <div class="page-title">{{ ficha.nombre_completo if editando else 'Nuevo empleado' }}</div>
 <div class="page-sub">
   {% if editando %}
-    Usuario {{ ficha.usuario }} · desde el {{ ficha.fecha_registro.strftime('%d/%m/%Y') }}
+    {% if ficha.usuario %}Usuario {{ ficha.usuario }} · {% endif %}
+    {{ ficha.rol_etiqueta }} · desde el {{ ficha.fecha_registro.strftime('%d/%m/%Y') }}
   {% else %}
     Crea el acceso de alguien que va a usar el sistema.
   {% endif %}
@@ -37,27 +38,64 @@
       cumpleaños salga en el calendario.
     </div>
 
+    {% set con_acceso = datos.get('tiene_acceso') if datos.get('tiene_acceso') is not none
+                        else (ficha.tiene_acceso if editando else true) %}
+
     <div class="rejilla">
       {{ campo('nombre', 'Nombre', marcador='Ej. Camila') }}
       {{ campo('apellido', 'Apellido', marcador='Ej. Rojas') }}
-      {{ campo('usuario', 'Usuario', marcador='camila') }}
       {{ campo('fecha_nacimiento', 'Fecha de nacimiento', tipo='date', opcional=true) }}
+    </div>
 
-      <div class="campo ancho">
-        <label for="rol">Rol</label>
-        <select id="rol" name="rol">
-          <option value="VENDEDOR" {{ 'selected' if datos.get('rol') == 'VENDEDOR' }}>
-            Vendedor — trabajo diario
-          </option>
-          <option value="ADMIN" {{ 'selected' if datos.get('rol') == 'ADMIN' }}>
-            Administrador — además ve la bitácora y cambia el IVA
-          </option>
-        </select>
-        {% if errores.get('rol') %}<div class="error">{{ errores['rol'] }}</div>{% endif %}
+    {% if errores.get('general') %}
+      <div class="error" style="margin-top:10px;">{{ errores['general'] }}</div>
+    {% endif %}
+
+    <label class="fila-check" style="margin-top:18px;">
+      <input type="checkbox" id="es_coach" name="es_coach"
+             {{ 'checked' if datos.get('es_coach') }}>
+      <span>
+        <b>Da clases (coach)</b>
+        <small>
+          Se le pueden asignar posibles clientes, y el sistema mide
+          cuántos terminan inscribiéndose.
+        </small>
+      </span>
+    </label>
+
+    <label class="fila-check" style="margin-top:10px;">
+      <input type="checkbox" id="tiene_acceso" name="tiene_acceso"
+             onchange="alternarAcceso()" {{ 'checked' if con_acceso }}>
+      <span>
+        <b>Entra al sistema</b>
+        <small>
+          Necesita usuario y contraseña. Un coach que nunca toca la
+          computadora no hace falta que lo tenga.
+        </small>
+      </span>
+    </label>
+
+    <div id="bloque-acceso" style="{{ '' if con_acceso else 'display:none' }}">
+      <div class="rejilla" style="margin-top:16px;">
+        {{ campo('usuario', 'Usuario', marcador='camila') }}
+
+        <div class="campo">
+          <label for="rol">Rol</label>
+          <select id="rol" name="rol">
+            <option value="VENDEDOR" {{ 'selected' if datos.get('rol') == 'VENDEDOR' }}>
+              Vendedor — trabajo diario
+            </option>
+            <option value="ADMIN" {{ 'selected' if datos.get('rol') == 'ADMIN' }}>
+              Administrador — además ve la bitácora y cambia el IVA
+            </option>
+          </select>
+          {% if errores.get('rol') %}<div class="error">{{ errores['rol'] }}</div>{% endif %}
+        </div>
       </div>
     </div>
 
     {% if not editando %}
+    <div id="bloque-password" style="{{ '' if con_acceso else 'display:none' }}">
     <hr class="divisor">
     <div class="seccion">Contraseña</div>
     <div class="seccion-nota">
@@ -79,6 +117,7 @@
         {% if errores.get('password_repetida') %}<div class="error">{{ errores['password_repetida'] }}</div>{% endif %}
       </div>
     </div>
+    </div>
     {% endif %}
 
     <div class="acciones-formulario">
@@ -91,6 +130,7 @@
 
   {% if editando %}
   <aside>
+    {% if ficha.tiene_acceso %}
     <div class="card">
       <div class="seccion">Actividad</div>
       <div class="seccion-nota">Lo que ha registrado en el sistema.</div>
@@ -106,7 +146,61 @@
         </div>
       {% endif %}
     </div>
+    {% endif %}
 
+
+    {% if ficha.es_coach %}
+    <div class="card" style="margin-top:16px;">
+      <div class="seccion">Como coach</div>
+      <div class="seccion-nota">
+        Cuántos posibles clientes se le asignaron y en qué terminaron.
+      </div>
+      <div class="totales">
+        <div class="linea"><span>Posibles asignados</span><b>{{ actividad.posibles }}</b></div>
+        <div class="linea"><span>Vinieron a la clase</span><b>{{ actividad.asistidos }}</b></div>
+        <div class="linea total"><span>Se inscribieron</span><b>{{ actividad.convertidos }}</b></div>
+      </div>
+      {% if actividad.posibles %}
+        <div class="meta" style="margin-top:10px;">
+          Convierte el
+          {{ (actividad.convertidos / actividad.posibles * 100)|round(1) }}%
+          de los que se le asignan.
+        </div>
+      {% else %}
+        <div class="meta" style="margin-top:10px;">
+          Todavía no tiene posibles clientes asignados.
+        </div>
+      {% endif %}
+
+      {% if posibles %}
+        <hr class="divisor">
+        <div class="seccion">Sus posibles clientes</div>
+        <table class="tabla-items" style="display:table;">
+          <tbody>
+            {% for p in posibles %}
+            <tr>
+              <td>
+                <a href="{{ url_for('posibles.editar', id_posible=p.id_posible) }}">
+                  {{ p.nombre_completo }}
+                </a>
+                {% if p.fecha_clase %}
+                  <div class="meta">{{ p.fecha_clase.strftime('%d/%m/%Y') }}</div>
+                {% endif %}
+              </td>
+              <td style="text-align:right;">
+                <span class="pill {{ {'convertido':'vigente', 'asistio':'por_vencer',
+                                      'no_asistio':'vencido', 'agendado':'sin_membresia'}[p.estado] }}">
+                  {{ p.estado_etiqueta }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if ficha.tiene_acceso %}
     <div class="card" style="margin-top:16px;">
       <div class="seccion">Cambiar contraseña</div>
       <div class="seccion-nota">
@@ -128,16 +222,29 @@
         <button type="submit" class="btn-ghost ancho">Cambiar contraseña</button>
       </form>
     </div>
+    {% endif %}
 
     {% if ficha.id_empleado != yo %}
     <div class="card" style="margin-top:16px;">
-      <div class="seccion">{{ 'Reactivar' if not ficha.activo else 'Desactivar' }} acceso</div>
+      <div class="seccion">
+        {{ 'Reactivar' if not ficha.activo else 'Desactivar' }}
+        {{ 'acceso' if ficha.tiene_acceso else 'empleado' }}
+      </div>
       <div class="seccion-nota">
         {% if ficha.activo %}
-          Pierde el acceso al sistema, pero sus facturas y su rastro en la
-          bitácora se conservan.
+          {% if ficha.tiene_acceso %}
+            Pierde el acceso al sistema, pero sus facturas y su rastro en
+            la bitácora se conservan.
+          {% else %}
+            Deja de aparecer para asignarle posibles clientes, pero los
+            que ya tiene asignados siguen contando para su historial.
+          {% endif %}
         {% else %}
-          Vuelve a poder entrar con su usuario y contraseña de siempre.
+          {% if ficha.tiene_acceso %}
+            Vuelve a poder entrar con su usuario y contraseña de siempre.
+          {% else %}
+            Vuelve a aparecer en la lista de coaches.
+          {% endif %}
         {% endif %}
       </div>
       <form method="post" action="{{ url_for('empleados.estado', id_empleado=ficha.id_empleado) }}">
@@ -151,4 +258,13 @@
   </aside>
   {% endif %}
 </div>
+
+<script>
+  function alternarAcceso(){
+    const entra = document.getElementById('tiene_acceso').checked;
+    document.getElementById('bloque-acceso').style.display = entra ? 'block' : 'none';
+    const pass = document.getElementById('bloque-password');
+    if (pass) pass.style.display = entra ? 'block' : 'none';
+  }
+</script>
 {% endblock %}
