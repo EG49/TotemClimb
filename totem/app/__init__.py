@@ -10,6 +10,7 @@ from datetime import timedelta
 
 from flask import Flask
 
+from app import errores, registro
 from app.db import cerrar_pool, init_pool
 from app.security import registrar_contexto
 from config import Config
@@ -21,6 +22,10 @@ def crear_app(config_clase=Config) -> Flask:
     app.permanent_session_lifetime = timedelta(
         seconds=app.config["PERMANENT_SESSION_LIFETIME"]
     )
+
+    # Lo primero que se configura, para que cualquier fallo posterior
+    # (incluido el de la base) quede registrado.
+    registro.configurar(app)
 
     init_pool(
         app.config["DATABASE_URL"],
@@ -52,5 +57,6 @@ def crear_app(config_clase=Config) -> Flask:
     app.register_blueprint(empleados.bp)
 
     registrar_contexto(app)
+    errores.registrar(app)
 
     return app

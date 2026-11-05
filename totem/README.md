@@ -107,6 +107,37 @@ modelo, repositorio, servicio, ruta y plantilla.
 El decorador `@login_requerido` protege las vistas normales y
 `@admin_requerido` las del administrador.
 
+## Registro técnico y páginas de error
+
+**No confundir el registro con la bitácora.** La bitácora es del
+negocio —quién cobró, quién anuló— y la lee el administrador desde la
+aplicación. El registro es técnico: qué se rompió y con qué traza, en
+un archivo, para quien mantiene el sistema.
+
+El archivo vive en `logs/totem.log` y rota: al llegar a 2 MB se
+renombra y se abre uno nuevo, conservando 5 copias. La carpeta y el
+nivel se cambian en el `.env` (`LOG_DIR`, `LOG_NIVEL`). Está en el
+`.gitignore`: nunca se versiona.
+
+Se registran los arranques, los 404 como aviso y los fallos del
+servidor con su traza completa. Las peticiones normales no, porque una
+línea por visita llenaría el archivo de ruido.
+
+Cuando algo falla, el usuario ve una pantalla propia —404 o 500— con
+el menú y la marca, no la pantalla pelada de Flask. La de 500 incluye
+un consejo que importa en el mostrador: **si estabas cobrando, revisá
+en Facturas antes de volver a cobrar**, porque la venta pudo haberse
+guardado antes del fallo.
+
+Esas pantallas funcionan aunque la base de datos esté caída, que es el
+fallo más probable: el empleado de la sesión se lee de la cookie, no
+de la base.
+
+Con gunicorn y varios workers, todos escriben en el mismo archivo y la
+rotación puede pisarse. Para el volumen del gimnasio no es un problema
+real; si aparecen líneas cortadas, se levanta con un solo worker o se
+delega la rotación a logrotate.
+
 ## Seguridad
 
 - Contraseñas con hash **bcrypt**; el texto plano no se guarda nunca.

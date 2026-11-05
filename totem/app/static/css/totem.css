@@ -112,7 +112,7 @@ td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px;
     var(--cream);
 }
 .login-card{
-  background: #6bbac2; border:1px solid var(--gray-light); border-radius:16px;
+  background:#fff; border:1px solid var(--gray-light); border-radius:16px;
   padding:38px 36px; width:100%; max-width:390px;
   box-shadow:0 18px 50px rgba(43,50,16,0.10);
 }
@@ -129,7 +129,7 @@ td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px;
 .login-card .btn-primary{ width:100%; justify-content:center; margin-top:6px; }
 .login-pie{
   font-family:'Shadows Into Light Two',cursive; font-size:17px; color:var(--teal);
-  text-align:center; margin-top:24px; color: #C2DD58;
+  text-align:center; margin-top:24px;
 }
 
 /* ===== BARRA SUPERIOR Y CAJÓN (pantallas angostas) ===== */
@@ -805,3 +805,13 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
   tr, .comp-totales, .comp-pie{ break-inside:avoid; }
   a[href]:after{ content:none !important; }
 }
+
+/* ===== PÁGINAS DE ERROR ===== */
+
+.pagina-error{ max-width:560px; padding-top:40px; }
+.error-codigo{
+  font-family:'Bebas Neue',sans-serif; font-size:86px; line-height:1;
+  color:var(--gray-light); letter-spacing:2px; margin-bottom:4px;
+}
+.error-texto{ color:var(--ink-soft); font-size:14.5px; line-height:1.6; margin-top:12px; }
+.error-acciones{ display:flex; gap:12px; margin-top:26px; flex-wrap:wrap; }

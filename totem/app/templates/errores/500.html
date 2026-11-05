@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Algo falló — Totem Climb Gym{% endblock %}
+
+{% block contenido %}
+<div class="pagina-error">
+  <div class="error-codigo">500</div>
+  <div class="page-title">Algo falló de nuestro lado</div>
+  <p class="error-texto">
+    No es culpa tuya y no se perdió nada de lo que ya estaba guardado.
+    El error quedó anotado con todos sus detalles para poder revisarlo.
+  </p>
+  <p class="error-texto">
+    Si estabas cobrando, <b>revisá en Facturas antes de volver a
+    cobrar</b>: puede que la venta sí se haya registrado.
+  </p>
+  <div class="error-acciones">
+    <a class="btn-primary" href="{{ url_for('main.panel') }}">Volver al panel</a>
+    <a class="btn-ghost" href="{{ url_for('facturas.lista') }}">Revisar facturas</a>
+  </div>
+</div>
+{% endblock %}
