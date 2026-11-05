@@ -82,21 +82,30 @@ class ContabilidadRepositorio:
             return cursor.fetchall()
 
     def por_categoria(self, desde, hasta, id_cliente=None) -> list[dict]:
-        """Separa lo vendido entre membresías y productos.
+        """Separa lo vendido entre membresías Junior, Senior y productos.
 
         Suma el subtotal de las líneas, no el total de la factura, para
         poder repartir una factura que lleve de ambos.
+
+        Los pases cuentan como Senior, igual que en el resto del
+        sistema. El CASE sobre 'PASES' existe para que el reporte sea
+        correcto también en bases que todavía no corrieron la migración
+        de tipos; una vez migradas, esa rama simplemente no se usa.
         """
         filtro, parametros = self._parametros(desde, hasta, id_cliente)
         with obtener_cursor() as cursor:
             cursor.execute(
                 f"""
-                SELECT CASE WHEN d.id_plan IS NOT NULL THEN 'Membresías'
-                            ELSE 'Productos' END AS categoria,
+                SELECT CASE
+                         WHEN d.id_plan IS NULL THEN 'Productos'
+                         WHEN p.tipo = 'JUNIOR' THEN 'Membresías Junior'
+                         ELSE 'Membresías Senior'
+                       END AS categoria,
                        SUM(d.subtotal) AS monto,
                        SUM(d.cantidad) AS unidades
                   FROM detalle_factura d
                   JOIN facturas f ON f.id_factura = d.id_factura
+             LEFT JOIN planes_membresia p ON p.id_plan = d.id_plan
                  WHERE f.estado = 'EMITIDA'
                    AND f.fecha::date BETWEEN %s AND %s
                    {filtro}

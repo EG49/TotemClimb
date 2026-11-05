@@ -21,7 +21,7 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from app.db import obtener_cursor
-from app.models.catalogo import MES, PASES
+from app.models.catalogo import MES
 from app.models.factura import (
     CENTAVO,
     EMITIDA,
@@ -357,7 +357,8 @@ class CobroService:
             fin = inicio + timedelta(days=plan.duracion)
 
         # Las entradas solo aplican a los pases.
-        dias = plan.dias_incluidos if plan.tipo == PASES else None
+        # Las entradas vienen del plan; si no las trae, no es un pase.
+        dias = plan.dias_incluidos
 
         return self.membresias.crear(
             {

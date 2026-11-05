@@ -2,7 +2,7 @@
 
 Reglas que viven aquí:
   * Los precios no pueden ser negativos.
-  * Un plan tipo PASES necesita cuántas entradas incluye; los mensuales
+  * Un plan marcado como pase necesita cuántas entradas incluye; los mensuales
     no llevan ese dato.
   * Nada se borra: lo que deja de venderse se desactiva, para no romper
     las facturas que ya lo incluyen.
@@ -13,7 +13,6 @@ from decimal import Decimal, InvalidOperation
 from app.models.catalogo import (
     DIA,
     MES,
-    PASES,
     TIPOS_PLAN,
     UNIDADES,
     PlanMembresia,
@@ -156,13 +155,18 @@ class CatalogoService:
         if datos.get("unidad_duracion") not in UNIDADES:
             errores["unidad_duracion"] = "Selecciona una unidad válida."
 
-        # El esquema exige dias_incluidos en los pases y lo prohíbe en el
-        # resto, así que se valida antes de llegar a la base.
-        if datos.get("tipo") == PASES:
-            dias = datos.get("dias_incluidos")
-            if dias is None or dias <= 0:
+        # El esquema exige que un plan con entradas se mida en días, y
+        # que las entradas sean mayores a cero. Se valida antes de
+        # llegar a la base para dar un mensaje entendible.
+        dias = datos.get("dias_incluidos")
+        if dias is not None:
+            if dias <= 0:
                 errores["dias_incluidos"] = (
                     "Un pase necesita saber cuántas entradas incluye."
+                )
+            elif datos.get("unidad_duracion") != DIA:
+                errores["dias_incluidos"] = (
+                    "Un pase por entradas se mide en días, no en meses."
                 )
 
         return errores
@@ -176,9 +180,12 @@ class CatalogoService:
             "precio": _a_decimal(formulario.get("precio")),
             "duracion": _a_entero(formulario.get("duracion")),
             "unidad_duracion": limpiar(formulario.get("unidad_duracion")) or MES,
-            # Solo los pases guardan entradas; en los demás queda NULL.
+            # Las entradas solo se guardan si la casilla "es un pase"
+            # viene marcada; en los demás planes queda NULL.
             "dias_incluidos": (
-                _a_entero(formulario.get("dias_incluidos")) if tipo == PASES else None
+                _a_entero(formulario.get("dias_incluidos"))
+                if formulario.get("es_pase") == "on"
+                else None
             ),
             "permite_pareja": formulario.get("permite_pareja") == "on",
             "permite_descuento": formulario.get("permite_descuento") == "on",

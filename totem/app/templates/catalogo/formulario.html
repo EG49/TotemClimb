@@ -56,15 +56,16 @@
     <hr class="divisor">
     <div class="seccion">Datos del plan</div>
     <div class="seccion-nota">
-      La duración es el plazo máximo de validez. En un pase, además, se
-      indica cuántas entradas incluye.
+      La duración es el plazo máximo de validez. Un pase, además, trae
+      un número de entradas contadas. Los pases son Senior: el tipo solo
+      dice la categoría, no cómo se cobra.
     </div>
 
     <div class="rejilla">
       <div class="campo">
         <label for="tipo">Tipo</label>
-        <select id="tipo" name="tipo" onchange="alternarPases()">
-          {% for valor, etiqueta in [('JUNIOR','Junior'), ('SENIOR','Senior'), ('PASES','Pases')] %}
+        <select id="tipo" name="tipo">
+          {% for valor, etiqueta in [('JUNIOR','Junior'), ('SENIOR','Senior')] %}
             <option value="{{ valor }}" {{ 'selected' if datos.get('tipo') == valor }}>{{ etiqueta }}</option>
           {% endfor %}
         </select>
@@ -86,7 +87,7 @@
         {% if errores.get('duracion') %}<div class="error">{{ errores['duracion'] }}</div>{% endif %}
       </div>
 
-      <div class="campo" id="campo-entradas" style="{{ '' if datos.get('tipo') == 'PASES' else 'display:none' }}">
+      <div class="campo" id="campo-entradas" style="{{ '' if datos.get('dias_incluidos') else 'display:none' }}">
         <label for="dias_incluidos">Entradas incluidas</label>
         <input id="dias_incluidos" name="dias_incluidos" type="number" min="1"
                placeholder="Ej. 10"
@@ -98,6 +99,15 @@
     </div>
 
     <label class="fila-check" style="margin-top:16px;">
+      <input type="checkbox" id="es_pase" name="es_pase" onchange="alternarPases()"
+             {{ 'checked' if datos.get('dias_incluidos') }}>
+      <span>
+        <b>Es un pase por entradas</b>
+        <small>Se cobra por visitas contadas, no por tiempo. Se mide en días.</small>
+      </span>
+    </label>
+
+    <label class="fila-check" style="margin-top:10px;">
       <input type="checkbox" name="permite_pareja" {{ 'checked' if datos.get('permite_pareja') }}>
       <span>
         <b>Permite promoción de pareja</b>
@@ -131,8 +141,13 @@
     });
   }
   function alternarPases(){
-    const esPase = document.getElementById('tipo').value === 'PASES';
+    const esPase = document.getElementById('es_pase').checked;
     document.getElementById('campo-entradas').style.display = esPase ? 'block' : 'none';
+    // Un pase se mide en días: lo fija para que no choque con la
+    // restricción de la base.
+    if (esPase) {
+      document.querySelector('select[name=unidad_duracion]').value = 'DIA';
+    }
   }
 </script>
 {% endblock %}
