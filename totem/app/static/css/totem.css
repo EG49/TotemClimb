@@ -838,8 +838,9 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
 .tarjeta-dato.destacada .dato-valor{ color:var(--teal); }
 .dato-nota{ font-size:11.5px; color:var(--gray); margin-top:2px; }
 
-.filtros{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:18px; }
-.filtros input[type=search]{ flex:1; min-width:180px; }
+/* El botón de filtrar se alinea con los campos, no con sus etiquetas. */
+.panel-filtros > .btn-ghost,
+.panel-filtros > .btn-quieto{ align-self:flex-end; }
 
 @media (max-width:900px){
   .tarjetas-resumen{ grid-template-columns:repeat(2,1fr); }

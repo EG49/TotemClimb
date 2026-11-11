@@ -37,24 +37,38 @@
   </div>
 </div>
 
-<form class="filtros card" method="get">
-  <input type="search" name="q" value="{{ busqueda }}" placeholder="Nombre o correo">
-  <select name="estado">
-    <option value="">Todos los estados</option>
-    {% for valor, etiqueta in [('agendado','Por venir'), ('asistio','Asistieron'),
-                               ('no_asistio','No asistieron'), ('convertido','Se inscribieron')] %}
-      <option value="{{ valor }}" {{ 'selected' if estado == valor }}>{{ etiqueta }}</option>
-    {% endfor %}
-  </select>
-  <select name="coach">
-    <option value="">Cualquier coach</option>
-    {% for c in coaches %}
-      <option value="{{ c.id_empleado }}" {{ 'selected' if id_coach == c.id_empleado }}>
-        {{ c.nombre_completo }}
-      </option>
-    {% endfor %}
-  </select>
+{# Mismo patrón de filtros que Facturas, para que las dos pantallas se
+   vean y se usen igual. #}
+<form class="panel-filtros filtros-amplios" method="get">
+  <div class="buscador">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="text" name="q" value="{{ busqueda }}" placeholder="Nombre o correo...">
+  </div>
+  <div class="campo-filtro">
+    <label>Estado</label>
+    <select name="estado">
+      <option value="">Todos</option>
+      {% for valor, etiqueta in [('agendado','Por venir'), ('asistio','Asistieron'),
+                                 ('no_asistio','No asistieron'), ('convertido','Se inscribieron')] %}
+        <option value="{{ valor }}" {{ 'selected' if estado == valor }}>{{ etiqueta }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo-filtro">
+    <label>Coach</label>
+    <select name="coach">
+      <option value="">Cualquiera</option>
+      {% for c in coaches %}
+        <option value="{{ c.id_empleado }}" {{ 'selected' if id_coach == c.id_empleado }}>
+          {{ c.nombre_completo }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
   <button type="submit" class="btn-ghost">Filtrar</button>
+  {% if estado or id_coach or busqueda %}
+    <a class="btn-quieto" href="{{ url_for('posibles.lista') }}">Limpiar</a>
+  {% endif %}
 </form>
 
 <div class="card tabla">

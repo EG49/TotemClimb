@@ -54,24 +54,35 @@
       Se puede dejar sin asignar y elegirlo después. Es lo que permite
       saber qué coach trae más socios.
     </div>
-    <div class="campo">
-      <label for="id_coach">Coach a cargo</label>
-      <select id="id_coach" name="id_coach">
-        <option value="">Sin asignar</option>
-        {% for c in coaches %}
-          <option value="{{ c.id_empleado }}"
-                  {{ 'selected' if datos.get('id_coach')|string == c.id_empleado|string }}>
-            {{ c.nombre_completo }}
-          </option>
-        {% endfor %}
-      </select>
-      {% if not coaches %}
-        <div class="pista">
-          Todavía no hay nadie marcado como coach.
-          <a href="{{ url_for('empleados.lista') }}">Marcar a alguien en Empleados</a>.
+    {# Un desplegable con una sola opción muerta parece un campo roto.
+       Si no hay coaches, se dice por qué y qué hacer. #}
+    {% if coaches %}
+      <div class="campo">
+        <label for="id_coach">Coach a cargo</label>
+        <select id="id_coach" name="id_coach">
+          <option value="">Sin asignar</option>
+          {% for c in coaches %}
+            <option value="{{ c.id_empleado }}"
+                    {{ 'selected' if datos.get('id_coach')|string == c.id_empleado|string }}>
+              {{ c.nombre_completo }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    {% else %}
+      <div class="aviso-bloqueo">
+        <b>Todavía no hay ningún coach.</b>
+        Para poder asignarlo, primero hay que marcar como coach a alguien
+        en Empleados: se edita a la persona y se marca la casilla
+        <b>“Da clases (coach)”</b>. Si el coach no usa el sistema, se
+        crea sin usuario ni contraseña.
+        <div style="margin-top:10px;">
+          <a class="btn-ghost" href="{{ url_for('empleados.lista') }}">Ir a Empleados</a>
         </div>
-      {% endif %}
-    </div>
+      </div>
+      {# Sin esto, guardar la ficha borraría el coach que ya tuviera. #}
+      <input type="hidden" name="id_coach" value="{{ datos.get('id_coach') or '' }}">
+    {% endif %}
 
     {% if not editando %}
     <hr class="divisor">
