@@ -10,7 +10,11 @@
       {{ total }} gasto{{ 's' if total != 1 }} · {{ etiqueta }}
     </div>
   </div>
-  <a class="btn-primary" href="{{ url_for('gastos.nuevo') }}">Registrar gasto</a>
+  <div style="display:flex; gap:10px;">
+    <a class="btn-ghost" href="{{ url_for('contabilidad.balance', periodo='personalizado',
+       desde=desde.isoformat(), hasta=hasta.isoformat()) }}">Balance general</a>
+    <a class="btn-primary" href="{{ url_for('gastos.nuevo') }}">Registrar gasto</a>
+  </div>
 </div>
 
 <form class="panel-filtros filtros-amplios" method="get">

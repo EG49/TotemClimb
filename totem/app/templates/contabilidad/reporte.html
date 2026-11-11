@@ -37,10 +37,17 @@
       {% if cliente %} · solo {{ cliente.nombre_completo }}{% endif %}
     </div>
   </div>
-  <button type="button" class="btn-ghost" id="btn-ojo" onclick="alternarMontos()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-    <span id="texto-ojo">Ocultar montos</span>
-  </button>
+  <div style="display:flex; gap:10px;">
+    {% if empleado and empleado.es_admin %}
+    <a class="btn-ghost" href="{{ url_for('contabilidad.balance', periodo=periodo, desde=desde, hasta=hasta) }}">
+      Balance general
+    </a>
+    {% endif %}
+    <button type="button" class="btn-ghost" id="btn-ojo" onclick="alternarMontos()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span id="texto-ojo">Ocultar montos</span>
+    </button>
+  </div>
 </div>
 
 <form class="panel-filtros filtros-amplios" method="get">

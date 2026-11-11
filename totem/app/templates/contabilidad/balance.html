@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block titulo %}Balance general — Totem Climb Gym{% endblock %}
+{% block nav_contabilidad %}active{% endblock %}
+
+{% macro monto(valor) -%}
+<span class="dinero" data-valor="${{ '%.2f'|format(valor) }}">${{ '%.2f'|format(valor) }}</span>
+{%- endmacro %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Balance general</div>
+    <div class="page-sub">{{ etiqueta }}</div>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn-ghost" href="{{ url_for('contabilidad.reporte', periodo=periodo, desde=desde, hasta=hasta) }}">
+      Ver ventas
+    </a>
+    <a class="btn-ghost" href="{{ url_for('gastos.lista', periodo=periodo, desde=desde, hasta=hasta) }}">
+      Ver gastos
+    </a>
+  </div>
+</div>
+
+<form class="panel-filtros filtros-amplios" method="get">
+  <div class="selector-periodo">
+    {% for v, e in [('dia','Día'), ('mes','Mes'), ('personalizado','Personalizado')] %}
+      <button type="submit" name="periodo" value="{{ v }}"
+              class="opcion-periodo {{ 'active' if periodo == v }}">{{ e }}</button>
+    {% endfor %}
+  </div>
+  {% if periodo == 'dia' %}
+    <div class="campo-filtro">
+      <label>Día</label>
+      <input type="date" name="desde" value="{{ desde }}" onchange="this.form.submit()">
+    </div>
+  {% elif periodo == 'personalizado' %}
+    <div class="campo-filtro">
+      <label>Desde</label><input type="date" name="desde" value="{{ desde }}">
+    </div>
+    <div class="campo-filtro">
+      <label>Hasta</label><input type="date" name="hasta" value="{{ hasta }}">
+    </div>
+    <button type="submit" class="btn-ghost">Aplicar</button>
+  {% endif %}
+</form>
+
+{# El resultado primero: es la pregunta que trae a esta pantalla. #}
+<div class="card resultado-balance {{ 'en-verde' if datos.positivo else 'en-rojo' }}">
+  <div class="resultado-etiqueta">
+    {{ 'Resultado del período' if datos.positivo else 'Pérdida del período' }}
+  </div>
+  <div class="resultado-cifra">
+    {{ monto(datos.resultado) }}
+  </div>
+  <div class="resultado-cuenta">
+    {{ monto(datos.ingresos) }} de ingresos − {{ monto(datos.gastos) }} de gastos
+    {% if datos.margen is not none %}
+      · margen del {{ datos.margen }}%
+    {% endif %}
+  </div>
+</div>
+
+<div class="resumen-tarjetas">
+  <div class="summary-card">
+    <div class="summary-label">Ingresos</div>
+    <div class="summary-value">{{ monto(datos.ingresos) }}</div>
+    <div class="summary-note">
+      sin IVA · {{ datos.n_facturas }} factura{{ 's' if datos.n_facturas != 1 }}
+    </div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Gastos</div>
+    <div class="summary-value">{{ monto(datos.gastos) }}</div>
+    <div class="summary-note">
+      {{ datos.n_gastos }} gasto{{ 's' if datos.n_gastos != 1 }} registrado{{ 's' if datos.n_gastos != 1 }}
+    </div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">IVA cobrado</div>
+    <div class="summary-value">{{ monto(datos.iva_cobrado) }}</div>
+    <div class="summary-note">no es ingreso: se declara al SRI</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Por cobrar (fiado)</div>
+    <div class="summary-value">{{ monto(datos.por_cobrar) }}</div>
+    <div class="summary-note">todavía no entró, no suma acá</div>
+  </div>
+</div>
+
+<div class="disposicion-evento">
+  <div class="card tabla">
+    <div class="card-cabecera">
+      <div>
+        <div class="seccion">Por segmento</div>
+        <div class="seccion-nota">
+          Para ver si la escuelita de chicos se sostiene sola
+        </div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Segmento</th><th>Ingresos</th><th>Gastos</th><th>Resultado</th></tr></thead>
+      <tbody>
+        {% for s in datos.segmentos %}
+        <tr>
+          <td class="nombre">
+            {{ s.nombre }}
+            {% if not s.comparable %}
+              <div class="meta">productos y gastos que no se reparten</div>
+            {% endif %}
+          </td>
+          <td>{{ monto(s.ingresos) }}</td>
+          <td>{{ monto(s.gastos) }}</td>
+          <td>
+            {% if s.comparable %}
+              <b style="color:{{ 'var(--teal)' if s.resultado >= 0 else 'var(--error)' }}">
+                {{ monto(s.resultado) }}
+              </b>
+            {% else %}
+              <span class="meta">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="nota-pie">
+      El resultado de «General» no se calcula a propósito: los productos
+      no tienen gastos propios y los gastos generales no tienen ingresos
+      propios. Restarlos sugeriría una relación que no existe.
+    </div>
+  </div>
+
+  <aside class="card">
+    <div class="seccion">Respaldo de los gastos</div>
+    <div class="seccion-nota">
+      Lo facturado es lo que podés justificar ante el SRI
+    </div>
+
+    <div class="item-dia" style="border-color:var(--teal)">
+      <div class="t">{{ monto(datos.gastos_facturados) }} con factura</div>
+      <div class="m">
+        {% if datos.gastos %}
+          {{ (datos.gastos_facturados / datos.gastos * 100)|round|int }}% del total
+        {% else %}sin gastos en el período{% endif %}
+      </div>
+    </div>
+    <div class="item-dia" style="border-color:var(--gray)">
+      <div class="t">{{ monto(datos.gastos_sin_factura) }} sin factura</div>
+      <div class="m">restan igual en el balance</div>
+    </div>
+
+    <div class="seccion" style="font-size:15px; margin-top:22px;">Cómo se calcula</div>
+    <div class="nota-pie" style="margin-top:8px;">
+      El <b>ingreso va sin IVA</b>: lo cobrado en caja fue
+      {{ monto(datos.cobrado) }}, pero {{ monto(datos.iva_cobrado) }} de eso
+      se recauda para el SRI y no es plata del gimnasio.
+      <br><br>
+      El <b>gasto va como se pagó</b>, sin descontarle IVA. Parte de ese
+      IVA podría ser crédito tributario, pero solo el de los gastos
+      facturados, y eso lo decide el contador.
+      <br><br>
+      Es un balance <b>de caja</b>: plata que entró contra plata que
+      salió. No es un estado de resultados con las reglas del SRI.
+    </div>
+  </aside>
+</div>
+
+{% if datos.por_concepto %}
+<div class="card tabla" style="margin-top:18px;">
+  <div class="card-cabecera">
+    <div>
+      <div class="seccion">En qué se fue</div>
+      <div class="seccion-nota">Los gastos del período, de mayor a menor</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Concepto</th><th>Veces</th><th>Monto</th><th>Peso del gasto</th></tr></thead>
+    <tbody>
+      {% for c in datos.por_concepto %}
+      <tr>
+        <td class="nombre">{{ c.concepto }}</td>
+        <td class="meta">{{ c.veces }}</td>
+        <td><b>{{ monto(c.monto) }}</b></td>
+        <td>
+          {% if datos.gastos %}
+            <div class="barra" style="margin:0;">
+              <div class="barra-relleno"
+                   style="width:{{ (c.monto / datos.gastos * 100)|round(1) }}%"></div>
+            </div>
+            <div class="barra-pie">{{ (c.monto / datos.gastos * 100)|round(1) }}%</div>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if not datos.n_facturas and not datos.n_gastos %}
+<div class="card" style="margin-top:18px;">
+  <div class="vacio" style="padding:26px;">
+    No hay movimientos en este período. Probá con otro rango de fechas.
+  </div>
+</div>
+{% endif %}
+{% endblock %}
