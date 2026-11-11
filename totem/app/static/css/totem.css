@@ -112,7 +112,7 @@ td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px;
     var(--cream);
 }
 .login-card{
-  background: #6bbac2; border:1px solid var(--gray-light); border-radius:16px;
+  background:#fff; border:1px solid var(--gray-light); border-radius:16px;
   padding:38px 36px; width:100%; max-width:390px;
   box-shadow:0 18px 50px rgba(43,50,16,0.10);
 }
@@ -129,7 +129,7 @@ td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px;
 .login-card .btn-primary{ width:100%; justify-content:center; margin-top:6px; }
 .login-pie{
   font-family:'Shadows Into Light Two',cursive; font-size:17px; color:var(--teal);
-  text-align:center; margin-top:24px; color: #C2DD58;
+  text-align:center; margin-top:24px;
 }
 
 /* ===== BARRA SUPERIOR Y CAJÓN (pantallas angostas) ===== */
@@ -690,6 +690,13 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
 
 /* ===== PANEL GENERAL ===== */
 
+/* Buscador de clientes del panel. La lista de resultados se despliega
+   por encima de las tarjetas de abajo, de ahí el z-index. */
+.buscador-panel{ padding:18px 20px; margin-bottom:18px; position:relative; z-index:3; }
+.buscador-panel .seccion{ display:block; cursor:pointer; }
+.buscador-panel .picker{ margin-top:12px; }
+.buscador-panel .picker-opt small{ display:flex; align-items:center; gap:8px; }
+
 .accesos-rapidos{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px; }
 .acceso{
   display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit;
@@ -747,7 +754,7 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
 
   /* Fuera todo lo que no es el comprobante. */
   .sidebar, .encabezado, .flash, .acciones, .nota-fiado,
-  .barra-movil, .velo{ display:none !important; }
+  .barra-movil, .velo, .buscador-panel{ display:none !important; }
 
   body{ background:#fff; color:#000; }
   .app{ display:block; }
@@ -805,3 +812,51 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
   tr, .comp-totales, .comp-pie{ break-inside:avoid; }
   a[href]:after{ content:none !important; }
 }
+
+/* ===== PÁGINAS DE ERROR ===== */
+
+.pagina-error{ max-width:560px; padding-top:40px; }
+.error-codigo{
+  font-family:'Bebas Neue',sans-serif; font-size:86px; line-height:1;
+  color:var(--gray-light); letter-spacing:2px; margin-bottom:4px;
+}
+.error-texto{ color:var(--ink-soft); font-size:14.5px; line-height:1.6; margin-top:12px; }
+.error-acciones{ display:flex; gap:12px; margin-top:26px; flex-wrap:wrap; }
+
+/* ===== POSIBLES CLIENTES ===== */
+
+.tarjetas-resumen{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:14px; margin-bottom:20px;
+}
+.tarjeta-dato{
+  background:var(--cream); border:1px solid var(--gray-light);
+  border-radius:12px; padding:16px 18px;
+}
+.tarjeta-dato.destacada{ border-color:var(--teal); }
+.dato-etiqueta{
+  font-size:11px; text-transform:uppercase; letter-spacing:.6px;
+  color:var(--gray);
+}
+.dato-valor{
+  font-family:'Bebas Neue',sans-serif; font-size:34px; line-height:1.1;
+  color:var(--ink); margin-top:2px;
+}
+.tarjeta-dato.destacada .dato-valor{ color:var(--teal); }
+.dato-nota{ font-size:11.5px; color:var(--gray); margin-top:2px; }
+
+/* El botón de filtrar se alinea con los campos, no con sus etiquetas. */
+.panel-filtros > .btn-ghost,
+.panel-filtros > .btn-quieto{ align-self:flex-end; }
+
+@media (max-width:900px){
+  .tarjetas-resumen{ grid-template-columns:repeat(2,1fr); }
+}
+
+/* Inscritos del evento: el panel es angosto, así que los datos van
+   arriba y las acciones debajo, en vez de pelearse por el ancho. */
+.tarjeta-menor:has(.acciones){ display:block; }
+.tarjeta-menor:has(.acciones) .tarjeta-menor-datos{ margin-bottom:10px; }
+.tarjeta-menor .acciones{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.tarjeta-menor .nombre .etiqueta-menor{ margin-left:6px; }
+.tarjeta-menor .pill{ font-size:10.5px; }

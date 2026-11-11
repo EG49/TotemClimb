@@ -54,6 +54,7 @@
         <input id="hora_fin" name="hora_fin" type="time"
                value="{{ datos.get('hora_fin') or '11:00' }}"
                class="{{ 'con-error' if errores.get('hora_fin') }}">
+        <div class="pista" id="pista-hora-fin">Se pone una hora después del inicio. Podés cambiarla.</div>
         {% if errores.get('hora_fin') %}<div class="error">{{ errores['hora_fin'] }}</div>{% endif %}
       </div>
 
@@ -111,21 +112,44 @@
         {{ evento.cupo_texto }}{% if evento.cupo_lleno %} · cupo completo{% endif %}
       </div>
 
+      {# Un inscrito es un cliente O un posible cliente. De este último
+         no hay cédula, pero sí correo, y se le puede marcar si vino. #}
       {% for i in inscritos %}
       <div class="tarjeta-menor">
         <div class="tarjeta-menor-datos">
-          <div class="nombre">{{ i.cliente_nombre }}</div>
+          <div class="nombre">
+            {{ i.cliente_nombre }}
+            {% if i.id_posible %}<span class="etiqueta-menor">Posible cliente</span>{% endif %}
+          </div>
           <div class="meta">
-            CI {{ i.cedula or '—' }} ·
+            {% if i.id_posible %}{{ i.posible_correo }}{% else %}CI {{ i.cedula or '—' }}{% endif %} ·
             Agendado por {{ i.agendado_por }}
             el {{ i.fecha_inscripcion.strftime('%d/%m/%Y') }}
           </div>
         </div>
-        <form method="post" style="display:inline"
-              action="{{ url_for('calendario.quitar_inscrito', id_evento=evento.id_evento, id_cliente=i.id_cliente) }}"
-              onsubmit="return confirm('¿Quitar a {{ i.cliente_nombre }} de este evento?');">
-          <button type="submit" class="btn-quieto chico">Quitar</button>
-        </form>
+        <div class="acciones">
+          {% if i.id_posible and i.asistio is none %}
+            <form method="post" style="display:inline"
+                  action="{{ url_for('posibles.asistencia', id_posible=i.id_posible) }}">
+              <input type="hidden" name="asistio" value="si">
+              <button type="submit" class="btn-quieto chico">Vino</button>
+            </form>
+            <form method="post" style="display:inline"
+                  action="{{ url_for('posibles.asistencia', id_posible=i.id_posible) }}">
+              <input type="hidden" name="asistio" value="no">
+              <button type="submit" class="btn-quieto chico">No vino</button>
+            </form>
+          {% elif i.id_posible %}
+            <span class="pill {{ 'por_vencer' if i.asistio else 'vencido' }}">
+              {{ 'Asistió' if i.asistio else 'No asistió' }}
+            </span>
+          {% endif %}
+          <form method="post" style="display:inline"
+                action="{% if i.id_posible %}{{ url_for('calendario.quitar_posible', id_evento=evento.id_evento, id_posible=i.id_posible) }}{% else %}{{ url_for('calendario.quitar_inscrito', id_evento=evento.id_evento, id_cliente=i.id_cliente) }}{% endif %}"
+                onsubmit="return confirm('¿Quitar a {{ i.cliente_nombre }} de este evento?');">
+            <button type="submit" class="btn-quieto chico">Quitar</button>
+          </form>
+        </div>
       </div>
       {% else %}
       <div class="vacio">Todavía no hay nadie inscrito.</div>
@@ -164,6 +188,48 @@
     document.getElementById('hora_fin').disabled = todo;
   }
   alternarHoras();
+
+  // La hora de fin sigue al inicio una hora después, pero deja de
+  // hacerlo en cuanto el usuario la escribe a mano: si alguien puso
+  // un evento de tres horas, cambiar el inicio no se lo debe borrar.
+  (function duracionAutomatica(){
+    const DURACION_MIN = 60;
+    const inicio = document.getElementById('hora_inicio');
+    const fin = document.getElementById('hora_fin');
+    const pista = document.getElementById('pista-hora-fin');
+    if (!inicio || !fin) return;
+
+    const aMinutos = (valor) => {
+      const partes = /^(\d{1,2}):(\d{2})$/.exec(valor || '');
+      if (!partes) return null;
+      return Number(partes[1]) * 60 + Number(partes[2]);
+    };
+    const aTexto = (minutos) => {
+      const m = Math.min(minutos, 23 * 60 + 59);  // no cruza la medianoche
+      return String(Math.floor(m / 60)).padStart(2, '0') + ':' +
+             String(m % 60).padStart(2, '0');
+    };
+
+    // Al editar un evento que ya duraba algo distinto de una hora,
+    // se respeta lo guardado desde el arranque.
+    const i0 = aMinutos(inicio.value), f0 = aMinutos(fin.value);
+    let aMano = i0 !== null && f0 !== null && f0 - i0 !== DURACION_MIN;
+
+    const soltarAuto = () => {
+      aMano = true;
+      if (pista) pista.textContent = 'Hora de fin puesta a mano.';
+    };
+    fin.addEventListener('input', soltarAuto);
+
+    const seguirAlInicio = () => {
+      if (aMano) return;
+      const minutos = aMinutos(inicio.value);
+      if (minutos === null) return;
+      fin.value = aTexto(minutos + DURACION_MIN);
+    };
+    inicio.addEventListener('input', seguirAlInicio);
+    inicio.addEventListener('change', seguirAlInicio);
+  })();
 
   function montarBuscador(campoId, listaId, alElegir){
     const campo = document.getElementById(campoId);

@@ -8,13 +8,19 @@ separadas pero en "Cobrar" se eligen de una sola lista.
 from dataclasses import dataclass
 from decimal import Decimal
 
-# Tipos de plan
+# Tipos de plan. Solo son dos: Senior es todo lo que no es Junior, y
+# los pases también son Senior.
+#
+# "tipo" es SOLO la categoría comercial, la que se usa para precios y
+# reportes. Que un plan sea un pase NO se deduce del tipo sino de que
+# tenga entradas incluidas (dias_incluidos). Antes el tipo hacía las
+# dos cosas a la vez, y por eso no se podía clasificar un pase como
+# Senior sin romper el cálculo de la venta.
 JUNIOR = "JUNIOR"
 SENIOR = "SENIOR"
-PASES = "PASES"
 
-TIPOS_PLAN = (JUNIOR, SENIOR, PASES)
-ETIQUETA_TIPO = {JUNIOR: "Junior", SENIOR: "Senior", PASES: "Pases"}
+TIPOS_PLAN = (JUNIOR, SENIOR)
+ETIQUETA_TIPO = {JUNIOR: "Junior", SENIOR: "Senior"}
 
 # Unidades de duración
 DIA = "DIA"
@@ -63,7 +69,8 @@ class PlanMembresia:
 
     @property
     def es_pase(self) -> bool:
-        return self.tipo == PASES
+        """Un plan es pase si trae entradas contadas, no por su tipo."""
+        return self.dias_incluidos is not None
 
     @property
     def duracion_texto(self) -> str:

@@ -30,7 +30,15 @@ class ContabilidadRepositorio:
             cursor.execute(
                 f"""
                 SELECT
+                  -- Lo cobrado en caja, IVA incluido.
                   COALESCE(SUM(f.total) FILTER (WHERE f.estado = 'EMITIDA'), 0)
+                    AS cobrado,
+                  -- El ingreso real del gym: lo cobrado menos el IVA, que
+                  -- se recauda para el SRI y no es plata propia. Es la
+                  -- cifra que va al balance. La base no se guarda en la
+                  -- tabla: se deriva, y total - iva da el centavo exacto
+                  -- porque así se calculó al emitir.
+                  COALESCE(SUM(f.total - f.iva) FILTER (WHERE f.estado = 'EMITIDA'), 0)
                     AS ingresos,
                   count(*) FILTER (WHERE f.estado = 'EMITIDA')  AS n_pagadas,
                   count(*) FILTER (WHERE f.estado = 'ANULADA')  AS n_anuladas,
@@ -82,21 +90,37 @@ class ContabilidadRepositorio:
             return cursor.fetchall()
 
     def por_categoria(self, desde, hasta, id_cliente=None) -> list[dict]:
-        """Separa lo vendido entre membresías y productos.
+        """Separa lo vendido entre membresías Junior, Senior y productos.
 
         Suma el subtotal de las líneas, no el total de la factura, para
         poder repartir una factura que lleve de ambos.
+
+        Los pases cuentan como Senior, igual que en el resto del
+        sistema. El CASE sobre 'PASES' existe para que el reporte sea
+        correcto también en bases que todavía no corrieron la migración
+        de tipos; una vez migradas, esa rama simplemente no se usa.
         """
         filtro, parametros = self._parametros(desde, hasta, id_cliente)
         with obtener_cursor() as cursor:
             cursor.execute(
                 f"""
-                SELECT CASE WHEN d.id_plan IS NOT NULL THEN 'Membresías'
-                            ELSE 'Productos' END AS categoria,
-                       SUM(d.subtotal) AS monto,
+                SELECT CASE
+                         WHEN d.id_plan IS NULL THEN 'Productos'
+                         WHEN p.tipo = 'JUNIOR' THEN 'Membresías Junior'
+                         ELSE 'Membresías Senior'
+                       END AS categoria,
+                       -- Neto de IVA y de descuento, igual que el ingreso
+                       -- del encabezado, para que las categorías sumen el
+                       -- mismo total y el reporte no se contradiga. Se
+                       -- reparte el neto de cada factura en proporción al
+                       -- peso de cada línea, porque el detalle no guarda
+                       -- su propio IVA ni su parte del descuento.
+                       SUM(d.subtotal / NULLIF(f.subtotal, 0)
+                           * (f.total - f.iva)) AS monto,
                        SUM(d.cantidad) AS unidades
                   FROM detalle_factura d
                   JOIN facturas f ON f.id_factura = d.id_factura
+             LEFT JOIN planes_membresia p ON p.id_plan = d.id_plan
                  WHERE f.estado = 'EMITIDA'
                    AND f.fecha::date BETWEEN %s AND %s
                    {filtro}
@@ -116,7 +140,9 @@ class ContabilidadRepositorio:
                        CASE WHEN d.id_plan IS NOT NULL THEN 'plan'
                             ELSE 'producto' END AS tipo,
                        SUM(d.cantidad) AS unidades,
-                       SUM(d.subtotal) AS monto
+                       -- Neto, en la misma base que el resto del reporte.
+                       SUM(d.subtotal / NULLIF(f.subtotal, 0)
+                           * (f.total - f.iva)) AS monto
                   FROM detalle_factura d
                   JOIN facturas f ON f.id_factura = d.id_factura
                   LEFT JOIN productos p ON p.id_producto = d.id_producto

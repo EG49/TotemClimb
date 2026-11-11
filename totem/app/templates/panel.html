@@ -6,6 +6,17 @@
 <div class="page-title">Hola, {{ empleado.nombre.split(' ')[0] }}</div>
 <div class="page-sub">{{ fecha_larga }}</div>
 
+{# Buscar un cliente es lo que más se hace en el día: va antes que todo. #}
+<div class="card buscador-panel">
+  <label class="seccion" for="buscar-panel">Buscar cliente</label>
+  <div class="seccion-nota">Por nombre o cédula. Te lleva a su ficha.</div>
+  <div class="picker">
+    <input type="text" id="buscar-panel" placeholder="Nombre o cédula..."
+           autocomplete="off" aria-controls="lista-panel">
+    <div class="picker-list" id="lista-panel" role="listbox"></div>
+  </div>
+</div>
+
 <div class="accesos-rapidos">
   <a class="acceso" href="{{ url_for('cobrar.cobrar') }}">
     <div class="acceso-icono">
@@ -147,6 +158,75 @@
     valor.textContent = oculto ? '••••••' : valor.dataset.valor;
     boton.classList.toggle('activo', !oculto);
   }
+
+  // Buscador de clientes del panel. Reusa el endpoint del cobro y
+  // manda a la ficha. Enter abre el primer resultado, para no tener
+  // que soltar el teclado.
+  (function buscadorPanel(){
+    const campo = document.getElementById('buscar-panel');
+    const lista = document.getElementById('lista-panel');
+    if (!campo || !lista) return;
+
+    const FICHA = "{{ url_for('clientes.editar', id_cliente=0) }}";
+    const irA = (id) => { window.location.href = FICHA.replace(/0$/, id); };
+
+    const escapar = (t) => {
+      const d = document.createElement('div');
+      d.textContent = t == null ? '' : t;
+      return d.innerHTML;
+    };
+
+    let temporizador, peticion = 0;
+    campo.addEventListener('input', () => {
+      clearTimeout(temporizador);
+      const termino = campo.value.trim();
+      if (termino.length < 2) { lista.classList.remove('open'); lista.innerHTML = ''; return; }
+      temporizador = setTimeout(async () => {
+        const mia = ++peticion;
+        let datos;
+        try {
+          const r = await fetch('{{ url_for("cobrar.buscar_clientes") }}?q=' + encodeURIComponent(termino));
+          if (!r.ok) throw new Error(r.status);
+          datos = await r.json();
+        } catch (e) {
+          if (mia !== peticion) return;
+          lista.innerHTML = '<div class="picker-opt vacia">No se pudo buscar. Revisá la conexión.</div>';
+          lista.classList.add('open');
+          return;
+        }
+        if (mia !== peticion) return;  // llegó vieja, se descarta
+        lista.innerHTML = datos.clientes.length
+          ? datos.clientes.map(c => `
+              <div class="picker-opt" role="option" tabindex="0" data-id="${c.id}">
+                <span>${escapar(c.nombre)}${c.menor ? ' <span class="etiqueta-menor">Menor</span>' : ''}</span>
+                <small>
+                  <span class="pill ${escapar(c.estado_clave)}">${escapar(c.estado)}</span>
+                  ${escapar(c.cedula)}
+                </small>
+              </div>`).join('')
+          : '<div class="picker-opt vacia">Sin resultados</div>';
+        lista.querySelectorAll('.picker-opt[data-id]').forEach(o => {
+          o.addEventListener('click', () => irA(o.dataset.id));
+          o.addEventListener('keydown', ev => {
+            if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); irA(o.dataset.id); }
+          });
+        });
+        lista.classList.add('open');
+      }, 250);
+    });
+
+    campo.addEventListener('keydown', ev => {
+      if (ev.key === 'Escape') { lista.classList.remove('open'); return; }
+      const primero = lista.querySelector('.picker-opt[data-id]');
+      if (!primero) return;
+      if (ev.key === 'Enter') { ev.preventDefault(); irA(primero.dataset.id); }
+      if (ev.key === 'ArrowDown') { ev.preventDefault(); primero.focus(); }
+    });
+
+    document.addEventListener('click', ev => {
+      if (!ev.target.closest('.picker')) lista.classList.remove('open');
+    });
+  })();
 
   function filtrarAvisos(tipo, boton){
     boton.parentElement.querySelectorAll('.chip')

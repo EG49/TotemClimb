@@ -8,7 +8,7 @@ from app.db import obtener_cursor
 from app.models.empleado import Empleado
 
 _CAMPOS = """
-    id_empleado, nombre, apellido, usuario, rol, activo,
+    id_empleado, nombre, apellido, usuario, rol, activo, es_coach,
     fecha_nacimiento, fecha_registro
 """
 
@@ -20,7 +20,10 @@ class EmpleadoRepositorio:
         el servicio de autenticación."""
         with obtener_cursor() as cursor:
             cursor.execute(
-                f"SELECT {_CAMPOS}, password_hash FROM empleados WHERE usuario = %s",
+                f"""SELECT {_CAMPOS}, password_hash FROM empleados
+                     WHERE usuario = %s
+                       AND rol IS NOT NULL
+                       AND password_hash IS NOT NULL""",
                 (usuario,),
             )
             fila = cursor.fetchone()
@@ -43,13 +46,24 @@ class EmpleadoRepositorio:
                 f"""
                 SELECT {_CAMPOS} FROM empleados
                 {where}
-                ORDER BY activo DESC, rol, nombre, apellido
+                ORDER BY activo DESC, rol NULLS LAST, nombre, apellido
                 """
             )
             return [Empleado.desde_fila(f) for f in cursor.fetchall()]
 
     def listar_activos(self) -> list[Empleado]:
         return self.listar(incluir_inactivos=False)
+
+    def listar_coaches(self, incluir_inactivos: bool = False) -> list[Empleado]:
+        """Los que dan clases. Alimenta el desplegable de coach."""
+        where = "WHERE es_coach = TRUE"
+        if not incluir_inactivos:
+            where += " AND activo = TRUE"
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                f"SELECT {_CAMPOS} FROM empleados {where} ORDER BY nombre, apellido"
+            )
+            return [Empleado.desde_fila(f) for f in cursor.fetchall()]
 
     def usuario_ocupado(self, usuario: str, excluir_id: int | None = None) -> bool:
         with obtener_cursor() as cursor:
@@ -91,9 +105,10 @@ class EmpleadoRepositorio:
             cursor.execute(
                 """
                 INSERT INTO empleados
-                    (nombre, apellido, usuario, password_hash, rol, fecha_nacimiento)
+                    (nombre, apellido, usuario, password_hash, rol,
+                     es_coach, fecha_nacimiento)
                 VALUES (%(nombre)s, %(apellido)s, %(usuario)s, %(password_hash)s,
-                        %(rol)s, %(fecha_nacimiento)s)
+                        %(rol)s, %(es_coach)s, %(fecha_nacimiento)s)
                 RETURNING id_empleado
                 """,
                 datos,
@@ -107,6 +122,7 @@ class EmpleadoRepositorio:
                 UPDATE empleados
                    SET nombre = %(nombre)s, apellido = %(apellido)s,
                        usuario = %(usuario)s, rol = %(rol)s,
+                       es_coach = %(es_coach)s,
                        fecha_nacimiento = %(fecha_nacimiento)s
                  WHERE id_empleado = %(id_empleado)s
                 """,
@@ -142,7 +158,16 @@ class EmpleadoRepositorio:
                   (SELECT count(*) FROM evento_inscritos WHERE id_empleado = %(id)s)
                     AS inscripciones,
                   (SELECT max(fecha) FROM bitacora WHERE id_empleado = %(id)s)
-                    AS ultima_accion
+                    AS ultima_accion,
+                  -- Lo de abajo solo tiene sentido en un coach, pero
+                  -- calcularlo siempre evita dos consultas distintas.
+                  (SELECT count(*) FROM posibles_clientes
+                    WHERE id_coach = %(id)s) AS posibles,
+                  (SELECT count(*) FROM posibles_clientes
+                    WHERE id_coach = %(id)s AND asistio IS TRUE) AS asistidos,
+                  (SELECT count(*) FROM posibles_clientes
+                    WHERE id_coach = %(id)s AND id_cliente IS NOT NULL)
+                    AS convertidos
                 """,
                 {"id": id_empleado},
             )

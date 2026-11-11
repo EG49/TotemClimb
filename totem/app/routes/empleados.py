@@ -13,6 +13,7 @@ from flask import (
 
 from app.security import admin_requerido
 from app.services.empleado_service import EmpleadoService
+from app.services.posible_cliente_service import PosibleClienteService
 from app.services.validaciones import ErrorValidacion
 
 bp = Blueprint("empleados", __name__, url_prefix="/empleados")
@@ -27,6 +28,7 @@ def lista():
         "empleados/lista.html",
         empleados=empleados,
         actividad={e.id_empleado: servicio.actividad(e.id_empleado) for e in empleados},
+        por_coach=PosibleClienteService().por_coach(),
         yo=g.empleado["id_empleado"],
     )
 
@@ -51,7 +53,7 @@ def nuevo():
     return render_template(
         "empleados/formulario.html",
         ficha=None,
-        datos={"rol": "VENDEDOR"},
+        datos={"rol": "VENDEDOR", "tiene_acceso": True},
         errores={},
     )
 
@@ -77,6 +79,10 @@ def editar(id_empleado):
                 datos=request.form,
                 errores=e.errores,
                 actividad=servicio.actividad(id_empleado),
+                posibles=(
+                    PosibleClienteService().listar(id_coach=id_empleado)
+                    if empleado.es_coach else []
+                ),
                 yo=g.empleado["id_empleado"],
             )
         flash("Cambios guardados.", "ok")
@@ -90,6 +96,8 @@ def editar(id_empleado):
             "apellido": empleado.apellido,
             "usuario": empleado.usuario,
             "rol": empleado.rol,
+            "es_coach": empleado.es_coach,
+            "tiene_acceso": empleado.tiene_acceso,
             "fecha_nacimiento": (
                 empleado.fecha_nacimiento.isoformat()
                 if empleado.fecha_nacimiento
@@ -98,6 +106,10 @@ def editar(id_empleado):
         },
         errores={},
         actividad=servicio.actividad(id_empleado),
+        posibles=(
+            PosibleClienteService().listar(id_coach=id_empleado)
+            if empleado.es_coach else []
+        ),
         yo=g.empleado["id_empleado"],
     )
 

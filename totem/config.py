@@ -46,6 +46,14 @@ class Config:
     MAIL_REMITENTE = os.getenv("MAIL_REMITENTE")
     MAIL_NOMBRE_REMITENTE = os.getenv("MAIL_NOMBRE_REMITENTE", "Totem Climb Gym")
 
+    # ─── Registro técnico (logging) ───────────────────────────────
+    # Carpeta del archivo totem.log. Vacío = carpeta "logs" junto al
+    # proyecto. El archivo rota al llegar al tamaño máximo.
+    LOG_DIR = os.getenv("LOG_DIR")
+    LOG_NIVEL = os.getenv("LOG_NIVEL", "INFO")
+    LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", "2000000"))
+    LOG_COPIAS = int(os.getenv("LOG_COPIAS", "5"))
+
     # Intentos fallidos de login permitidos antes de frenar al usuario
     MAX_INTENTOS_LOGIN = int(os.getenv("MAX_INTENTOS_LOGIN", "5"))
     BLOQUEO_LOGIN_SEGUNDOS = int(os.getenv("BLOQUEO_LOGIN_SEGUNDOS", "300"))

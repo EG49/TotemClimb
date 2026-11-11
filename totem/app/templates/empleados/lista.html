@@ -41,15 +41,24 @@
             </div>
           </div>
         </td>
-        <td class="meta">{{ e.usuario }}</td>
+        <td class="meta">
+          {% if e.usuario %}{{ e.usuario }}
+          {% else %}<span title="No entra al sistema">Sin acceso</span>{% endif %}
+        </td>
         <td>
           <span class="plan-tag {{ 'senior' if e.es_admin else 'pases' }}">
             {{ e.rol_etiqueta }}
           </span>
         </td>
         <td class="meta">
+          {% if e.es_coach %}
+            {{ act.posibles }} posible{{ 's' if act.posibles != 1 }} ·
+            {{ act.convertidos }} convertido{{ 's' if act.convertidos != 1 }}
+            {% if e.tiene_acceso %}<div>{{ act.facturas }} factura{{ 's' if act.facturas != 1 }}</div>{% endif %}
+          {% else %}
           {{ act.facturas }} factura{{ 's' if act.facturas != 1 }}
           {% if act.abonos %} · {{ act.abonos }} abono{{ 's' if act.abonos != 1 }}{% endif %}
+          {% endif %}
           {% if act.ultima_accion %}
             <div>Última acción: {{ act.ultima_accion.strftime('%d/%m/%Y %H:%M') }}</div>
           {% endif %}
@@ -80,4 +89,42 @@
     </tbody>
   </table>
 </div>
+
+{% if por_coach %}
+<div class="card" style="margin-top:22px;">
+  <div class="seccion">Eficiencia de los coaches</div>
+  <div class="seccion-nota">
+    De cada posible cliente asignado, cuántos vinieron y cuántos
+    terminaron inscribiéndose.
+  </div>
+  <table class="tabla-items" style="display:table;">
+    <thead>
+      <tr><th>Coach</th><th>Asignados</th><th>Vinieron</th><th>Se inscribieron</th><th>Conversión</th></tr>
+    </thead>
+    <tbody>
+      {% for c in por_coach %}
+      <tr class="{{ 'inactiva' if not c.activo }}">
+        <td>
+          <a href="{{ url_for('empleados.editar', id_empleado=c.id_empleado) }}">{{ c.coach }}</a>
+          {% if not c.activo %}<span class="meta"> · inactivo</span>{% endif %}
+        </td>
+        <td>{{ c.asignados }}</td>
+        <td>{{ c.asistieron }}</td>
+        <td><b>{{ c.convertidos }}</b></td>
+        <td>
+          {% if c.asignados %}
+            <div class="barra" style="max-width:120px;">
+              <div class="barra-relleno" style="width:{{ c.tasa }}%"></div>
+            </div>
+            <span class="meta">{{ c.tasa }}%</span>
+          {% else %}
+            <span class="meta">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 {% endblock %}

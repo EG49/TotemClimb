@@ -8,6 +8,12 @@ inutilizable sin querer:
   * Nadie puede desactivarse a sí mismo ni quitarse el rol de
     administrador: se quedaría fuera en mitad de la sesión.
   * Siempre tiene que quedar al menos un administrador activo.
+
+El rol y la condición de coach son cosas distintas. El rol dice qué
+puede hacer alguien dentro del sistema y solo lo tiene quien inicia
+sesión; ser coach es una función del gimnasio que no habilita ningún
+acceso. Por eso una misma persona puede ser vendedora y coach, y un
+coach puro no lleva usuario ni contraseña.
 """
 
 from datetime import date, datetime
@@ -42,12 +48,20 @@ class EmpleadoService:
     def obtener(self, id_empleado: int) -> Empleado | None:
         return self.repositorio.obtener(id_empleado)
 
+    def listar_coaches(self, incluir_inactivos: bool = False) -> list[Empleado]:
+        return self.repositorio.listar_coaches(incluir_inactivos)
+
     def actividad(self, id_empleado: int) -> dict:
         return self.repositorio.actividad(id_empleado)
 
     # --- Validación ---------------------------------------------------
 
     def _normalizar(self, formulario: dict) -> dict:
+        es_coach = formulario.get("es_coach") == "on"
+        # "Sin acceso" es la forma de decir que es un coach puro: no
+        # entra al sistema, así que no lleva usuario ni contraseña.
+        tiene_acceso = formulario.get("tiene_acceso") == "on"
+
         fecha = limpiar(formulario.get("fecha_nacimiento"))
         if fecha:
             try:
@@ -58,8 +72,16 @@ class EmpleadoService:
         return {
             "nombre": limpiar(formulario.get("nombre")),
             "apellido": limpiar(formulario.get("apellido")),
-            "usuario": (limpiar(formulario.get("usuario")) or "").lower() or None,
-            "rol": limpiar(formulario.get("rol")) or ROL_VENDEDOR,
+            "usuario": (
+                (limpiar(formulario.get("usuario")) or "").lower() or None
+                if tiene_acceso else None
+            ),
+            "rol": (
+                (limpiar(formulario.get("rol")) or ROL_VENDEDOR)
+                if tiene_acceso else None
+            ),
+            "es_coach": es_coach,
+            "tiene_acceso": tiene_acceso,
             "fecha_nacimiento": fecha or None,
         }
 
@@ -70,6 +92,25 @@ class EmpleadoService:
             errores["nombre"] = "El nombre es obligatorio."
         if not datos.get("apellido"):
             errores["apellido"] = "El apellido es obligatorio."
+
+        # Una ficha que ni entra al sistema ni da clases no representa
+        # a nadie. La base lo rechaza; aquí se avisa antes.
+        if not datos.get("tiene_acceso") and not datos.get("es_coach"):
+            errores["general"] = (
+                "Marca al menos una opción: o entra al sistema, o es coach."
+            )
+            return errores
+
+        # Un coach puro no lleva usuario ni rol: no hay nada que validar.
+        if not datos.get("tiene_acceso"):
+            fecha = datos.get("fecha_nacimiento")
+            if fecha == "__invalida__":
+                errores["fecha_nacimiento"] = "La fecha no tiene un formato válido."
+            elif isinstance(fecha, date):
+                problema = validar_fecha_nacimiento(fecha)
+                if problema:
+                    errores["fecha_nacimiento"] = problema
+            return errores
 
         usuario = datos.get("usuario")
         if not usuario:
@@ -117,15 +158,20 @@ class EmpleadoService:
     def crear(self, formulario: dict, id_empleado_actual: int) -> int:
         datos = self._normalizar(formulario)
         errores = self._validar(datos)
-        errores.update(
-            self._validar_password(
-                formulario.get("password", ""), formulario.get("password_repetida", "")
+        # Un coach que no entra al sistema no tiene contraseña que pedir.
+        if datos["tiene_acceso"]:
+            errores.update(
+                self._validar_password(
+                    formulario.get("password", ""),
+                    formulario.get("password_repetida", ""),
+                )
             )
-        )
         if errores:
             raise ErrorValidacion(errores)
 
-        datos["password_hash"] = generar_hash(formulario["password"])
+        datos["password_hash"] = (
+            generar_hash(formulario["password"]) if datos["tiene_acceso"] else None
+        )
         nuevo = self.repositorio.crear(datos)
 
         self.bitacora.registrar(
@@ -136,7 +182,8 @@ class EmpleadoService:
             {
                 "usuario": datos["usuario"],
                 "nombre": f"{datos['nombre']} {datos['apellido']}",
-                "rol": datos["rol"],
+                "rol": datos["rol"] or "SIN ACCESO",
+                "es_coach": datos["es_coach"],
             },
         )
         return nuevo
@@ -153,7 +200,13 @@ class EmpleadoService:
 
         # Quitarse a uno mismo el rol de administrador deja al sistema
         # sin quien lo administre, o al menos deja fuera a quien lo hizo.
-        if (
+        # Quitarse a uno mismo el acceso deja a quien lo hizo fuera en
+        # el acto, igual que quitarse el rol de administrador.
+        if id_empleado == id_empleado_actual and not datos["tiene_acceso"]:
+            errores["general"] = (
+                "No puedes quitarte a ti mismo el acceso al sistema."
+            )
+        elif (
             id_empleado == id_empleado_actual
             and actual.es_admin
             and datos["rol"] != ROL_ADMIN
@@ -176,7 +229,8 @@ class EmpleadoService:
             raise ErrorValidacion(errores)
 
         cambios = {}
-        for campo in ("nombre", "apellido", "usuario", "rol", "fecha_nacimiento"):
+        for campo in ("nombre", "apellido", "usuario", "rol", "es_coach",
+                      "fecha_nacimiento"):
             antes, despues = getattr(actual, campo), datos[campo]
             if isinstance(antes, date):
                 antes = antes.isoformat()
@@ -202,6 +256,11 @@ class EmpleadoService:
         empleado = self.repositorio.obtener(id_empleado)
         if empleado is None:
             raise ValueError("El empleado no existe.")
+
+        if not empleado.tiene_acceso:
+            raise ValueError(
+                "Ese empleado no entra al sistema, así que no tiene contraseña."
+            )
 
         errores = self._validar_password(
             formulario.get("password", ""), formulario.get("password_repetida", "")

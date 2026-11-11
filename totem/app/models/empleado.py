@@ -11,15 +11,22 @@ from datetime import date, datetime
 ROL_ADMIN = "ADMIN"
 ROL_VENDEDOR = "VENDEDOR"
 
+# El rol dice qué puede hacer alguien DENTRO del sistema, y solo lo
+# tiene quien inicia sesión. Ser coach es otra cosa: una función en el
+# gimnasio, que no habilita ningún acceso. Por eso van separados y una
+# misma persona puede ser vendedora y coach a la vez.
+
 
 @dataclass
 class Empleado:
     id_empleado: int
     nombre: str
     apellido: str
-    usuario: str
-    rol: str
+    # Nulos en un coach que no entra al sistema.
+    usuario: str | None
+    rol: str | None
     activo: bool
+    es_coach: bool = False
     fecha_nacimiento: date | None = None
     fecha_registro: datetime | None = None
 
@@ -36,13 +43,26 @@ class Empleado:
         return self.rol == ROL_ADMIN
 
     @property
+    def tiene_acceso(self) -> bool:
+        """Si puede iniciar sesión. Un coach puro no puede."""
+        return self.rol is not None
+
+    @property
     def iniciales(self) -> str:
         partes = [p for p in (self.nombre, self.apellido) if p]
         return "".join(p[0].upper() for p in partes)[:2]
 
     @property
     def rol_etiqueta(self) -> str:
-        return "Administrador" if self.es_admin else "Vendedor"
+        """Cómo se describe a esta persona en pantalla.
+
+        Un coach que además vende es las dos cosas, y conviene que se
+        vea así en el listado.
+        """
+        if self.rol is None:
+            return "Coach"
+        base = "Administrador" if self.es_admin else "Vendedor"
+        return f"{base} y coach" if self.es_coach else base
 
     @classmethod
     def desde_fila(cls, fila: dict) -> "Empleado":
@@ -54,6 +74,7 @@ class Empleado:
             usuario=fila["usuario"],
             rol=fila["rol"],
             activo=fila["activo"],
+            es_coach=fila.get("es_coach", False),
             fecha_nacimiento=fila.get("fecha_nacimiento"),
             fecha_registro=fila.get("fecha_registro"),
             password_hash=fila.get("password_hash"),

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Página no encontrada — Totem Climb Gym{% endblock %}
+
+{% block contenido %}
+<div class="pagina-error">
+  <div class="error-codigo">404</div>
+  <div class="page-title">Esta página no existe</div>
+  <p class="error-texto">
+    La dirección que abriste no corresponde a ninguna pantalla del
+    sistema. Puede ser un enlace viejo o un error al escribirla.
+  </p>
+  <div class="error-acciones">
+    <a class="btn-primary" href="{{ url_for('main.panel') }}">Ir al panel general</a>
+    <a class="btn-ghost" href="{{ url_for('clientes.lista') }}">Buscar un cliente</a>
+  </div>
+</div>
+{% endblock %}

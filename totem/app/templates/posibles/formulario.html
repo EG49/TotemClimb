@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% set editando = ficha is not none %}
+{% block titulo %}{{ 'Posible cliente' if editando else 'Agendar clase de prueba' }} — Totem Climb Gym{% endblock %}
+{% block nav_posibles %}active{% endblock %}
+
+{% macro campo(nombre, etiqueta, tipo='text', marcador='', opcional=false, pista='') %}
+  <div class="campo">
+    <label for="{{ nombre }}">
+      {{ etiqueta }}{% if opcional %} <span class="opcional">(opcional)</span>{% endif %}
+    </label>
+    <input id="{{ nombre }}" name="{{ nombre }}" type="{{ tipo }}"
+           placeholder="{{ marcador }}" value="{{ datos.get(nombre) or '' }}"
+           class="{{ 'con-error' if errores.get(nombre) }}">
+    {% if pista %}<div class="pista">{{ pista }}</div>{% endif %}
+    {% if errores.get(nombre) %}<div class="error">{{ errores[nombre] }}</div>{% endif %}
+  </div>
+{% endmacro %}
+
+{% block contenido %}
+<div class="migas">
+  <a href="{{ url_for('posibles.lista') }}">Posibles clientes</a> /
+  {{ 'Ficha' if editando else 'Agendar' }}
+</div>
+<div class="page-title">
+  {{ ficha.nombre_completo if editando else 'Agendar clase de prueba' }}
+</div>
+<div class="page-sub">
+  {% if editando %}
+    {{ ficha.estado_etiqueta }}{% if ficha.fecha_clase %} ·
+      clase del {{ ficha.fecha_clase.strftime('%d/%m/%Y') }}{% endif %}
+  {% else %}
+    Todavía no es cliente. Solo hacen falta su nombre, su correo y el día.
+  {% endif %}
+</div>
+
+<div class="disposicion-evento">
+  <form method="post" class="card">
+    <div class="seccion">Datos de contacto</div>
+    <div class="seccion-nota">
+      El correo es obligatorio: es con lo que el sistema reconoce después
+      si esta persona terminó inscribiéndose.
+    </div>
+
+    <div class="rejilla">
+      {{ campo('nombre', 'Nombre', marcador='Ej. Ana') }}
+      {{ campo('apellido', 'Apellido', marcador='Ej. Pérez') }}
+      {{ campo('correo', 'Correo', tipo='email', marcador='ana@correo.com') }}
+      {{ campo('telefono', 'Celular', marcador='0991234567', opcional=true) }}
+    </div>
+
+    <hr class="divisor">
+    <div class="seccion">Coach</div>
+    <div class="seccion-nota">
+      Se puede dejar sin asignar y elegirlo después. Es lo que permite
+      saber qué coach trae más socios.
+    </div>
+    {# Un desplegable con una sola opción muerta parece un campo roto.
+       Si no hay coaches, se dice por qué y qué hacer. #}
+    {% if coaches %}
+      <div class="campo">
+        <label for="id_coach">Coach a cargo</label>
+        <select id="id_coach" name="id_coach">
+          <option value="">Sin asignar</option>
+          {% for c in coaches %}
+            <option value="{{ c.id_empleado }}"
+                    {{ 'selected' if datos.get('id_coach')|string == c.id_empleado|string }}>
+              {{ c.nombre_completo }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    {% else %}
+      <div class="aviso-bloqueo">
+        <b>Todavía no hay ningún coach.</b>
+        Para poder asignarlo, primero hay que marcar como coach a alguien
+        en Empleados: se edita a la persona y se marca la casilla
+        <b>“Da clases (coach)”</b>. Si el coach no usa el sistema, se
+        crea sin usuario ni contraseña.
+        <div style="margin-top:10px;">
+          <a class="btn-ghost" href="{{ url_for('empleados.lista') }}">Ir a Empleados</a>
+        </div>
+      </div>
+      {# Sin esto, guardar la ficha borraría el coach que ya tuviera. #}
+      <input type="hidden" name="id_coach" value="{{ datos.get('id_coach') or '' }}">
+    {% endif %}
+
+    {% if not editando %}
+    <hr class="divisor">
+    <div class="seccion">Día de la clase</div>
+    <div class="seccion-nota">
+      Si ya hay una clase de prueba ese día a esa hora, se suma a ella en
+      vez de crear otra.
+    </div>
+    <div class="rejilla">
+      {{ campo('fecha', 'Fecha', tipo='date') }}
+      <div class="campo">
+        <label for="hora_inicio">Hora</label>
+        <input id="hora_inicio" name="hora_inicio" type="time"
+               value="{{ datos.get('hora_inicio') or '10:00' }}"
+               class="{{ 'con-error' if errores.get('hora_inicio') }}">
+        <div class="pista">La clase dura una hora.</div>
+        {% if errores.get('hora_inicio') %}<div class="error">{{ errores['hora_inicio'] }}</div>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="acciones-formulario">
+      <a class="btn-ghost" href="{{ url_for('posibles.lista') }}">Cancelar</a>
+      <button type="submit" class="btn-primary">
+        {{ 'Guardar cambios' if editando else 'Agendar' }}
+      </button>
+    </div>
+  </form>
+
+  {% if editando %}
+  <aside>
+    <div class="card">
+      <div class="seccion">Estado</div>
+      <div class="totales">
+        <div class="linea"><span>Agendado el</span>
+          <b>{{ ficha.fecha_registro.strftime('%d/%m/%Y') }}</b></div>
+        {% if ficha.fecha_clase %}
+          <div class="linea"><span>Clase</span>
+            <b>{{ ficha.fecha_clase.strftime('%d/%m/%Y') }}</b></div>
+        {% endif %}
+        <div class="linea"><span>Asistió</span>
+          <b>{{ 'Sí' if ficha.asistio else ('No' if ficha.asistio is not none else 'Sin marcar') }}</b></div>
+        <div class="linea"><span>Se inscribió</span>
+          <b>{{ 'Sí' if ficha.convertido else 'Todavía no' }}</b></div>
+      </div>
+      {% if ficha.registrado_por %}
+        <div class="meta" style="margin-top:10px;">
+          Lo agendó {{ ficha.registrado_por }}.
+        </div>
+      {% endif %}
+    </div>
+
+    {% if ficha.asistio is none and not ficha.convertido %}
+    <div class="card" style="margin-top:16px;">
+      <div class="seccion">¿Vino a la clase?</div>
+      <div class="seccion-nota">
+        Marcarlo es lo que permite distinguir a un coach que agenda y no
+        llena, de uno que llena y no convierte.
+      </div>
+      <div class="acciones">
+        <form method="post" action="{{ url_for('posibles.asistencia', id_posible=ficha.id_posible) }}">
+          <input type="hidden" name="asistio" value="si">
+          <button type="submit" class="btn-primary">Sí, vino</button>
+        </form>
+        <form method="post" action="{{ url_for('posibles.asistencia', id_posible=ficha.id_posible) }}">
+          <input type="hidden" name="asistio" value="no">
+          <button type="submit" class="btn-quieto">No vino</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if ficha.convertido %}
+    <div class="card" style="margin-top:16px;">
+      <div class="seccion">Se inscribió</div>
+      <div class="seccion-nota">
+        Pagó su primera membresía el
+        {{ ficha.fecha_conversion.strftime('%d/%m/%Y') }}. Ya es cliente
+        del gimnasio.
+      </div>
+      <a class="btn-ghost ancho"
+         href="{{ url_for('clientes.editar', id_cliente=ficha.id_cliente) }}">
+        Ver su ficha de cliente
+      </a>
+      <form method="post" style="margin-top:10px;"
+            action="{{ url_for('posibles.deshacer_conversion', id_posible=ficha.id_posible) }}"
+            onsubmit="return confirm('¿Deshacer el enlace? Dejará de contar como conversión de su coach.');">
+        <button type="submit" class="btn-quieto ancho">No es la misma persona</button>
+      </form>
+    </div>
+    {% endif %}
+  </aside>
+  {% endif %}
+</div>
+{% endblock %}
