@@ -77,13 +77,15 @@
     <div class="summary-label">Ingresos del período</div>
     <div class="summary-value">{{ monto(datos.resumen.ingresos) }}</div>
     <div class="summary-note">
-      {{ datos.resumen.n_pagadas }} factura{{ 's' if datos.resumen.n_pagadas != 1 }} cobrada{{ 's' if datos.resumen.n_pagadas != 1 }}
+      sin IVA · {{ datos.resumen.n_pagadas }} factura{{ 's' if datos.resumen.n_pagadas != 1 }} cobrada{{ 's' if datos.resumen.n_pagadas != 1 }}
     </div>
   </div>
   <div class="summary-card">
-    <div class="summary-label">Ticket promedio</div>
-    <div class="summary-value">{{ monto(datos.resumen.ticket_promedio) }}</div>
-    <div class="summary-note">por factura cobrada</div>
+    <div class="summary-label">Cobrado en caja</div>
+    <div class="summary-value">{{ monto(datos.resumen.cobrado) }}</div>
+    <div class="summary-note">
+      con IVA · de ahí {{ monto(datos.resumen.iva) }} es del SRI
+    </div>
   </div>
   <div class="summary-card">
     <div class="summary-label">Descuentos otorgados</div>

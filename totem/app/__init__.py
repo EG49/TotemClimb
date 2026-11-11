@@ -43,6 +43,7 @@ def crear_app(config_clase=Config) -> Flask:
         contabilidad,
         empleados,
         facturas,
+        gastos,
         main,
         posibles,
     )
@@ -54,6 +55,7 @@ def crear_app(config_clase=Config) -> Flask:
     app.register_blueprint(cobrar.bp)
     app.register_blueprint(facturas.bp)
     app.register_blueprint(contabilidad.bp)
+    app.register_blueprint(gastos.bp)
     app.register_blueprint(calendario.bp)
     app.register_blueprint(empleados.bp)
     app.register_blueprint(posibles.bp)

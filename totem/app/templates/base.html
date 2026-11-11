@@ -60,6 +60,11 @@
         Productos
       </a>
       {% if empleado and empleado.es_admin %}
+      {# Los gastos los registra el admin, no el vendedor del turno. #}
+      <a class="nav-item {% block nav_gastos %}{% endblock %}" href="{{ url_for('gastos.lista') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/><path d="M7 7l-4 5 4 5"/><path d="M21 5v14"/></svg>
+        Gastos
+      </a>
       <a class="nav-item {% block nav_bitacora %}{% endblock %}" href="{{ url_for('main.bitacora') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
         Bitácora
