@@ -690,6 +690,13 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
 
 /* ===== PANEL GENERAL ===== */
 
+/* Buscador de clientes del panel. La lista de resultados se despliega
+   por encima de las tarjetas de abajo, de ahí el z-index. */
+.buscador-panel{ padding:18px 20px; margin-bottom:18px; position:relative; z-index:3; }
+.buscador-panel .seccion{ display:block; cursor:pointer; }
+.buscador-panel .picker{ margin-top:12px; }
+.buscador-panel .picker-opt small{ display:flex; align-items:center; gap:8px; }
+
 .accesos-rapidos{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px; }
 .acceso{
   display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit;
@@ -747,7 +754,7 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
 
   /* Fuera todo lo que no es el comprobante. */
   .sidebar, .encabezado, .flash, .acciones, .nota-fiado,
-  .barra-movil, .velo{ display:none !important; }
+  .barra-movil, .velo, .buscador-panel{ display:none !important; }
 
   body{ background:#fff; color:#000; }
   .app{ display:block; }

@@ -432,3 +432,28 @@ FodyWeavers.xsd
 __pycache__/
 *.pyc
 .venv/
+
+# ─── Totem Climb Gym ───────────────────────────────────────────────
+# Credenciales
+.env
+# La firma electrónica del SRI es tan sensible como una contraseña.
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Respaldos de la base: traen cédulas y datos de menores. Nunca al
+# repositorio, ni privado. El esquema sí se versiona; los datos no.
+*.dump
+*.backup
+*.sql.gz
+*.bak
+respaldos/
+backups/
+
+# Entorno y registros
+.venv/
+venv/
+logs/
+__pycache__/
+*.pyc

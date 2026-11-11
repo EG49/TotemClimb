@@ -54,6 +54,7 @@
         <input id="hora_fin" name="hora_fin" type="time"
                value="{{ datos.get('hora_fin') or '11:00' }}"
                class="{{ 'con-error' if errores.get('hora_fin') }}">
+        <div class="pista" id="pista-hora-fin">Se pone una hora después del inicio. Podés cambiarla.</div>
         {% if errores.get('hora_fin') %}<div class="error">{{ errores['hora_fin'] }}</div>{% endif %}
       </div>
 
@@ -187,6 +188,48 @@
     document.getElementById('hora_fin').disabled = todo;
   }
   alternarHoras();
+
+  // La hora de fin sigue al inicio una hora después, pero deja de
+  // hacerlo en cuanto el usuario la escribe a mano: si alguien puso
+  // un evento de tres horas, cambiar el inicio no se lo debe borrar.
+  (function duracionAutomatica(){
+    const DURACION_MIN = 60;
+    const inicio = document.getElementById('hora_inicio');
+    const fin = document.getElementById('hora_fin');
+    const pista = document.getElementById('pista-hora-fin');
+    if (!inicio || !fin) return;
+
+    const aMinutos = (valor) => {
+      const partes = /^(\d{1,2}):(\d{2})$/.exec(valor || '');
+      if (!partes) return null;
+      return Number(partes[1]) * 60 + Number(partes[2]);
+    };
+    const aTexto = (minutos) => {
+      const m = Math.min(minutos, 23 * 60 + 59);  // no cruza la medianoche
+      return String(Math.floor(m / 60)).padStart(2, '0') + ':' +
+             String(m % 60).padStart(2, '0');
+    };
+
+    // Al editar un evento que ya duraba algo distinto de una hora,
+    // se respeta lo guardado desde el arranque.
+    const i0 = aMinutos(inicio.value), f0 = aMinutos(fin.value);
+    let aMano = i0 !== null && f0 !== null && f0 - i0 !== DURACION_MIN;
+
+    const soltarAuto = () => {
+      aMano = true;
+      if (pista) pista.textContent = 'Hora de fin puesta a mano.';
+    };
+    fin.addEventListener('input', soltarAuto);
+
+    const seguirAlInicio = () => {
+      if (aMano) return;
+      const minutos = aMinutos(inicio.value);
+      if (minutos === null) return;
+      fin.value = aTexto(minutos + DURACION_MIN);
+    };
+    inicio.addEventListener('input', seguirAlInicio);
+    inicio.addEventListener('change', seguirAlInicio);
+  })();
 
   function montarBuscador(campoId, listaId, alElegir){
     const campo = document.getElementById(campoId);

@@ -150,7 +150,7 @@ def enviar_comprobante(id_factura):
 @bp.route("/buscar-clientes")
 @login_requerido
 def buscar_clientes():
-    """Alimenta el buscador de clientes de la pantalla de cobro."""
+    """Alimenta los buscadores de clientes: cobro, eventos y panel."""
     termino = request.args.get("q", "").strip()
     if len(termino) < 2:
         return {"clientes": []}
@@ -163,6 +163,9 @@ def buscar_clientes():
                 "nombre": c.nombre_completo,
                 "cedula": c.cedula or "—",
                 "estado": c.estado_etiqueta,
+                # La clave sirve para la clase CSS de la pastilla; la
+                # etiqueta es solo el texto que se muestra.
+                "estado_clave": c.estado_membresia.lower(),
                 "menor": c.tiene_representante,
             }
             for c in encontrados
