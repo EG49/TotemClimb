@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% set editando = gasto is not none %}
+{% block titulo %}{{ 'Corregir gasto' if editando else 'Registrar gasto' }} — Totem Climb Gym{% endblock %}
+{% block nav_gastos %}active{% endblock %}
+
+{% block contenido %}
+<div class="migas">
+  <a href="{{ url_for('gastos.lista') }}">Gastos</a> /
+  {{ 'Corregir' if editando else 'Registrar' }}
+</div>
+<div class="page-title">{{ 'Corregir gasto' if editando else 'Registrar gasto' }}</div>
+<div class="page-sub">
+  {% if editando %}
+    Registrado por {{ gasto.empleado_nombre }}
+    el {{ gasto.fecha_registro.strftime('%d/%m/%Y a las %H:%M') }}.
+    Queda anotado en la bitácora qué cambiaste.
+  {% else %}
+    Lo que sale de caja. Resta en el balance con factura o sin ella.
+  {% endif %}
+</div>
+
+{% if recurrentes %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="seccion">Gastos del mes pasado</div>
+  <div class="seccion-nota">
+    Para cargar uno fijo sin escribirlo de nuevo. El monto se trae como
+    referencia: revisalo antes de guardar.
+  </div>
+  <div class="chips" style="margin-top:12px;">
+    {% for r in recurrentes %}
+      <button type="button" class="chip"
+              onclick="usarRecurrente(this)"
+              data-concepto="{{ r.concepto|e }}"
+              data-monto="{{ r.monto }}"
+              data-segmento="{{ r.segmento }}"
+              data-facturado="{{ '1' if r.facturado else '' }}"
+              data-metodo="{{ r.metodo_pago or '' }}">
+        {{ r.concepto }} <span>${{ '%.2f'|format(r.monto) }}</span>
+      </button>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<form method="post" class="card">
+  <div class="rejilla">
+    <div class="campo ancho">
+      <label for="concepto">Concepto</label>
+      <input id="concepto" name="concepto" type="text" list="lista-conceptos"
+             value="{{ datos.get('concepto') or '' }}" maxlength="80"
+             placeholder="Ej. Arriendo, Luz, Magnesio"
+             class="{{ 'con-error' if errores.get('concepto') }}">
+      <datalist id="lista-conceptos">
+        {% for c in conceptos %}<option value="{{ c }}">{% endfor %}
+      </datalist>
+      <div class="pista">
+        Usá siempre el mismo nombre para el mismo gasto: el balance
+        agrupa por este campo.
+      </div>
+      {% if errores.get('concepto') %}<div class="error">{{ errores['concepto'] }}</div>{% endif %}
+    </div>
+
+    <div class="campo">
+      <label for="monto">Monto</label>
+      <input id="monto" name="monto" type="number" step="0.01" min="0.01"
+             value="{{ datos.get('monto') or '' }}"
+             class="{{ 'con-error' if errores.get('monto') }}">
+      {% if errores.get('monto') %}<div class="error">{{ errores['monto'] }}</div>{% endif %}
+    </div>
+
+    <div class="campo">
+      <label for="fecha">Fecha del pago</label>
+      <input id="fecha" name="fecha" type="date" value="{{ datos.get('fecha') or '' }}"
+             class="{{ 'con-error' if errores.get('fecha') }}">
+      {% if errores.get('fecha') %}<div class="error">{{ errores['fecha'] }}</div>{% endif %}
+    </div>
+
+    <div class="campo">
+      <label for="segmento">Se carga a</label>
+      <select id="segmento" name="segmento"
+              class="{{ 'con-error' if errores.get('segmento') }}">
+        {% for v, e in [('GENERAL','General — no se puede repartir'),
+                        ('JUNIOR','Junior'),
+                        ('SENIOR','Senior')] %}
+          <option value="{{ v }}" {{ 'selected' if datos.get('segmento') == v }}>{{ e }}</option>
+        {% endfor %}
+      </select>
+      <div class="pista">
+        Sirve para saber si la escuelita de chicos se sostiene sola.
+      </div>
+      {% if errores.get('segmento') %}<div class="error">{{ errores['segmento'] }}</div>{% endif %}
+    </div>
+
+    <div class="campo">
+      <label for="metodo_pago">Cómo se pagó <span class="opcional">(opcional)</span></label>
+      <select id="metodo_pago" name="metodo_pago">
+        <option value="" {{ 'selected' if not datos.get('metodo_pago') }}>Sin especificar</option>
+        {% for v, e in [('EFECTIVO','Efectivo'), ('TRANSFERENCIA','Transferencia')] %}
+          <option value="{{ v }}" {{ 'selected' if datos.get('metodo_pago') == v }}>{{ e }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="campo ancho">
+      <label class="fila-check compacta">
+        <input type="checkbox" name="facturado" id="facturado"
+               {{ 'checked' if datos.get('facturado') }}>
+        <span>
+          <b>Tiene factura de respaldo</b>
+          <small>
+            Lo facturado es lo que se puede justificar ante el SRI. Un gasto
+            sin factura es igual de real y resta igual en el balance, pero no
+            es deducible.
+          </small>
+        </span>
+      </label>
+    </div>
+
+    <div class="campo ancho">
+      <label for="descripcion">Descripción <span class="opcional">(opcional)</span></label>
+      <input id="descripcion" name="descripcion" type="text" maxlength="255"
+             value="{{ datos.get('descripcion') or '' }}"
+             placeholder="Detalle, número de factura, a quién se le pagó..."
+             class="{{ 'con-error' if errores.get('descripcion') }}">
+      {% if errores.get('descripcion') %}<div class="error">{{ errores['descripcion'] }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="acciones-formulario">
+    <a class="btn-ghost" href="{{ url_for('gastos.lista') }}">Cancelar</a>
+    <button type="submit" class="btn-primary">
+      {{ 'Guardar cambios' if editando else 'Registrar gasto' }}
+    </button>
+  </div>
+</form>
+
+<script>
+  // Carga un gasto fijo del mes pasado en el formulario. No guarda
+  // nada: solo rellena, para que el admin revise el monto.
+  function usarRecurrente(boton){
+    const d = boton.dataset;
+    document.getElementById('concepto').value = d.concepto;
+    document.getElementById('monto').value = Number(d.monto).toFixed(2);
+    document.getElementById('segmento').value = d.segmento;
+    document.getElementById('facturado').checked = d.facturado === '1';
+    document.getElementById('metodo_pago').value = d.metodo || '';
+    document.getElementById('monto').focus();
+    document.getElementById('monto').select();
+  }
+</script>
+{% endblock %}

@@ -633,6 +633,15 @@ CREATE TABLE gastos (
     fecha DATE NOT NULL,
     monto NUMERIC(10,2) NOT NULL,
     segmento VARCHAR(10) NOT NULL,
+
+    -- Qué se pagó: "Arriendo", "Luz", "Magnesio". Agrupa el balance
+    -- y permite sugerir los gastos recurrentes del mes anterior.
+    concepto VARCHAR(80) NOT NULL,
+
+    -- Si el gasto tiene factura de respaldo. Distingue lo deducible
+    -- de lo que no, y no admite nulos: o la tiene o no la tiene.
+    facturado BOOLEAN NOT NULL DEFAULT FALSE,
+
     descripcion VARCHAR(255),
     metodo_pago VARCHAR(30),
 
@@ -664,8 +673,15 @@ CREATE TABLE gastos (
             (estado = 'ANULADO' AND motivo_anulacion IS NOT NULL)
             OR
             (estado <> 'ANULADO')
-        )
+        ),
+
+    CONSTRAINT chk_gasto_concepto CHECK (btrim(concepto) <> '')
 );
+
+-- El balance siempre consulta por rango de fechas, y casi siempre
+-- dejando fuera los anulados.
+CREATE INDEX idx_gasto_fecha ON gastos(fecha);
+CREATE INDEX idx_gasto_estado_fecha ON gastos(estado, fecha);
 
 
 -- ============================================================

@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block titulo %}Gastos — Totem Climb Gym{% endblock %}
+{% block nav_gastos %}active{% endblock %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Gastos</div>
+    <div class="page-sub">
+      {{ total }} gasto{{ 's' if total != 1 }} · {{ etiqueta }}
+    </div>
+  </div>
+  <a class="btn-primary" href="{{ url_for('gastos.nuevo') }}">Registrar gasto</a>
+</div>
+
+<form class="panel-filtros filtros-amplios" method="get">
+  <input type="hidden" name="periodo" value="personalizado">
+  <div class="buscador">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="text" name="q" value="{{ filtros.q or '' }}" placeholder="Concepto o descripción...">
+  </div>
+  <div class="campo-filtro">
+    <label>Desde</label>
+    <input type="date" name="desde" value="{{ desde.isoformat() }}">
+  </div>
+  <div class="campo-filtro">
+    <label>Hasta</label>
+    <input type="date" name="hasta" value="{{ hasta.isoformat() }}">
+  </div>
+  <div class="campo-filtro">
+    <label>Segmento</label>
+    <select name="segmento">
+      {% for v, e in [('todos','Todos'), ('JUNIOR','Junior'),
+                      ('SENIOR','Senior'), ('GENERAL','General')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.segmento == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo-filtro">
+    <label>Respaldo</label>
+    <select name="facturado">
+      {% for v, e in [('todos','Todos'), ('si','Con factura'), ('no','Sin factura')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.facturado == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo-filtro">
+    <label>Estado</label>
+    <select name="estado">
+      {% for v, e in [('activos','Registrados'), ('anulados','Anulados'), ('todos','Todos')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.estado == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn-ghost">Filtrar</button>
+</form>
+
+<div class="resumen-tarjetas">
+  <div class="summary-card">
+    <div class="summary-label">Total gastado</div>
+    <div class="summary-value">${{ '%.2f'|format(resumen.total) }}</div>
+    <div class="summary-note">{{ resumen.n }} gasto{{ 's' if resumen.n != 1 }} · sin contar anulados</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Con factura</div>
+    <div class="summary-value">${{ '%.2f'|format(resumen.facturado) }}</div>
+    <div class="summary-note">
+      {% if resumen.total %}{{ (resumen.facturado / resumen.total * 100)|round|int }}%{% else %}—{% endif %}
+      del total · es lo justificable
+    </div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Sin factura</div>
+    <div class="summary-value">${{ '%.2f'|format(resumen.sin_factura) }}</div>
+    <div class="summary-note">resta igual en el balance</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Por segmento</div>
+    <div class="summary-value" style="font-size:19px; line-height:1.5;">
+      Junior ${{ '%.2f'|format(resumen.junior) }}<br>
+      Senior ${{ '%.2f'|format(resumen.senior) }}
+    </div>
+    <div class="summary-note">General ${{ '%.2f'|format(resumen.general) }}</div>
+  </div>
+</div>
+
+{% if por_concepto %}
+<div class="card tabla" style="margin-bottom:18px;">
+  <div class="card-cabecera">
+    <div>
+      <div class="seccion">En qué se fue</div>
+      <div class="seccion-nota">Agrupado por concepto, de mayor a menor</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Concepto</th><th>Veces</th><th>Monto</th><th>Con factura</th><th>Peso</th></tr></thead>
+    <tbody>
+      {% for c in por_concepto %}
+      <tr>
+        <td class="nombre">{{ c.concepto }}</td>
+        <td class="meta">{{ c.veces }}</td>
+        <td><b>${{ '%.2f'|format(c.monto) }}</b></td>
+        <td class="meta">
+          {% if c.facturado %}${{ '%.2f'|format(c.facturado) }}{% else %}—{% endif %}
+        </td>
+        <td class="meta">
+          {% if resumen.total %}{{ (c.monto / resumen.total * 100)|round(1) }}%{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card tabla">
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th>Concepto</th><th>Segmento</th><th>Método</th>
+          <th>Respaldo</th><th>Monto</th><th>Registró</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for gasto in gastos %}
+      <tr class="{{ 'inactiva' if gasto.anulado }}">
+        <td>{{ gasto.fecha.strftime('%d/%m/%Y') }}</td>
+        <td>
+          <div class="nombre">{{ gasto.concepto }}</div>
+          {% if gasto.descripcion %}
+            <div class="meta">{{ gasto.descripcion }}</div>
+          {% endif %}
+          {% if gasto.anulado and gasto.motivo_anulacion %}
+            <div class="meta" style="color:var(--error)">
+              Anulado: {{ gasto.motivo_anulacion }}
+            </div>
+          {% endif %}
+        </td>
+        <td><span class="pill sin_membresia">{{ gasto.segmento_etiqueta }}</span></td>
+        <td class="meta">{{ gasto.metodo_etiqueta }}</td>
+        <td>
+          <span class="pill {{ 'vigente' if gasto.facturado else 'por_vencer' }}">
+            {{ gasto.respaldo_etiqueta }}
+          </span>
+        </td>
+        <td><b>${{ '%.2f'|format(gasto.monto) }}</b></td>
+        <td class="meta">{{ gasto.empleado_nombre }}</td>
+        <td>
+          <div class="acciones">
+            {% if not gasto.anulado %}
+              <a class="btn-ghost small"
+                 href="{{ url_for('gastos.editar', id_gasto=gasto.id_gasto) }}">Corregir</a>
+              <button class="btn-quieto chico"
+                      onclick="abrirAnulacion({{ gasto.id_gasto }}, '{{ gasto.concepto|e }}', {{ gasto.monto }})">
+                Anular
+              </button>
+            {% else %}
+              <span class="meta">—</span>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="vacio">No hay gastos con estos filtros.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if paginas > 1 %}
+<div class="paginacion">
+  {% if pagina > 1 %}
+    <a class="btn-ghost small" href="{{ url_for('gastos.lista', pagina=pagina-1,
+       periodo='personalizado', desde=desde.isoformat(), hasta=hasta.isoformat(), **filtros) }}">Anterior</a>
+  {% endif %}
+  <span class="meta">Página {{ pagina }} de {{ paginas }}</span>
+  {% if pagina < paginas %}
+    <a class="btn-ghost small" href="{{ url_for('gastos.lista', pagina=pagina+1,
+       periodo='personalizado', desde=desde.isoformat(), hasta=hasta.isoformat(), **filtros) }}">Siguiente</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Anular -->
+<div class="overlay" id="modal-anular" onclick="if(event.target===this) cerrar('modal-anular')">
+  <form class="modal" method="post" id="form-anular">
+    <h2>Anular gasto</h2>
+    <p class="hint" id="texto-anular"></p>
+    <div class="aviso-bloqueo">
+      El gasto no se borra: queda en el historial marcado como anulado y
+      deja de restar en el balance. Si solo está mal cargado, usá
+      «Corregir» en lugar de anularlo.
+    </div>
+    <div class="campo" style="margin-top:14px;">
+      <label for="motivo">Motivo de la anulación</label>
+      <input type="text" name="motivo" id="motivo" required minlength="5"
+             placeholder="Ej. Cargado dos veces por error">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" onclick="cerrar('modal-anular')">Cancelar</button>
+      <button type="submit" class="btn-quieto">Anular gasto</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function cerrar(id){ document.getElementById(id).classList.remove('open'); }
+
+  function abrirAnulacion(id, concepto, monto){
+    const form = document.getElementById('form-anular');
+    form.action = '/gastos/' + id + '/anular';
+    document.getElementById('texto-anular').textContent =
+      `${concepto} · $${Number(monto).toFixed(2)}`;
+    document.getElementById('motivo').value = '';
+    document.getElementById('modal-anular').classList.add('open');
+    document.getElementById('motivo').focus();
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.overlay.open')
+      .forEach(o => o.classList.remove('open'));
+  });
+</script>
+{% endblock %}
