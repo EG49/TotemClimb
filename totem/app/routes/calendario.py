@@ -16,7 +16,9 @@ from flask import (
 
 from app.repositories.evento_repo import InscripcionRepositorio
 from app.security import login_requerido
+from app.services.aviso_clase_service import AvisoClaseService
 from app.services.calendario_service import CalendarioService, lunes_de, rango_vista
+from app.services.correo_service import CorreoNoConfigurado
 from app.services.validaciones import ErrorValidacion
 
 bp = Blueprint("calendario", __name__, url_prefix="/calendario")
@@ -242,6 +244,41 @@ def quitar_posible(id_evento, id_posible):
     InscripcionRepositorio().quitar_posible(id_evento, id_posible)
     flash("Se quitó del evento. La ficha del posible cliente se conserva.", "ok")
     return redirect(request.referrer or url_for("calendario.ver"))
+
+
+@bp.route("/evento/<int:id_evento>/avisar", methods=["POST"])
+@login_requerido
+def avisar(id_evento):
+    """Escribe a todos los inscritos del evento.
+
+    Para avisar un cambio de hora, una suspensión o lo que haga falta.
+    Va un correo por persona: nunca todos en el "Para", que le
+    entregaría a cada cliente la dirección de los demás.
+    """
+    mensaje = (request.form.get("mensaje") or "").strip()
+    if len(mensaje) < 10:
+        flash("Escribí el mensaje que querés mandarles.", "error")
+        return redirect(url_for("calendario.editar_evento", id_evento=id_evento))
+
+    try:
+        cuantos = AvisoClaseService().avisar_a_inscritos(
+            id_evento, mensaje, g.empleado["id_empleado"]
+        )
+    except CorreoNoConfigurado:
+        flash(
+            "El correo no está configurado. Revisá las variables MAIL_ del .env.",
+            "error",
+        )
+    except ValueError as error:
+        flash(str(error), "error")
+    else:
+        flash(
+            f"Correo en camino a {cuantos} persona{'s' if cuantos != 1 else ''}. "
+            "El resultado queda en la bitácora.",
+            "ok",
+        )
+
+    return redirect(url_for("calendario.editar_evento", id_evento=id_evento))
 
 
 @bp.route("/agenda")

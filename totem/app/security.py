@@ -6,7 +6,14 @@ ADMIN, que además ve la bitácora y puede cambiar el IVA.
 
 from functools import wraps
 
-from flask import flash, g, redirect, session, url_for
+from flask import (
+    flash,
+    g,
+    has_request_context,
+    redirect,
+    session,
+    url_for,
+)
 
 from app.models.empleado import ROL_ADMIN
 
@@ -24,7 +31,16 @@ def cerrar_sesion() -> None:
 
 
 def empleado_actual() -> dict | None:
-    """Datos del empleado en sesión, o None si no hay sesión."""
+    """Datos del empleado en sesión, o None si no hay sesión.
+
+    También devuelve None cuando no hay petición en curso. Eso pasa
+    de verdad: las plantillas de correo se renderizan desde un hilo
+    de fondo y desde las tareas programadas, donde no existe ninguna
+    sesión que consultar. Sin esto, el recordatorio diario de clases
+    muere con "Working outside of request context".
+    """
+    if not has_request_context():
+        return None
     if "id_empleado" not in session:
         return None
     return {

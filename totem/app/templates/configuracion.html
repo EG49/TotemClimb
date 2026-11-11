@@ -46,4 +46,63 @@
     {% endfor %}
   </aside>
 </div>
+
+{# Datos del gimnasio. Salen en los correos de clases y eventos, por
+   eso viven acá y no escritos en el código. #}
+<form method="post" class="card" style="margin-top:18px;">
+  <input type="hidden" name="seccion" value="gym">
+  <div class="seccion">Datos del gimnasio</div>
+  <div class="seccion-nota">
+    Es lo que ven los clientes en los correos de clases y eventos. Si
+    están vacíos el correo igual sale, solo que sin esa parte.
+  </div>
+
+  <div class="rejilla" style="margin-top:14px;">
+    <div class="campo ancho">
+      <label for="gym_direccion">Dirección</label>
+      <input id="gym_direccion" name="gym_direccion" type="text" maxlength="500"
+             value="{{ gym.get('gym_direccion') or '' }}"
+             placeholder="Calle, número y referencia"
+             class="{{ 'con-error' if errores.get('gym_direccion') }}">
+      {% if errores.get('gym_direccion') %}<div class="error">{{ errores['gym_direccion'] }}</div>{% endif %}
+    </div>
+
+    <div class="campo ancho">
+      <label for="gym_mapa_url">Enlace de Google Maps</label>
+      <input id="gym_mapa_url" name="gym_mapa_url" type="url" maxlength="500"
+             value="{{ gym.get('gym_mapa_url') or '' }}"
+             placeholder="https://maps.app.goo.gl/..."
+             class="{{ 'con-error' if errores.get('gym_mapa_url') }}">
+      <div class="pista">
+        En Google Maps, buscá el gimnasio, tocá «Compartir» y pegá acá el
+        enlace. En el correo se convierte en un botón «Ver cómo llegar».
+      </div>
+      {% if errores.get('gym_mapa_url') %}<div class="error">{{ errores['gym_mapa_url'] }}</div>{% endif %}
+    </div>
+
+    <div class="campo">
+      <label for="gym_telefono">Celular de contacto</label>
+      <input id="gym_telefono" name="gym_telefono" type="text" maxlength="500"
+             value="{{ gym.get('gym_telefono') or '' }}"
+             placeholder="0991234567"
+             class="{{ 'con-error' if errores.get('gym_telefono') }}">
+      <div class="pista">Para que puedan avisar si no llegan.</div>
+      {% if errores.get('gym_telefono') %}<div class="error">{{ errores['gym_telefono'] }}</div>{% endif %}
+    </div>
+
+    <div class="campo ancho">
+      <label for="gym_que_traer">Qué traer a la clase</label>
+      <input id="gym_que_traer" name="gym_que_traer" type="text" maxlength="500"
+             value="{{ gym.get('gym_que_traer') or '' }}"
+             placeholder="Ropa cómoda y una botella de agua. Los pies de gato los prestamos."
+             class="{{ 'con-error' if errores.get('gym_que_traer') }}">
+      <div class="pista">Sale en el correo de confirmación y en el recordatorio.</div>
+      {% if errores.get('gym_que_traer') %}<div class="error">{{ errores['gym_que_traer'] }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="acciones-formulario">
+    <button type="submit" class="btn-primary">Guardar datos del gimnasio</button>
+  </div>
+</form>
 {% endblock %}

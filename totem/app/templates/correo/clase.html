@@ -1,0 +1,162 @@
+{#
+  Correo de una clase o evento. Una sola plantilla para los tres casos,
+  porque el cuerpo es el mismo y solo cambia el encabezado:
+
+    modo = 'confirmacion'   al agendar
+    modo = 'recordatorio'   el dia anterior
+    modo = 'aviso'          cuando el admin escribe a los inscritos
+
+  No extiende base.html ni usa totem.css a proposito: los clientes de
+  correo descartan las hojas externas y no entienden flex ni grid. Va
+  con tablas y estilos en cada etiqueta, que es feo de leer pero es lo
+  unico que se ve igual en Gmail, Outlook y el correo del telefono.
+
+  El mapa va como ENLACE, nunca como iframe: los clientes de correo
+  borran los iframes, y el que no los borra no los muestra.
+#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ titulo_correo }}</title>
+</head>
+<body style="margin:0; padding:0; background:#F4F4F1;">
+
+{# Texto de vista previa: lo que se lee en la bandeja antes de abrir. #}
+<div style="display:none; max-height:0; overflow:hidden; opacity:0;">
+  {{ evento.titulo }} — {{ fecha_texto }} a las {{ hora_texto }}
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+       style="background:#F4F4F1; padding:24px 12px;">
+<tr><td align="center">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="max-width:560px; background:#FFFFFF; border-radius:12px; overflow:hidden;
+                font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#2B3210;">
+
+    <!-- Membrete -->
+    <tr>
+      <td style="background:#2B3210; padding:22px 28px;">
+        <div style="font-size:22px; font-weight:bold; letter-spacing:1px; color:#FFFFFF;">
+          TOTEM CLIMB GYM
+        </div>
+        <div style="font-size:12px; color:#C2DD58; margin-top:4px;">
+          {% if modo == 'confirmacion' %}Tu lugar está reservado
+          {% elif modo == 'recordatorio' %}Es mañana
+          {% else %}Aviso sobre tu clase{% endif %}
+        </div>
+      </td>
+    </tr>
+
+    <!-- Saludo -->
+    <tr>
+      <td style="padding:26px 28px 0;">
+        <div style="font-size:17px; font-weight:bold;">
+          {% if destinatario.nombre %}Hola, {{ destinatario.nombre }}.{% else %}Hola.{% endif %}
+        </div>
+        <div style="font-size:15px; line-height:1.55; margin-top:10px; color:#4A5230;">
+          {% if modo == 'confirmacion' %}
+            Quedaste agendado para <b>{{ evento.titulo }}</b>. Te esperamos.
+          {% elif modo == 'recordatorio' %}
+            Te recordamos que mañana tenés <b>{{ evento.titulo }}</b>.
+          {% else %}
+            {{ mensaje|replace('\n', '<br>')|safe }}
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+
+    <!-- Cuándo -->
+    <tr>
+      <td style="padding:20px 28px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               style="background:#F7F9ED; border-radius:10px;">
+          <tr>
+            <td style="padding:16px 18px;">
+              <div style="font-size:11px; letter-spacing:1px; color:#6A6A67; text-transform:uppercase;">
+                Cuándo
+              </div>
+              <div style="font-size:16px; font-weight:bold; margin-top:5px;">
+                {{ fecha_texto }}
+              </div>
+              <div style="font-size:15px; margin-top:2px;">
+                {{ hora_texto }}{% if hora_fin_texto %} a {{ hora_fin_texto }}{% endif %}
+              </div>
+
+              {% if coach_texto %}
+              <div style="font-size:11px; letter-spacing:1px; color:#6A6A67;
+                          text-transform:uppercase; margin-top:14px;">
+                Tu coach
+              </div>
+              <div style="font-size:15px; margin-top:3px;">{{ coach_texto }}</div>
+              {% endif %}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Dónde: solo si está cargada la dirección -->
+    {% if gym.direccion or gym.mapa_url %}
+    <tr>
+      <td style="padding:16px 28px 0;">
+        <div style="font-size:11px; letter-spacing:1px; color:#6A6A67; text-transform:uppercase;">
+          Dónde
+        </div>
+        {% if gym.direccion %}
+        <div style="font-size:15px; line-height:1.5; margin-top:5px;">{{ gym.direccion }}</div>
+        {% endif %}
+        {% if gym.mapa_url %}
+        <div style="margin-top:12px;">
+          <a href="{{ gym.mapa_url }}"
+             style="display:inline-block; background:#3395A0; color:#FFFFFF;
+                    text-decoration:none; font-size:14px; font-weight:bold;
+                    padding:11px 20px; border-radius:8px;">
+            Ver cómo llegar
+          </a>
+        </div>
+        {% endif %}
+      </td>
+    </tr>
+    {% endif %}
+
+    <!-- Qué traer -->
+    {% if gym.que_traer and modo != 'aviso' %}
+    <tr>
+      <td style="padding:18px 28px 0;">
+        <div style="font-size:11px; letter-spacing:1px; color:#6A6A67; text-transform:uppercase;">
+          Qué traer
+        </div>
+        <div style="font-size:14px; line-height:1.55; margin-top:5px; color:#4A5230;">
+          {{ gym.que_traer }}
+        </div>
+      </td>
+    </tr>
+    {% endif %}
+
+    <!-- Pie -->
+    <tr>
+      <td style="padding:24px 28px 26px;">
+        <div style="border-top:1px solid #E6E6E0; padding-top:16px;
+                    font-size:13px; line-height:1.6; color:#6A6A67;">
+          {% if gym.telefono %}
+            ¿No podés venir o necesitás cambiar el horario?
+            Escribinos al <b style="color:#2B3210;">{{ gym.telefono }}</b>.
+          {% else %}
+            Si no podés venir, avisanos así le damos el lugar a alguien más.
+          {% endif %}
+        </div>
+        <div style="font-size:12px; color:#9A9A95; margin-top:14px;">
+          Totem Climb Gym
+        </div>
+      </td>
+    </tr>
+
+  </table>
+
+</td></tr>
+</table>
+</body>
+</html>

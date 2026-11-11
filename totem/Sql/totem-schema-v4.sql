@@ -726,6 +726,7 @@ CREATE TABLE bitacora (
             'ASISTENCIA_MARCADA',
             -- Configuración
             'IVA_CAMBIADO',
+            'DATOS_GYM_CAMBIADOS',
             -- Catálogo
             'ITEM_CREADO',
             'ITEM_EDITADO',
@@ -762,7 +763,10 @@ CREATE TABLE bitacora (
             'PLAN',
             'EMPLEADO',
             'POSIBLE_CLIENTE',
-            'GASTO'
+            'GASTO',
+            -- Los correos de clases y eventos se anotan contra el
+            -- evento, no contra la factura.
+            'EVENTO'
         ))
 );
 

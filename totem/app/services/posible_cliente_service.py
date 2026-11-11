@@ -23,6 +23,7 @@ from app.repositories.evento_repo import (
 )
 from app.repositories.posible_cliente_repo import PosibleClienteRepositorio
 from app.services import bitacora_service as bit
+from app.services.aviso_clase_service import AvisoClaseService
 from app.services.bitacora_service import BitacoraService
 from app.services.validaciones import (
     ErrorValidacion,
@@ -138,6 +139,7 @@ class PosibleClienteService:
             self.inscripciones.inscribir_posible(
                 id_evento, nuevo, id_empleado, cursor=cursor
             )
+            coach = self._nombre_del_coach(cursor, datos["id_coach"])
 
         self.bitacora.registrar(
             id_empleado,
@@ -151,7 +153,32 @@ class PosibleClienteService:
                 "id_coach": datos["id_coach"],
             },
         )
+
+        # El correo va DESPUÉS de cerrar la transacción y nunca la
+        # arrastra: si el envío falla, el posible cliente y su clase
+        # ya están guardados. Lo que falle queda en la bitácora.
+        if datos["correo"]:
+            AvisoClaseService().confirmar_inscripcion(
+                id_evento=id_evento,
+                correo=datos["correo"],
+                nombre=datos["nombre"],
+                id_empleado=id_empleado,
+                coach=coach,
+            )
+
         return nuevo
+
+    @staticmethod
+    def _nombre_del_coach(cursor, id_coach) -> str | None:
+        if not id_coach:
+            return None
+        cursor.execute(
+            "SELECT nombre || ' ' || apellido AS nombre FROM empleados "
+            "WHERE id_empleado = %s",
+            (id_coach,),
+        )
+        fila = cursor.fetchone()
+        return fila["nombre"] if fila else None
 
     def _evento_de_la_clase(self, cursor, fecha: date, hora: time) -> int:
         """Busca la clase de prueba de ese día y hora, o la crea.
