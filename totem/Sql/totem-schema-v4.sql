@@ -274,7 +274,9 @@ CREATE TABLE planes_membresia (
 
 CREATE TABLE configuracion (
     clave VARCHAR(50) PRIMARY KEY,
-    valor VARCHAR(100) NOT NULL,
+    -- TEXT y no VARCHAR(100): acá viven el enlace al mapa del gym y
+    -- las indicaciones de qué llevar a la clase, que no caben en 100.
+    valor TEXT NOT NULL,
     descripcion VARCHAR(200),
     fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -834,6 +836,19 @@ CREATE INDEX idx_bitacora_entidad       ON bitacora(entidad, id_entidad);
 INSERT INTO configuracion (clave, valor, descripcion) VALUES
     ('iva_porcentaje', '15', 'Porcentaje de IVA incluido en los precios del catálogo');
 
+-- Datos del gimnasio que salen en los correos. Arrancan vacíos a
+-- propósito: los carga el admin desde Configuración. Un correo con
+-- una dirección inventada es peor que un correo sin dirección.
+INSERT INTO configuracion (clave, valor, descripcion) VALUES
+    ('gym_direccion', '',
+     'Dirección del gimnasio, tal como va en los correos'),
+    ('gym_mapa_url', '',
+     'Enlace de Google Maps al gimnasio. Se pega el que da "Compartir"'),
+    ('gym_telefono', '',
+     'Celular o WhatsApp de contacto que se muestra en los correos'),
+    ('gym_que_traer', '',
+     'Qué llevar a la clase de prueba. Sale en el correo de confirmación');
+
 -- Planes de membresía.
 -- Todos los pases son SENIOR; lo que los hace pases es tener
 -- días incluidos.
@@ -850,6 +865,7 @@ INSERT INTO planes_membresia
 VALUES
     ('Membresía Junior',          'JUNIOR',  65.00,  1, 'MES', NULL, FALSE, TRUE),
     ('Membresía Senior',          'SENIOR',  65.00,  1, 'MES', NULL, FALSE, FALSE),
+    ('Senior 3 meses',            'SENIOR', 145.00,  3, 'MES', NULL, FALSE, FALSE),
     ('Mensualidad dúo',           'SENIOR', 111.00,  1, 'MES', NULL, TRUE,  FALSE),
     ('Pase del día',              'SENIOR',  10.00,  1, 'DIA', 1,    FALSE, FALSE),
     ('Promo jueves (2 personas)', 'SENIOR',  10.00,  1, 'DIA', 1,    TRUE,  FALSE),
@@ -858,7 +874,12 @@ VALUES
 
 -- Productos. También con IVA incluido.
 INSERT INTO productos (nombre, precio) VALUES
-    ('Cubo de magnesio', 5.00);
+    ('Agua Cielo',        0.50),
+    ('Sporade',           0.75),
+    ('Coca-Cola',         0.75),
+    ('Cielo de Toronja',  0.75),
+    ('Agua Splendor',     1.00),
+    ('Cubo de magnesio',  5.00);
 
 -- Categorías del calendario.
 INSERT INTO categorias_evento (nombre, color) VALUES
