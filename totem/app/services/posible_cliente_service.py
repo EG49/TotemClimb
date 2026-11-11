@@ -183,7 +183,11 @@ class PosibleClienteService:
         if fila:
             return fila["id_evento"]
 
-        hora_fin = time((hora.hour + DURACION_CLASE_HORAS) % 24, hora.minute)
+        # El % 24 daba la vuelta: una clase a las 23:00 terminaba a las
+        # 00:00, que es antes de empezar. Se topa en 23:59.
+        fin_en_minutos = (hora.hour + DURACION_CLASE_HORAS) * 60 + hora.minute
+        fin_en_minutos = min(fin_en_minutos, 23 * 60 + 59)
+        hora_fin = time(fin_en_minutos // 60, fin_en_minutos % 60)
         cursor.execute(
             """
             INSERT INTO eventos (titulo, id_categoria, fecha, hora_inicio, hora_fin,
