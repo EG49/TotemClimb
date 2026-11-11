@@ -78,20 +78,35 @@ SELECT probar('mismo cliente dos veces en el evento',
 
 -- ---------- GASTOS ----------
 SELECT probar('gasto normal sin descripcion',
-  $$INSERT INTO gastos (fecha,monto,segmento,id_empleado) VALUES (CURRENT_DATE,800,'GENERAL',1)$$, FALSE);
+  $$INSERT INTO gastos (fecha,monto,segmento,concepto,id_empleado)
+    VALUES (CURRENT_DATE,800,'GENERAL','Arriendo',1)$$, FALSE);
 SELECT probar('gasto con descripcion y metodo',
-  $$INSERT INTO gastos (fecha,monto,segmento,descripcion,metodo_pago,id_empleado)
-    VALUES (CURRENT_DATE,120,'JUNIOR','Colchonetas nuevas','EFECTIVO',1)$$, FALSE);
+  $$INSERT INTO gastos (fecha,monto,segmento,concepto,descripcion,metodo_pago,id_empleado)
+    VALUES (CURRENT_DATE,120,'JUNIOR','Equipo','Colchonetas nuevas','EFECTIVO',1)$$, FALSE);
+SELECT probar('gasto facturado',
+  $$INSERT INTO gastos (fecha,monto,segmento,concepto,facturado,id_empleado)
+    VALUES (CURRENT_DATE,45,'GENERAL','Luz',TRUE,1)$$, FALSE);
 SELECT probar('segmento inventado',
-  $$INSERT INTO gastos (fecha,monto,segmento,id_empleado) VALUES (CURRENT_DATE,50,'OTRO',1)$$, TRUE);
+  $$INSERT INTO gastos (fecha,monto,segmento,concepto,id_empleado)
+    VALUES (CURRENT_DATE,50,'OTRO','Luz',1)$$, TRUE);
 SELECT probar('monto cero',
-  $$INSERT INTO gastos (fecha,monto,segmento,id_empleado) VALUES (CURRENT_DATE,0,'GENERAL',1)$$, TRUE);
+  $$INSERT INTO gastos (fecha,monto,segmento,concepto,id_empleado)
+    VALUES (CURRENT_DATE,0,'GENERAL','Luz',1)$$, TRUE);
+SELECT probar('gasto sin concepto',
+  $$INSERT INTO gastos (fecha,monto,segmento,id_empleado)
+    VALUES (CURRENT_DATE,50,'GENERAL',1)$$, TRUE);
+SELECT probar('concepto en blanco',
+  $$INSERT INTO gastos (fecha,monto,segmento,concepto,id_empleado)
+    VALUES (CURRENT_DATE,50,'GENERAL','   ',1)$$, TRUE);
+SELECT probar('metodo de pago inventado',
+  $$INSERT INTO gastos (fecha,monto,segmento,concepto,metodo_pago,id_empleado)
+    VALUES (CURRENT_DATE,50,'GENERAL','Luz','CRIPTO',1)$$, TRUE);
 SELECT probar('gasto anulado sin motivo',
-  $$INSERT INTO gastos (fecha,monto,segmento,id_empleado,estado)
-    VALUES (CURRENT_DATE,50,'GENERAL',1,'ANULADO')$$, TRUE);
+  $$INSERT INTO gastos (fecha,monto,segmento,concepto,id_empleado,estado)
+    VALUES (CURRENT_DATE,50,'GENERAL','Luz',1,'ANULADO')$$, TRUE);
 SELECT probar('gasto anulado con motivo',
-  $$INSERT INTO gastos (fecha,monto,segmento,id_empleado,estado,motivo_anulacion)
-    VALUES (CURRENT_DATE,50,'GENERAL',1,'ANULADO','Cargado dos veces')$$, FALSE);
+  $$INSERT INTO gastos (fecha,monto,segmento,concepto,id_empleado,estado,motivo_anulacion)
+    VALUES (CURRENT_DATE,50,'GENERAL','Luz',1,'ANULADO','Cargado dos veces')$$, FALSE);
 
 -- ---------- BITACORA ----------
 SELECT probar('accion nueva de gasto',

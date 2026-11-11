@@ -828,24 +828,37 @@ CREATE INDEX idx_bitacora_entidad       ON bitacora(entidad, id_entidad);
 
 -- IVA vigente.
 -- PENDIENTE DE DEFINIR: los precios del catálogo ya incluyen IVA.
--- Mientras no se confirme si el gimnasio lo declara, el valor
--- queda en 15 y el cálculo se corrige en la capa de servicios.
+-- Confirmado el 11/11/2026: el gimnasio declara IVA al SRI, y los
+-- precios del catálogo ya lo incluyen. El cálculo lo EXTRAE del
+-- precio, no lo suma encima (ver calcular() en cobro_service).
 INSERT INTO configuracion (clave, valor, descripcion) VALUES
-    ('iva_porcentaje', '15', 'Porcentaje de IVA aplicado a las facturas nuevas');
+    ('iva_porcentaje', '15', 'Porcentaje de IVA incluido en los precios del catálogo');
 
 -- Planes de membresía.
 -- Todos los pases son SENIOR; lo que los hace pases es tener
 -- días incluidos.
+--
+-- LOS PRECIOS INCLUYEN IVA: son lo que el cliente paga en el
+-- mostrador. La base imponible y el IVA se calculan al facturar,
+-- extrayéndolos del total. No sumar el IVA encima de estos valores.
+--
+-- Junior y Senior cuestan lo mismo. La diferencia es que a la
+-- Junior se le aplica un descuento al cobrar, que varía según el
+-- caso y por eso se escribe a mano; la Senior se cobra completa.
 INSERT INTO planes_membresia
     (nombre, tipo, precio, duracion, unidad_duracion, dias_incluidos, permite_pareja, permite_descuento)
 VALUES
-    ('Membresía Junior',          'JUNIOR',  30.00,  1, 'MES', NULL, FALSE, TRUE),
-    ('Membresía Senior',          'SENIOR',  35.00,  1, 'MES', NULL, FALSE, TRUE),
-    ('Senior anual',              'SENIOR', 350.00, 12, 'MES', NULL, FALSE, TRUE),
-    ('Pase 1 día',                'SENIOR',  10.00,  1, 'DIA', 1,    FALSE, TRUE),
-    ('Pase 5 días',               'SENIOR',  28.00, 30, 'DIA', 5,    FALSE, TRUE),
-    ('Pase 10 días',              'SENIOR',  49.00, 30, 'DIA', 10,   FALSE, TRUE),
-    ('Promo pareja (2 personas)', 'SENIOR', 111.00,  1, 'MES', NULL, TRUE,  FALSE);
+    ('Membresía Junior',          'JUNIOR',  65.00,  1, 'MES', NULL, FALSE, TRUE),
+    ('Membresía Senior',          'SENIOR',  65.00,  1, 'MES', NULL, FALSE, FALSE),
+    ('Mensualidad dúo',           'SENIOR', 111.00,  1, 'MES', NULL, TRUE,  FALSE),
+    ('Pase del día',              'SENIOR',  10.00,  1, 'DIA', 1,    FALSE, FALSE),
+    ('Promo jueves (2 personas)', 'SENIOR',  10.00,  1, 'DIA', 1,    TRUE,  FALSE),
+    ('5 pases',                   'SENIOR',  30.00, 30, 'DIA', 5,    FALSE, FALSE),
+    ('10 pases',                  'SENIOR',  49.00, 30, 'DIA', 10,   FALSE, FALSE);
+
+-- Productos. También con IVA incluido.
+INSERT INTO productos (nombre, precio) VALUES
+    ('Cubo de magnesio', 5.00);
 
 -- Categorías del calendario.
 INSERT INTO categorias_evento (nombre, color) VALUES

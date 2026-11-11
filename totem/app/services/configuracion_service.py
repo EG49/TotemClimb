@@ -16,6 +16,32 @@ CLAVE_IVA = "iva_porcentaje"
 IVA_POR_DEFECTO = Decimal("15")
 
 
+def interpretar_iva(valor) -> Decimal:
+    """Traduce el valor guardado en configuración a un porcentaje.
+
+    Única fuente de verdad: antes el cobro tenía su propia copia de
+    esta lógica y la copia hacía `Decimal(valor) or IVA_POR_DEFECTO`.
+    Decimal("0") es falso en Python, así que poner el IVA en 0
+    devolvía 15: la pantalla de configuración mostraba 0% y el cobro
+    seguía aplicando el 15%.
+
+    Un valor ausente o ilegible cae en el 15 por defecto. Un cero
+    explícito es cero.
+    """
+    if valor is None or str(valor).strip() == "":
+        return IVA_POR_DEFECTO
+    try:
+        porcentaje = Decimal(str(valor).strip().replace(",", "."))
+    except InvalidOperation:
+        return IVA_POR_DEFECTO
+
+    # Un porcentaje fuera de rango solo puede venir de una edición a
+    # mano en la base: se ignora antes de que rompa una factura.
+    if porcentaje < 0 or porcentaje > 100:
+        return IVA_POR_DEFECTO
+    return porcentaje
+
+
 class ConfiguracionService:
 
     def __init__(self):
@@ -23,11 +49,7 @@ class ConfiguracionService:
         self.bitacora = BitacoraService()
 
     def iva_vigente(self) -> Decimal:
-        valor = self.repositorio.obtener(CLAVE_IVA)
-        try:
-            return Decimal(valor) if valor else IVA_POR_DEFECTO
-        except InvalidOperation:
-            return IVA_POR_DEFECTO
+        return interpretar_iva(self.repositorio.obtener(CLAVE_IVA))
 
     def cambiar_iva(self, valor, id_empleado: int) -> None:
         anterior = self.iva_vigente()

@@ -5,6 +5,8 @@ Reglas que viven aquí:
   * Los totales SIEMPRE se recalculan en el servidor a partir de los
     precios de la base. Lo que manda el navegador solo dice qué ítems y
     en qué cantidad, nunca cuánto cuestan.
+  * Los precios del catálogo INCLUYEN IVA. El IVA se extrae del total,
+    no se suma encima: el cliente paga el precio de la lista.
   * Si cualquier ítem de la factura tiene permite_descuento = false, el
     descuento queda bloqueado para la factura completa.
   * Un plan con permite_pareja genera dos membresías enlazadas entre sí,
@@ -18,7 +20,7 @@ Reglas que viven aquí:
 
 import calendar
 from datetime import date, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from app.db import obtener_cursor
 from app.models.catalogo import MES
@@ -42,10 +44,12 @@ from app.repositories.factura_repo import (
 from app.repositories.posible_cliente_repo import PosibleClienteRepositorio
 from app.services import bitacora_service as bit
 from app.services.bitacora_service import BitacoraService
+from app.services.configuracion_service import CLAVE_IVA, interpretar_iva
 from app.services.validaciones import ErrorValidacion
 
-CLAVE_IVA = "iva_porcentaje"
-IVA_POR_DEFECTO = Decimal("15")
+# El IVA se lee desde configuracion_service, que es el dueño de esa
+# clave. Acá no se vuelve a definir ni a interpretar: tener dos
+# copias de esa lógica fue la causa de que un IVA en 0 se ignorara.
 CANTIDAD_MAXIMA = 99
 
 
@@ -85,8 +89,9 @@ class CobroService:
     # --- Lectura ------------------------------------------------------
 
     def iva_vigente(self) -> Decimal:
-        valor = self.configuracion.obtener(CLAVE_IVA)
-        return _a_decimal(valor, IVA_POR_DEFECTO) or IVA_POR_DEFECTO
+        # Se delega en configuracion_service para que el cobro y la
+        # pantalla de configuración nunca puedan discrepar.
+        return interpretar_iva(self.configuracion.obtener(CLAVE_IVA))
 
     def catalogo_para_cobrar(self) -> dict:
         """Productos y planes activos, para la lista única de la pantalla."""
@@ -166,15 +171,32 @@ class CobroService:
     def calcular(
         self, lineas: list[LineaCobro], descuento_porcentaje: Decimal = Decimal("0")
     ) -> Totales:
+        """Calcula los totales de la factura.
+
+        Los precios del catálogo YA INCLUYEN el IVA: son lo que el
+        cliente paga en el mostrador. Así que el IVA se extrae del
+        total, no se suma encima. Antes se hacía al revés y una
+        mensualidad de $65 se facturaba en $74.75.
+
+        El orden importa. Primero se redondea la base y el IVA sale
+        por resta, nunca al revés: si se redondeara el IVA, base más
+        IVA podría no dar el total y la factura no cuadraría al
+        centavo. Con $10 al 15%: base 8.70 e IVA 1.30, que suman 10
+        exacto. Calculándolo al revés darían 8.69 + 1.30 = 9.99.
+        """
         subtotal = sum((l.subtotal for l in lineas), Decimal("0")).quantize(CENTAVO)
 
         if not self.permite_descuento(lineas):
             descuento_porcentaje = Decimal("0")
 
         descuento_monto = (subtotal * descuento_porcentaje / 100).quantize(CENTAVO)
-        base = (subtotal - descuento_monto).quantize(CENTAVO)
+
+        # Lo que el cliente paga: el precio de lista menos el descuento.
+        total = (subtotal - descuento_monto).quantize(CENTAVO)
+
         iva_pct = self.iva_vigente()
-        iva = (base * iva_pct / 100).quantize(CENTAVO)
+        base = (total / (1 + iva_pct / 100)).quantize(CENTAVO, rounding=ROUND_HALF_UP)
+        iva = (total - base).quantize(CENTAVO)
 
         return Totales(
             subtotal=subtotal,
@@ -183,7 +205,7 @@ class CobroService:
             base_imponible=base,
             iva_porcentaje=iva_pct,
             iva=iva,
-            total=(base + iva).quantize(CENTAVO),
+            total=total,
         )
 
     def permite_descuento(self, lineas: list[LineaCobro]) -> bool:
