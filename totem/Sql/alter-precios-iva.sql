@@ -70,6 +70,29 @@ UPDATE planes_membresia SET precio = 30.00,  permite_descuento = FALSE
 UPDATE planes_membresia SET precio = 49.00,  permite_descuento = FALSE
  WHERE nombre = '10 pases';
 
+-- ---------- Los que falten se crean ----------
+-- Los UPDATE de arriba solo sirven si el plan ya existe. Una base
+-- creada con un esquema anterior puede no tener alguno -al esquema
+-- viejo le faltaba "5 pases"-, y entonces se perdia en la migracion.
+-- Esto asegura que los ocho esten, sin duplicar los que ya estan.
+INSERT INTO planes_membresia
+    (nombre, tipo, precio, duracion, unidad_duracion, dias_incluidos,
+     permite_pareja, permite_descuento, activo)
+SELECT v.nombre, v.tipo, v.precio, v.duracion, v.unidad, v.dias,
+       v.pareja, v.descuento, TRUE
+  FROM (VALUES
+        ('Membresía Junior', 'JUNIOR',  65.00,  1, 'MES', NULL::integer, FALSE, TRUE),
+        ('Membresía Senior', 'SENIOR',  65.00,  1, 'MES', NULL,          FALSE, FALSE),
+        ('Senior 3 meses',   'SENIOR', 145.00,  3, 'MES', NULL,          FALSE, FALSE),
+        ('Mensualidad dúo',  'SENIOR', 111.00,  1, 'MES', NULL,          TRUE,  FALSE),
+        ('Pase del día',     'SENIOR',  10.00,  1, 'DIA', 1,             FALSE, FALSE),
+        ('5 pases',          'SENIOR',  30.00, 30, 'DIA', 5,             FALSE, FALSE),
+        ('10 pases',         'SENIOR',  49.00, 30, 'DIA', 10,            FALSE, FALSE)
+       ) AS v(nombre, tipo, precio, duracion, unidad, dias, pareja, descuento)
+ WHERE NOT EXISTS (
+    SELECT 1 FROM planes_membresia p WHERE p.nombre = v.nombre
+ );
+
 -- ---------- Promo jueves: nueva ----------
 -- Un pase de día para dos personas. Se inserta solo si no existe,
 -- para que el archivo se pueda correr dos veces sin duplicarla.

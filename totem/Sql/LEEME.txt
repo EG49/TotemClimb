@@ -1,0 +1,225 @@
+﻿===============================================================
+ TOTEM CLIMB GYM — BASE DE DATOS
+ Qué archivo correr y en qué orden
+===============================================================
+ Última actualización: 12 de noviembre de 2026
+
+
+---------------------------------------------------------------
+ 1. ¿BASE NUEVA O BASE QUE YA EXISTE?
+---------------------------------------------------------------
+
+Es la única pregunta que importa. La respuesta cambia todo.
+
+  BASE NUEVA (máquina nueva, o querés empezar de cero)
+    -> Corré SOLO totem-schema-v4.sql
+    -> NINGÚN alter. No sirven para nada acá.
+
+  BASE QUE YA EXISTE (tiene datos que querés conservar)
+    -> Corré los alter que te falten, EN ORDEN.
+    -> Nunca corras totem-schema-v4.sql encima: fallaría, y si
+       no fallara te borraría todo.
+
+Si no estás seguro de en cuál estás, corré verificar.sql y él te
+lo dice.
+
+
+---------------------------------------------------------------
+ 2. BASE NUEVA
+---------------------------------------------------------------
+
+    psql -U postgres -c "CREATE DATABASE totem;"
+    psql -U postgres -d totem -f totem-schema-v4.sql
+    psql -U postgres -d totem -f verificar.sql
+
+Después, desde la carpeta del proyecto:
+
+    python -m scripts.crear_admin
+
+El esquema v4 ya trae las 15 tablas, el catálogo con los precios
+correctos y las claves de configuración. No necesita ningún alter.
+
+Si querés datos para mirar las pantallas:
+
+    python -m scripts.datos_demo --confirmar
+    python -m scripts.datos_demo --borrar     (para quitarlos)
+
+
+---------------------------------------------------------------
+ 3. BASE QUE YA EXISTE
+---------------------------------------------------------------
+
+Primero averiguá qué te falta:
+
+    psql -U postgres -d totem -f verificar.sql
+
+Cada línea que diga FALTA te nombra el archivo que hay que correr.
+Las que dicen PENDIENTE no son errores: son cosas que se cargan
+desde la aplicación, no desde SQL.
+
+Si preferís correrlos todos sin pensarlo, este es el orden. Son
+idempotentes: repetir uno que ya corriste no rompe nada.
+
+    psql -U postgres -d totem -f alter-cobrar.sql
+    psql -U postgres -d totem -f alter-empleados.sql
+    psql -U postgres -d totem -f alter-productos-activo.sql
+    psql -U postgres -d totem -f alter-captacion.sql
+    psql -U postgres -d totem -f alter-gastos.sql
+    psql -U postgres -d totem -f alter-precios-iva.sql
+    psql -U postgres -d totem -f alter-correos-evento.sql
+    psql -U postgres -d totem -f verificar.sql
+
+EL ORDEN IMPORTA. Cada uno asume lo que hizo el anterior.
+
+Todos están envueltos en BEGIN/COMMIT: si uno falla a la mitad,
+no deja la base a medio migrar. Se arregla la causa y se vuelve a
+correr entero.
+
+
+---------------------------------------------------------------
+ 4. QUÉ HACE CADA ARCHIVO
+---------------------------------------------------------------
+
+totem-schema-v4.sql
+    El esquema completo: 15 tablas, restricciones, índices y el
+    catálogo sembrado. Es la fuente de verdad. Los alter existen
+    solo para llevar una base vieja hasta acá.
+
+alter-cobrar.sql
+    Campos de la pantalla de cobro.
+
+alter-empleados.sql
+    Roles de empleado y la marca de coach.
+
+alter-productos-activo.sql
+    Permite desactivar un producto en lugar de borrarlo.
+
+alter-captacion.sql
+    Tabla posibles_clientes, coaches e inscripción de posibles a
+    los eventos.
+
+alter-gastos.sql
+    Crea la tabla gastos si no existe, y le agrega concepto y
+    facturado. Unifica los conceptos que estuvieran escritos de
+    varias formas ("Luz", "LUZ", "luz "), porque el balance
+    agrupa por ese campo.
+
+alter-precios-iva.sql
+    El cambio más importante. Los precios del catálogo pasan a
+    incluir IVA, que es como se cobran de verdad. Carga los ocho
+    planes y los seis productos con sus precios correctos, crea
+    los que falten y desactiva los que ya no se venden.
+    NO toca las facturas ya emitidas.
+
+alter-correos-evento.sql
+    Las cuatro claves de configuración con los datos del gimnasio
+    que salen en los correos, y las acciones nuevas de bitácora.
+
+verificar.sql
+    No escribe nada. Lee la base y dictamina si está al día.
+    Corrélo siempre al terminar.
+
+limpiar-datos-de-prueba.sql
+    Solo si alguna vez corriste la versión VIEJA de pruebas_v4.sql,
+    que dejaba basura. Quita lo que haya dejado. La versión actual
+    de pruebas_v4.sql ya no deja nada.
+
+pruebas_v4.sql
+    28 comprobaciones de que la base rechaza lo que debe rechazar.
+    Corre todo dentro de una transacción que descarta al final,
+    así que se puede correr sobre una base con datos reales.
+
+totem-schema-final.sql
+    El esquema viejo. Queda solo como referencia histórica.
+    NO lo uses para crear una base nueva.
+
+
+---------------------------------------------------------------
+ 5. ERRORES FRECUENTES
+---------------------------------------------------------------
+
+"carácter con secuencia de bytes 0x8d en codificación WIN1252"
+
+    psql en Windows lee el archivo como WIN1252 y los archivos
+    son UTF-8. Antes de correr nada:
+
+        set PGCLIENTENCODING=UTF8          (CMD)
+        $env:PGCLIENTENCODING="UTF8"       (PowerShell)
+
+    Dura lo que dure esa consola.
+
+
+"fe_sendauth: no password supplied"
+
+    El DATABASE_URL del .env no lleva contraseña y este
+    PostgreSQL la pide. Agregala:
+
+        DATABASE_URL=postgresql://postgres:TUCLAVE@localhost:5432/totem
+
+    Si la clave tiene caracteres especiales hay que escaparlos:
+    @ es %40, : es %3A, / es %2F, # es %23, % es %25.
+
+
+"permission denied for table ..."
+
+    Las tablas quedaron a nombre de postgres y la aplicación
+    conecta con otro usuario. Al final de totem-schema-v4.sql hay
+    un bloque de GRANT comentado: descomentalo, poné tu usuario y
+    corrélo.
+
+
+"no existe la columna ..." al abrir una pantalla
+
+    El código está más adelante que la base. Corré verificar.sql
+    y aplicá el alter que te indique.
+
+
+La aplicación sigue mostrando lo viejo después de migrar
+
+    El pool de conexiones tiene el esquema anterior en memoria.
+    Reiniciá la aplicación.
+
+
+---------------------------------------------------------------
+ 6. ANTES DE TOCAR LA BASE DEL GIMNASIO
+---------------------------------------------------------------
+
+Lo de arriba vale para una base de desarrollo. En la del gimnasio,
+donde hay facturas de verdad:
+
+  1. Hacelo con el gimnasio cerrado.
+  2. Respaldo ANTES de correr nada:
+
+        pg_dump -U postgres -d totem -F c -f respaldo_AAAA-MM-DD.dump
+
+  3. El respaldo NO va al repositorio. Nunca. Tiene cédulas y
+     datos de menores, y eso no se puede cambiar después como se
+     cambia una contraseña. El .gitignore ya excluye *.dump,
+     *.backup y *.sql.gz, pero conviene saber por qué está ahí.
+  4. Corré verificar.sql antes y después.
+  5. Reiniciá la aplicación y hacé un cobro de prueba: una
+     Membresía Senior tiene que facturarse en $65.00, no en
+     $74.75. Si sale $74.75, la aplicación está corriendo código
+     viejo.
+
+
+---------------------------------------------------------------
+ 7. POR QUÉ ESTE ARCHIVO EXISTE
+---------------------------------------------------------------
+
+Porque el camino de migración estuvo roto y nadie lo sabía.
+Al probar la cadena completa sobre una base creada con el esquema
+viejo aparecieron dos agujeros:
+
+  - alter-gastos.sql solo agregaba columnas, pero la tabla gastos
+    nació con el v4. Una base anterior no la tiene, así que el
+    script moría con "no existe la relación gastos".
+
+  - alter-precios-iva.sql renombraba y actualizaba planes, pero
+    nunca creaba los que faltaran. Al esquema viejo le faltaba
+    "5 pases", que se perdía en la migración sin avisar.
+
+Los dos están corregidos. La moraleja: una migración que nadie
+probó de punta a punta no está probada. Si agregás un alter nuevo,
+corré la cadena completa sobre una base vieja antes de darla por
+buena.
