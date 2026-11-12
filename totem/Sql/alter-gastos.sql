@@ -24,6 +24,35 @@ SET client_encoding = 'UTF8';
 
 BEGIN;
 
+-- La tabla nacio con el esquema v4. Una base creada con el esquema
+-- anterior no la tiene, y entonces no hay columnas que agregar: hay
+-- que crearla entera. Sin esto, migrar desde el esquema viejo fallaba
+-- con "no existe la relacion gastos".
+CREATE TABLE IF NOT EXISTS gastos (
+    id_gasto SERIAL PRIMARY KEY,
+    fecha DATE NOT NULL,
+    monto NUMERIC(10,2) NOT NULL,
+    segmento VARCHAR(10) NOT NULL,
+    concepto VARCHAR(80),
+    facturado BOOLEAN NOT NULL DEFAULT FALSE,
+    descripcion VARCHAR(255),
+    metodo_pago VARCHAR(30),
+    id_empleado INTEGER NOT NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'REGISTRADO',
+    motivo_anulacion VARCHAR(255),
+    fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_gasto_empleado FOREIGN KEY (id_empleado)
+        REFERENCES empleados(id_empleado),
+    CONSTRAINT chk_gasto_monto CHECK (monto > 0),
+    CONSTRAINT chk_gasto_segmento CHECK (segmento IN ('JUNIOR','SENIOR','GENERAL')),
+    CONSTRAINT chk_gasto_estado CHECK (estado IN ('REGISTRADO','ANULADO')),
+    CONSTRAINT chk_gasto_metodo
+        CHECK (metodo_pago IS NULL OR metodo_pago IN ('EFECTIVO','TRANSFERENCIA')),
+    CONSTRAINT chk_gasto_anulacion CHECK (
+        (estado = 'ANULADO' AND motivo_anulacion IS NOT NULL)
+        OR (estado <> 'ANULADO'))
+);
+
 ALTER TABLE gastos
     ADD COLUMN IF NOT EXISTS concepto VARCHAR(80);
 
@@ -37,6 +66,10 @@ UPDATE gastos SET concepto = 'Sin clasificar'
 
 ALTER TABLE gastos
     ALTER COLUMN concepto SET NOT NULL;
+
+ALTER TABLE gastos DROP CONSTRAINT IF EXISTS chk_gasto_concepto;
+ALTER TABLE gastos ADD CONSTRAINT chk_gasto_concepto
+    CHECK (btrim(concepto) <> '');
 
 -- Si la base venía con el mismo concepto escrito de varias formas
 -- ('Luz', 'LUZ', 'luz '), el balance lo mostraría como tres gastos
