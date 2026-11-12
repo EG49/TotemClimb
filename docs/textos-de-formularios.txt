@@ -1,0 +1,576 @@
+﻿===============================================================
+ TOTEM CLIMB GYM — TEXTOS DE LOS FORMULARIOS
+ Marcadores, pistas y notas que ve el usuario
+===============================================================
+ Generado el 12 de noviembre de 2026 desde las plantillas.
+
+
+---------------------------------------------------------------
+ PARA QUÉ SIRVE ESTE ARCHIVO
+---------------------------------------------------------------
+
+Reúne en un solo lugar los 95 textos de ayuda que aparecen en las
+pantallas, para poder revisarlos de corrido en vez de ir
+formulario por formulario.
+
+Si querés cambiar alguno, marcalo acá y pasámelo. También podés
+cambiarlo vos: cada entrada dice el archivo y el número de línea.
+
+
+---------------------------------------------------------------
+ LOS TRES TIPOS
+---------------------------------------------------------------
+
+MARCADOR
+    El texto gris que se ve DENTRO de un campo vacío y desaparece
+    al escribir. En el código es placeholder= o marcador=.
+    Sirve para mostrar el formato esperado: "0991234567" dice más
+    que "escriba su celular".
+
+PISTA
+    La línea gris DEBAJO del campo, que sí se queda siempre.
+    Para explicar algo que el nombre del campo no alcanza a decir.
+
+NOTA DE SECCIÓN
+    La bajada debajo del título de una sección o de una tarjeta.
+
+
+---------------------------------------------------------------
+ QUÉ SE PUEDE CAMBIAR Y QUÉ NO
+---------------------------------------------------------------
+
+SE PUEDE cambiar libremente el texto entre comillas de cualquier
+marcador, pista o nota. Es texto, no afecta a nada más.
+
+NO cambies lo que está entre corchetes, como [telefono]. Ese es
+el nombre interno del campo: lo usan el servidor, la base de
+datos y las validaciones. Cambiarlo rompe la pantalla.
+
+Las ETIQUETAS de los campos (el texto negro arriba del campo)
+tampoco están en esta lista, porque cambiarlas suele implicar
+revisar también el documento de especificación. Si querés cambiar
+alguna, decímelo y lo hago junto con la documentación.
+
+Un marcador no es obligatorio. Si uno sobra, se puede dejar vacío.
+
+
+---------------------------------------------------------------
+ ANTES DE CAMBIAR ALGO, DOS ADVERTENCIAS
+---------------------------------------------------------------
+
+Un marcador NO es una etiqueta. Si el campo se entiende solo por
+su etiqueta, el marcador debería mostrar el FORMATO esperado, no
+repetir el nombre. "Ej. Mariana" en el campo Nombre es útil
+porque muestra que va solo el nombre de pila; "Escriba el nombre"
+no agregaría nada.
+
+Un marcador tampoco reemplaza a una etiqueta. Desaparece apenas
+el usuario escribe, así que si la información es necesaria
+mientras completa el campo, va como PISTA y no como marcador.
+
+
+===============================================================
+ PANEL DE INICIO
+ panel.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   14  [-] Buscar cliente
+               "Nombre o cédula..."
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   12
+               "Por nombre o cédula. Te lleva a su ficha."
+
+    linea   82
+               "Lo que necesita atención hoy"
+
+
+===============================================================
+ CLIENTES (LISTA)
+ clientes/lista.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   20  [q] q
+               "Buscar por nombre, cédula o correo..."
+
+
+===============================================================
+ CLIENTE (ALTA Y EDICION)
+ clientes/formulario.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   38  [nombre] Nombre
+               "Ej. Mariana"
+
+    linea   39  [apellido] Apellido
+               "Ej. Lopez Vera"
+
+    linea   41  [cedula] Cédula
+               "0912345678"
+
+    linea   42  [correo] Correo electrónico
+               "cliente@correo.com"
+
+    linea   43  [telefono] Celular
+               "0991234567"
+
+    linea   61  [contacto_emergencia] Celular del contacto
+               "0997654321"
+
+    linea   62  [referencia] Referencia
+               "Ej. Mamá, esposo/a, hermano/a..."
+
+    linea   82  [seguro_nombre] Nombre del seguro
+               "Ej. Seguros Equinoccial"
+
+    linea   83  [seguro_numero] Celular del seguro
+               "0991234567"
+
+    linea  148  [menor_nombre] Nombre
+               "Ej. Lucas"
+
+    linea  152  [menor_apellido] Apellido
+               "Ej. Lopez Vera"
+
+    linea  160  [menor_cedula] Fecha de nacimiento
+               "0912345679"
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   36
+               "Información básica de contacto e identificación."
+
+    linea   58
+               "Recomendado por el tipo de actividad."
+
+    linea  119
+               "Solo lectura. Para cambiar sus datos, entra al perfil del
+                menor."
+
+
+===============================================================
+ MENOR A CARGO
+ clientes/menor.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   53  [cedula] Cédula
+               "0912345679"
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   45
+               "El contacto se hace a través del representante, por eso no se
+                le piden celular ni correo propios."
+
+
+===============================================================
+ COBRAR
+ cobrar/cobrar.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   22  [-] ?
+               "Buscar cliente..."
+
+    linea   88  [-] ?
+               "Buscar al segundo cliente..."
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   19
+               "Busca por nombre o cédula."
+
+    linea   43
+               "Productos y planes de membresía en una sola lista."
+
+    linea   86
+               "Este plan cubre a dos personas."
+
+
+===============================================================
+ FACTURAS
+ facturas/lista.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   32  [q] q
+               "Cliente, cédula o N° de factura..."
+
+    linea  272  [motivo] Motivo de la anulación
+               "Ej. Cobro duplicado por error"
+
+
+===============================================================
+ CONTABILIDAD
+ contabilidad/reporte.html
+===============================================================
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea  114
+               "De qué forma entró el dinero."
+
+    linea  120
+               "Cuánto vino de membresías Junior, de Senior y de productos.
+                Los pases cuentan como Senior."
+
+    linea  126
+               "Quién registró cada cobro."
+
+    linea  132
+               "Ítems con mayor monto en el período."
+
+    linea  158
+               "Ingresos de cada día del período."
+
+
+===============================================================
+ BALANCE GENERAL
+ contabilidad/balance.html
+===============================================================
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   96
+               "Para ver si la escuelita de chicos se sostiene sola"
+
+    linea  136
+               "Lo facturado es lo que podés justificar ante el SRI"
+
+    linea  174
+               "Los gastos del período, de mayor a menor"
+
+
+===============================================================
+ GASTOS (LISTA)
+ gastos/lista.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   24  [q] q
+               "Concepto o descripción..."
+
+    linea  199  [motivo] Motivo de la anulación
+               "Ej. Cargado dos veces por error"
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   96
+               "Agrupado por concepto, de mayor a menor"
+
+
+===============================================================
+ GASTO (ALTA Y CORRECCION)
+ gastos/formulario.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   51  [concepto] Concepto
+               "Ej. Arriendo, Luz, Magnesio"
+
+    linea  123  [descripcion] descripcion
+               "Detalle, número de factura, a quién se le pagó..."
+
+  PISTAS (la explicacion gris debajo del campo)
+
+    linea   56
+               "Usá siempre el mismo nombre para el mismo gasto: el balance
+                agrupa por este campo."
+
+    linea   88
+               "Sirve para saber si la escuelita de chicos se sostiene sola."
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   25
+               "Para cargar uno fijo sin escribirlo de nuevo. El monto se trae
+                como referencia: revisalo antes de guardar."
+
+
+===============================================================
+ POSIBLES CLIENTES (LISTA)
+ posibles/lista.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   45  [q] q
+               "Nombre o correo..."
+
+
+===============================================================
+ POSIBLE CLIENTE (AGENDAR)
+ posibles/formulario.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   45  [nombre] Nombre
+               "Ej. Ana"
+
+    linea   46  [apellido] Apellido
+               "Ej. Pérez"
+
+    linea   47  [correo] Correo
+               "ana@correo.com"
+
+    linea   48  [telefono] Celular
+               "0991234567"
+
+  PISTAS (la explicacion gris debajo del campo)
+
+    linea   14
+               "«dato»"
+
+    linea  101
+               "La clase dura una hora."
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   39
+               "El correo es obligatorio: es con lo que el sistema reconoce
+                después si esta persona terminó inscribiéndose."
+
+    linea   53
+               "Se puede dejar sin asignar y elegirlo después. Es lo que
+                permite saber qué coach trae más socios."
+
+    linea   90
+               "Si ya hay una clase de prueba ese día a esa hora, se suma a
+                ella en vez de crear otra."
+
+    linea  141
+               "Marcarlo es lo que permite distinguir a un coach que agenda y
+                no llena, de uno que llena y no convierte."
+
+    linea  161
+               "Pagó su primera membresía el «dato». Ya es cliente del
+                gimnasio."
+
+
+===============================================================
+ CALENDARIO
+ calendario/ver.html
+===============================================================
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea  123
+               "«dato» cosa«dato» este día Sin nada agendado"
+
+
+===============================================================
+ EVENTO
+ calendario/evento.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   23  [titulo] Título
+               "Ej. Clase de prueba — grupo sábado"
+
+    linea   75  [cupo_maximo] cupo_maximo
+               "Sin límite"
+
+    linea   84  [descripcion] descripcion
+               "Qué traer, instructor a cargo..."
+
+    linea   93  [-] ?
+               "Buscar cliente..."
+
+    linea  163  [id_cliente] id_cliente
+               "Inscribir a alguien más..."
+
+    linea  191  [mensaje] Qué querés decirles
+               "Ej. La clase de mañana se pasa a las 16:00."
+
+  PISTAS (la explicacion gris debajo del campo)
+
+    linea   57
+               "Se pone una hora después del inicio. Podés cambiarla."
+
+    linea  192
+               "La fecha, la hora y la dirección se agregan solas: no hace
+                falta repetirlas acá."
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   91
+               "Busca por nombre o cédula. Puedes agregar varios."
+
+    linea  111
+               "«dato» · cupo completo"
+
+    linea  175
+               "Le llega a «dato» de «dato» inscrito«dato», con la fecha, la
+                hora y cómo llegar. Cada uno recibe su propio correo. Ninguno
+                de los inscritos tiene correo registrado."
+
+    linea  206
+               "Se borra el evento y todas sus inscripciones. No se puede
+                deshacer."
+
+
+===============================================================
+ AGENDA
+ calendario/agenda.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   22  [q] q
+               "Cliente o cédula..."
+
+
+===============================================================
+ CATALOGO (ALTA DE ITEM)
+ catalogo/formulario.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   51  [nombre] Nombre
+               "Ej. Magnesio (bolsa 56g)"
+
+    linea   52  [precio] Precio
+               "0.00"
+
+    linea   93  [dias_incluidos] Entradas incluidas
+               "Ej. 10"
+
+  PISTAS (la explicacion gris debajo del campo)
+
+    linea   97
+               "Cuántas visitas trae el pase antes de agotarse."
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   58
+               "La duración es el plazo máximo de validez. Un pase, además,
+                trae un número de entradas contadas. Los pases son Senior: el
+                tipo solo dice la categoría, no cómo se cobra."
+
+
+===============================================================
+ EMPLEADOS (LISTA)
+ empleados/lista.html
+===============================================================
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   96
+               "De cada posible cliente asignado, cuántos vinieron y cuántos
+                terminaron inscribiéndose."
+
+
+===============================================================
+ EMPLEADO (ALTA Y EDICION)
+ empleados/formulario.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   45  [nombre] Nombre
+               "Ej. Camila"
+
+    linea   46  [apellido] Apellido
+               "Ej. Rojas"
+
+    linea   80  [usuario] Usuario
+               "camila"
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   36
+               "La fecha de nacimiento es opcional y solo sirve para que su
+                cumpleaños salga en el calendario."
+
+    linea  101
+               "Mínimo 8 caracteres. Se guarda cifrada; ni el administrador
+                puede verla después, solo reemplazarla."
+
+    linea  136
+               "Lo que ha registrado en el sistema."
+
+    linea  155
+               "Cuántos posibles clientes se le asignaron y en qué terminaron."
+
+    linea  206
+               "Vas a cambiar tu propia contraseña. La contraseña anterior no
+                se puede recuperar, solo reemplazar."
+
+    linea  233
+               "Pierde el acceso al sistema, pero sus facturas y su rastro en
+                la bitácora se conservan. Deja de aparecer para asignarle
+                posibles clientes, pero los que ya tiene asignados siguen
+                contando para su historial. Vuelve a poder entrar con su
+                usuario y contraseña de siempre. Vuelve a aparecer en la lista
+                de coaches."
+
+
+===============================================================
+ CONFIGURACION
+ configuracion.html
+===============================================================
+
+  MARCADORES (el texto gris dentro del campo vacio)
+
+    linea   65  [gym_direccion] Dirección
+               "Calle, número y referencia"
+
+    linea   74  [gym_mapa_url] Enlace de Google Maps
+               "https://maps.app.goo.gl/..."
+
+    linea   87  [gym_telefono] Celular de contacto
+               "0991234567"
+
+    linea   97  [gym_que_traer] Qué traer a la clase
+               "Ropa cómoda y una botella de agua. Los pies de gato los
+                prestamos."
+
+  PISTAS (la explicacion gris debajo del campo)
+
+    linea   76
+               "En Google Maps, buscá el gimnasio, tocá «Compartir» y pegá acá
+                el enlace. En el correo se convierte en un botón «Ver cómo
+                llegar»."
+
+    linea   89
+               "Para que puedan avisar si no llegan."
+
+    linea   99
+               "Sale en el correo de confirmación y en el recordatorio."
+
+  NOTAS DE SECCION (la bajada debajo de un titulo)
+
+    linea   12
+               "Se aplica a las facturas nuevas. Cada factura guarda la tasa
+                con la que se emitió, así que cambiarlo no altera el
+                historial."
+
+    linea   38
+               "Últimas modificaciones del IVA."
+
+    linea   55
+               "Es lo que ven los clientes en los correos de clases y eventos.
+                Si están vacíos el correo igual sale, solo que sin esa parte."
+
+
+===============================================================
+ CÓMO SE GENERÓ
+===============================================================
+
+Este archivo se extrae de las plantillas, no se escribe a mano:
+así no se desactualiza en silencio ni se olvida ninguno.
+
+Si agregás o cambiás textos en las plantillas, volvé a generarlo
+para que la lista siga sirviendo.
