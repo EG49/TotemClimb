@@ -36,6 +36,18 @@
       <div class="acceso-sub">Registrar a alguien que llega hoy</div>
     </div>
   </a>
+  {# Agendar una clase pasa siempre por Posibles clientes: así cuenta
+     para el coach y para la conversión. Antes se podía agendar desde
+     el alta de cliente, y esa clase no contaba para nadie. #}
+  <a class="acceso" href="{{ url_for('posibles.nuevo') }}">
+    <div class="acceso-icono">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 14v3"/><path d="M10.5 15.5h3"/></svg>
+    </div>
+    <div>
+      <div class="acceso-titulo">Agendar clase</div>
+      <div class="acceso-sub">Clase de prueba para un interesado</div>
+    </div>
+  </a>
 </div>
 
 <div class="estadisticas">
