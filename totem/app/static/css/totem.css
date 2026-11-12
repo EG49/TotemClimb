@@ -725,7 +725,12 @@ aside .nota-pie{ padding:0; border-top:0; }
 .buscador-panel .picker{ margin-top:12px; }
 .buscador-panel .picker-opt small{ display:flex; align-items:center; gap:8px; }
 
-.accesos-rapidos{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px; }
+/* Tres tarjetas, que bajan a una sola columna cuando no entran.
+   auto-fit con un minimo evita el salto feo de tres a una. */
+.accesos-rapidos{
+  display:grid; gap:16px; margin-bottom:18px;
+  grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+}
 .acceso{
   display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit;
   background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:20px 22px;
