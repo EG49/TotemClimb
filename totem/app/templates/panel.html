@@ -76,7 +76,7 @@
             ('todos', 'Todos', avisos|length),
             ('membresia', 'Membresías', n_membresias),
             ('mayoria', 'Mayoría de edad', n_mayoria),
-            ('fiado', 'Fiado', n_fiado)] %}
+            ('fiado', 'Por cobrar', n_fiado)] %}
         <button type="button" class="chip {{ 'active' if clave == 'todos' }}"
                 data-filtro="{{ clave }}" onclick="filtrarAvisos('{{ clave }}', this)">
           {{ etiqueta }} <span>{{ n }}</span>

@@ -133,7 +133,7 @@
           <span class="t-titulo">Pagar completo</span>
         </button>
         <button type="button" class="opcion-tipo" id="op-fiar" onclick="elegirCobro('fiar')">
-          <span class="t-titulo">Fiar</span>
+          <span class="t-titulo">Por cobrar</span>
         </button>
       </div>
       <input type="hidden" name="forma_cobro" id="forma_cobro" value="completo">
@@ -272,7 +272,8 @@
     }
 
     document.getElementById('btn-cobrar').disabled = items.length === 0;
-    document.getElementById('btn-cobrar').textContent = fiar ? 'Generar factura (fiada)' : 'Generar factura';
+    document.getElementById('btn-cobrar').textContent =
+      fiar ? 'Generar factura (por cobrar)' : 'Generar factura';
   }
 
   function elegirCobro(modo){

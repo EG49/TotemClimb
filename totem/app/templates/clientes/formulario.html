@@ -76,8 +76,11 @@
   <div id="bloque-seguro" class="bloque-plegable"
        style="{{ '' if datos.get('seguro_nombre') or datos.get('seguro_numero') else 'display:none' }}">
     <div class="rejilla">
+      {# El campo guarda el CELULAR de la aseguradora, no el número de
+         póliza: en una emergencia lo que hace falta es a quién llamar.
+         La columna sigue llamándose seguro_numero en la base. #}
       {{ campo('seguro_nombre', 'Nombre del seguro', marcador='Ej. Seguros Equinoccial') }}
-      {{ campo('seguro_numero', 'Número del seguro', marcador='Ej. SE-0012345') }}
+      {{ campo('seguro_numero', 'Celular del seguro', tipo='tel', marcador='0991234567') }}
     </div>
   </div>
 
