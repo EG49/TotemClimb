@@ -104,7 +104,7 @@ def _armar_avisos(repositorio: PanelRepositorio) -> tuple[list[dict], int, int, 
             {
                 "tipo": "fiado",
                 "clase": "por_vencer",
-                "etiqueta": "Fiado",
+                "etiqueta": "Por cobrar",
                 "cliente": f["cliente_nombre"],
                 "subtitulo": f"Factura {f['numero_factura']}",
                 "detalle": (

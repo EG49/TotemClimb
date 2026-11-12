@@ -37,6 +37,8 @@ class Cliente:
     contacto_emergencia: str | None = None
     referencia: str | None = None
     seguro_nombre: str | None = None
+    # El celular de la aseguradora, a quien llamar en una emergencia.
+    # No es el número de póliza, aunque la columna se llame así.
     seguro_numero: str | None = None
     id_representante: int | None = None
     fecha_registro: datetime | None = None
