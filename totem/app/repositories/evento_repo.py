@@ -67,11 +67,17 @@ class EventoRepositorio:
                                 po.nombre || ' ' || po.apellido) AS cliente_nombre,
                        cl.cedula,
                        po.correo AS posible_correo,
+                       -- Un correo unico, venga de donde venga: es lo
+                       -- que usan los avisos de la clase.
+                       COALESCE(cl.correo, po.correo) AS correo,
+                       COALESCE(cl.nombre, po.nombre) AS nombre_pila,
                        po.asistio,
+                       co.nombre || ' ' || co.apellido AS coach_nombre,
                        em.nombre || ' ' || em.apellido AS agendado_por
                   FROM evento_inscritos i
              LEFT JOIN clientes cl ON cl.id_cliente = i.id_cliente
              LEFT JOIN posibles_clientes po ON po.id_posible = i.id_posible
+             LEFT JOIN empleados co ON co.id_empleado = po.id_coach
                   JOIN empleados em ON em.id_empleado = i.id_empleado
                  WHERE i.id_evento = %s
                  ORDER BY i.fecha_inscripcion

@@ -167,6 +167,40 @@
       {% endif %}
     </div>
 
+    {# Avisar a los inscritos: cambio de hora, suspension, lo que sea.
+       Va un correo por persona, nunca todos en el "Para". #}
+    {% set con_correo = inscritos | selectattr('correo') | list %}
+    <div class="card" style="margin-top:16px;">
+      <div class="seccion">Avisar a los inscritos</div>
+      <div class="seccion-nota">
+        {% if con_correo %}
+          Le llega a {{ con_correo|length }} de {{ inscritos|length }}
+          inscrito{{ 's' if inscritos|length != 1 }}, con la fecha, la hora
+          y cómo llegar. Cada uno recibe su propio correo.
+        {% else %}
+          Ninguno de los inscritos tiene correo registrado.
+        {% endif %}
+      </div>
+      {% if con_correo %}
+      <form method="post" action="{{ url_for('calendario.avisar', id_evento=evento.id_evento) }}"
+            onsubmit="return confirm('¿Mandar este aviso a {{ con_correo|length }} persona(s)?');">
+        <div class="campo" style="margin-top:12px;">
+          <label for="mensaje">Qué querés decirles</label>
+          <textarea id="mensaje" name="mensaje" rows="3" required minlength="10"
+                    style="width:100%; resize:vertical;"
+                    placeholder="Ej. La clase de mañana se pasa a las 16:00."></textarea>
+          <div class="pista">
+            La fecha, la hora y la dirección se agregan solas: no hace
+            falta repetirlas acá.
+          </div>
+        </div>
+        <div class="acciones-formulario">
+          <button type="submit" class="btn-lima">Enviar aviso</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+
     <div class="card" style="margin-top:16px;">
       <div class="seccion">Eliminar evento</div>
       <div class="seccion-nota">

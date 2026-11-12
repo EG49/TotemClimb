@@ -83,15 +83,57 @@ SELECT 'Promo jueves (2 personas)', 'SENIOR', 10.00, 1, 'DIA', 1,
      WHERE nombre = 'Promo jueves (2 personas)'
  );
 
--- ---------- Cubo de magnesio: producto, no plan ----------
-INSERT INTO productos (nombre, precio)
-SELECT 'Cubo de magnesio', 5.00
+-- ---------- Senior 3 meses ----------
+-- Esta en "docs/productos normalizados.txt", la lista del propio
+-- gimnasio, y nunca se habia cargado.
+INSERT INTO planes_membresia
+    (nombre, tipo, precio, duracion, unidad_duracion, dias_incluidos,
+     permite_pareja, permite_descuento, activo)
+SELECT 'Senior 3 meses', 'SENIOR', 145.00, 3, 'MES', NULL, FALSE, FALSE, TRUE
  WHERE NOT EXISTS (
-    SELECT 1 FROM productos WHERE lower(nombre) = 'cubo de magnesio'
+    SELECT 1 FROM planes_membresia WHERE nombre = 'Senior 3 meses'
  );
 
-UPDATE productos SET precio = 5.00, activo = TRUE
- WHERE lower(nombre) = 'cubo de magnesio';
+UPDATE planes_membresia SET precio = 145.00, permite_descuento = FALSE,
+                            permite_pareja = FALSE, activo = TRUE
+ WHERE nombre = 'Senior 3 meses';
+
+-- ---------- Productos ----------
+-- Las cinco bebidas y el magnesio, de la misma lista del gimnasio.
+-- Con IVA incluido, igual que los planes.
+INSERT INTO productos (nombre, precio)
+SELECT v.nombre, v.precio
+  FROM (VALUES
+        ('Agua Cielo',       0.50),
+        ('Sporade',          0.75),
+        ('Coca-Cola',        0.75),
+        ('Cielo de Toronja', 0.75),
+        ('Agua Splendor',    1.00),
+        ('Cubo de magnesio', 5.00)
+       ) AS v(nombre, precio)
+ WHERE NOT EXISTS (
+    SELECT 1 FROM productos p WHERE lower(p.nombre) = lower(v.nombre)
+ );
+
+UPDATE productos p SET precio = v.precio, activo = TRUE
+  FROM (VALUES
+        ('Agua Cielo',       0.50),
+        ('Sporade',          0.75),
+        ('Coca-Cola',        0.75),
+        ('Cielo de Toronja', 0.75),
+        ('Agua Splendor',    1.00),
+        ('Cubo de magnesio', 5.00)
+       ) AS v(nombre, precio)
+ WHERE lower(p.nombre) = lower(v.nombre);
+
+-- ---------- La "Senior anual" no existe ----------
+-- No esta en la lista del gimnasio: se invento al sembrar el
+-- esquema. Se borra si nunca se vendio; si se vendio, queda
+-- desactivada por el UPDATE de mas arriba.
+DELETE FROM planes_membresia p
+ WHERE p.nombre = 'Senior anual'
+   AND NOT EXISTS (SELECT 1 FROM membresias m      WHERE m.id_plan = p.id_plan)
+   AND NOT EXISTS (SELECT 1 FROM detalle_factura d WHERE d.id_plan = p.id_plan);
 
 -- ---------- El IVA sigue en 15, pero ahora va incluido ----------
 UPDATE configuracion

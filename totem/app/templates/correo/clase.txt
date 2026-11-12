@@ -1,0 +1,41 @@
+{#
+  Version en texto plano del correo de una clase.
+
+  No es decorativa: sin ella, varios filtros marcan el mensaje como
+  sospechoso, y algunos clientes de correo no muestran nada.
+-#}
+{% if destinatario.nombre %}Hola, {{ destinatario.nombre }}.{% else %}Hola.{% endif %}
+
+{% if modo == 'confirmacion' -%}
+Quedaste agendado para {{ evento.titulo }}. Te esperamos.
+{%- elif modo == 'recordatorio' -%}
+Te recordamos que manana tenes {{ evento.titulo }}.
+{%- else -%}
+{{ mensaje }}
+{%- endif %}
+
+CUANDO
+{{ fecha_texto }}
+{{ hora_texto }}{% if hora_fin_texto %} a {{ hora_fin_texto }}{% endif %}
+{% if coach_texto %}
+TU COACH
+{{ coach_texto }}
+{% endif %}
+{%- if gym.direccion or gym.mapa_url %}
+DONDE
+{% if gym.direccion %}{{ gym.direccion }}
+{% endif %}{% if gym.mapa_url %}Como llegar: {{ gym.mapa_url }}
+{% endif %}
+{%- endif %}
+{%- if gym.que_traer and modo != 'aviso' %}
+QUE TRAER
+{{ gym.que_traer }}
+{% endif %}
+--
+{% if gym.telefono -%}
+Si no podes venir o necesitas cambiar el horario, escribinos al {{ gym.telefono }}.
+{%- else -%}
+Si no podes venir, avisanos asi le damos el lugar a alguien mas.
+{%- endif %}
+
+Totem Climb Gym

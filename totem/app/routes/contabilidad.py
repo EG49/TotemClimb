@@ -1,8 +1,9 @@
-"""Rutas del reporte de Contabilidad."""
+"""Rutas del reporte de Contabilidad y del balance general."""
 
 from flask import Blueprint, render_template, request
 
-from app.security import login_requerido
+from app.security import admin_requerido, login_requerido
+from app.services.balance_service import BalanceService
 from app.services.cliente_service import ClienteService
 from app.services.contabilidad_service import ContabilidadService, rango_del_periodo
 
@@ -28,4 +29,27 @@ def reporte():
         hasta=hasta,
         etiqueta=etiqueta,
         cliente=cliente,
+    )
+
+
+@bp.route("/balance")
+@admin_requerido
+def balance():
+    """Lo que entró menos lo que salió, en un período.
+
+    Solo para el ADMIN: muestra los gastos, y los gastos son suyos.
+    El vendedor sigue viendo el reporte de ventas sin esta pantalla.
+    """
+    periodo = request.args.get("periodo", "mes")
+    desde, hasta, etiqueta = rango_del_periodo(
+        periodo, request.args.get("desde"), request.args.get("hasta")
+    )
+
+    return render_template(
+        "contabilidad/balance.html",
+        datos=BalanceService().balance(desde, hasta),
+        periodo=periodo,
+        desde=desde,
+        hasta=hasta,
+        etiqueta=etiqueta,
     )

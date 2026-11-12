@@ -688,6 +688,34 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
   .celda{ min-height:70px; }
 }
 
+/* ===== BALANCE GENERAL ===== */
+
+/* La cifra del resultado va grande y sola: es la pregunta que trae
+   a esa pantalla, y el color dice la respuesta antes de leerla. */
+.resultado-balance{ padding:26px 28px; margin-bottom:18px; border-left:5px solid var(--teal); }
+.resultado-balance.en-rojo{ border-left-color:var(--error); }
+.resultado-etiqueta{
+  font-size:11.5px; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-soft);
+}
+.resultado-cifra{
+  font-family:'Bebas Neue',sans-serif; font-size:46px; line-height:1.1;
+  letter-spacing:1px; margin-top:6px; color:var(--teal);
+}
+.resultado-balance.en-rojo .resultado-cifra{ color:var(--error); }
+.resultado-cuenta{ font-size:13.5px; color:var(--ink-soft); margin-top:8px; }
+
+/* Explicaciones al pie de una tarjeta: cómo se calculó algo, o por
+   qué una celda está vacía a propósito. */
+.nota-pie{
+  font-size:12.5px; line-height:1.6; color:var(--ink-soft);
+  padding:14px 20px; border-top:1px solid var(--gray-light);
+}
+aside .nota-pie{ padding:0; border-top:0; }
+
+@media (max-width:720px){
+  .resultado-cifra{ font-size:36px; }
+}
+
 /* ===== PANEL GENERAL ===== */
 
 /* Buscador de clientes del panel. La lista de resultados se despliega

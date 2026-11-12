@@ -172,24 +172,47 @@ def bitacora():
 @bp.route("/configuracion", methods=["GET", "POST"])
 @admin_requerido
 def configuracion():
-    """Parámetros del sistema. Hoy solo el IVA."""
+    """Parámetros del sistema: el IVA y los datos que salen en los correos."""
     servicio = ConfiguracionService()
 
     if request.method == "POST":
-        try:
-            servicio.cambiar_iva(
-                request.form.get("iva_porcentaje"), g.empleado["id_empleado"]
-            )
-        except ErrorValidacion as e:
-            flash(list(e.errores.values())[0], "error")
-        else:
+        # Dos formularios distintos en la misma pantalla; los distingue
+        # el campo oculto, para que guardar uno no pise al otro.
+        if request.form.get("seccion") == "gym":
+            try:
+                cambiados = servicio.guardar_datos_del_gym(
+                    request.form.to_dict(), g.empleado["id_empleado"]
+                )
+            except ErrorValidacion as e:
+                flash(list(e.errores.values())[0], "error")
+                return render_template(
+                    "configuracion.html",
+                    iva=servicio.iva_vigente(),
+                    historial=servicio.historial_iva(),
+                    gym=request.form,
+                    errores=e.errores,
+                )
             flash(
-                "IVA actualizado. Las facturas ya emitidas no cambian.", "ok"
+                "Datos del gimnasio actualizados." if cambiados
+                else "No cambiaste nada.",
+                "ok" if cambiados else "info",
             )
+        else:
+            try:
+                servicio.cambiar_iva(
+                    request.form.get("iva_porcentaje"), g.empleado["id_empleado"]
+                )
+            except ErrorValidacion as e:
+                flash(list(e.errores.values())[0], "error")
+            else:
+                flash("IVA actualizado. Las facturas ya emitidas no cambian.", "ok")
         return redirect(url_for("main.configuracion"))
 
+    datos = servicio.datos_del_gym()
     return render_template(
         "configuracion.html",
         iva=servicio.iva_vigente(),
         historial=servicio.historial_iva(),
+        gym={f"gym_{k}": v for k, v in datos.items()},
+        errores={},
     )

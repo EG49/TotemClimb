@@ -2,6 +2,22 @@ SET client_encoding = 'UTF8';
 \set ON_ERROR_STOP off
 \pset tuples_only on
 
+-- ============================================================
+-- ESTE ARCHIVO NO DEJA NADA EN LA BASE
+-- ============================================================
+-- Para comprobar que la base ACEPTA lo valido hay que insertarlo
+-- de verdad. Todo ocurre dentro de una transaccion que se
+-- descarta al final, asi que se puede correr sobre una base con
+-- datos reales sin ensuciar nada.
+--
+-- Antes no era asi: insertaba en ocho tablas y no limpiaba. El
+-- plan de prueba "Pase 20 dias" terminaba en el catalogo del
+-- gimnasio como si fuera un plan real.
+--
+-- Si ves "ROLLBACK" al final, funciono como debe.
+-- ============================================================
+BEGIN;
+
 -- Cada bloque debe decir OK. "DEBERIA HABER FALLADO" marca un hueco.
 CREATE OR REPLACE FUNCTION probar(etiqueta TEXT, sentencia TEXT, debe_fallar BOOLEAN)
 RETURNS TEXT AS $$
@@ -117,3 +133,11 @@ SELECT probar('accion nueva de conversion',
     VALUES (1,'POSIBLE_CONVERTIDO','POSIBLE_CLIENTE',1)$$, FALSE);
 SELECT probar('accion inventada',
   $$INSERT INTO bitacora (id_empleado,accion,entidad) VALUES (1,'CUALQUIER_COSA','GASTO')$$, TRUE);
+
+-- ============================================================
+-- Se descarta todo lo insertado. La base queda como estaba.
+-- ============================================================
+ROLLBACK;
+
+\pset tuples_only off
+SELECT 'Las pruebas terminaron y la base quedo intacta.' AS resultado;
