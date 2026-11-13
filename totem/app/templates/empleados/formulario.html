@@ -42,8 +42,8 @@
                         else (ficha.tiene_acceso if editando else true) %}
 
     <div class="rejilla">
-      {{ campo('nombre', 'Nombre', marcador='Ej. Camila') }}
-      {{ campo('apellido', 'Apellido', marcador='Ej. Rojas') }}
+      {{ campo('nombre', 'Nombre', marcador='') }}
+      {{ campo('apellido', 'Apellido', marcador='') }}
       {{ campo('fecha_nacimiento', 'Fecha de nacimiento', tipo='date', opcional=true) }}
     </div>
 
@@ -77,7 +77,7 @@
 
     <div id="bloque-acceso" style="{{ '' if con_acceso else 'display:none' }}">
       <div class="rejilla" style="margin-top:16px;">
-        {{ campo('usuario', 'Usuario', marcador='camila') }}
+        {{ campo('usuario', 'Usuario', marcador='') }}
 
         <div class="campo">
           <label for="rol">Rol</label>
@@ -99,8 +99,8 @@
     <hr class="divisor">
     <div class="seccion">Contraseña</div>
     <div class="seccion-nota">
-      Mínimo 8 caracteres. Se guarda cifrada; ni el administrador puede verla
-      después, solo reemplazarla.
+      Mínimo 8 caracteres. Se guarda cifrada: ni el administrador puede
+      verla después, solo reemplazarla.
     </div>
     <div class="rejilla">
       <div class="campo">
@@ -153,7 +153,6 @@
     <div class="card" style="margin-top:16px;">
       <div class="seccion">Como coach</div>
       <div class="seccion-nota">
-        Cuántos posibles clientes se le asignaron y en qué terminaron.
       </div>
       <div class="totales">
         <div class="linea"><span>Posibles asignados</span><b>{{ actividad.posibles }}</b></div>
@@ -205,7 +204,7 @@
       <div class="seccion">Cambiar contraseña</div>
       <div class="seccion-nota">
         {% if ficha.id_empleado == yo %}
-          Vas a cambiar tu propia contraseña.
+          Va a cambiar su propia contraseña.
         {% else %}
           La contraseña anterior no se puede recuperar, solo reemplazar.
         {% endif %}

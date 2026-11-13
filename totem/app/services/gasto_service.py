@@ -1,6 +1,6 @@
 """Servicio de gastos.
 
-Reglas que viven acá:
+Reglas que viven aquí:
 
   * El monto tiene que ser mayor que cero. Un gasto de cero no es un
     gasto, y uno negativo sería un ingreso disfrazado.
@@ -121,23 +121,23 @@ class GastoService:
         errores = {}
 
         if datos["fecha"] is None:
-            errores["fecha"] = "Pon una fecha válida."
+            errores["fecha"] = "Ingrese una fecha válida."
         elif datos["fecha"] > date.today():
             errores["fecha"] = "No se puede registrar un gasto a futuro."
 
         monto = datos["monto"]
         if monto is None:
-            errores["monto"] = "Escribe un monto válido."
+            errores["monto"] = "Ingrese un monto válido."
         elif monto <= 0:
             errores["monto"] = "El monto tiene que ser mayor que cero."
         elif monto > MONTO_MAXIMO:
             errores["monto"] = "El monto es demasiado alto."
 
         if datos["segmento"] not in SEGMENTOS:
-            errores["segmento"] = "Elige a qué segmento se carga."
+            errores["segmento"] = "Elija a qué segmento se carga."
 
         if not datos["concepto"]:
-            errores["concepto"] = "Di qué se pagó."
+            errores["concepto"] = "Indique qué se pagó."
         elif len(datos["concepto"]) > 80:
             errores["concepto"] = "El concepto es muy largo (máximo 80)."
 
@@ -223,7 +223,7 @@ class GastoService:
         motivo = (limpiar(motivo) or "")
         if len(motivo) < MOTIVO_MINIMO:
             raise ErrorValidacion(
-                {"motivo": f"Explica el motivo (al menos {MOTIVO_MINIMO} letras)."}
+                {"motivo": f"Explique el motivo (al menos {MOTIVO_MINIMO} letras)."}
             )
 
         gasto = self.repositorio.obtener(id_gasto)

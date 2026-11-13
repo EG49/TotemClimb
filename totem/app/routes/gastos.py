@@ -1,6 +1,6 @@
 """Rutas de gastos.
 
-Solo el ADMIN entra acá: lo acordado es que los gastos los registra
+Solo el ADMIN entra aquí: lo acordado es que los gastos los registra
 él, no el vendedor del turno.
 """
 
@@ -94,7 +94,7 @@ def nuevo():
                 request.form.to_dict(), id_empleado=g.empleado["id_empleado"]
             )
         except ErrorValidacion as e:
-            flash("Revisá los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "gastos/formulario.html",
                 gasto=None,
@@ -143,7 +143,7 @@ def editar(id_gasto):
                 request.form.to_dict(), id_gasto, g.empleado["id_empleado"]
             )
         except ErrorValidacion as e:
-            flash("Revisá los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "gastos/formulario.html",
                 gasto=gasto,

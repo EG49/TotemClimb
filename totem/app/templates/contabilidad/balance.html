@@ -84,7 +84,7 @@
   <div class="summary-card">
     <div class="summary-label">Por cobrar</div>
     <div class="summary-value">{{ monto(datos.por_cobrar) }}</div>
-    <div class="summary-note">todavía no entró, no suma acá</div>
+    <div class="summary-note">todavía no entró, no suma aquí</div>
   </div>
 </div>
 
@@ -94,7 +94,6 @@
       <div>
         <div class="seccion">Por segmento</div>
         <div class="seccion-nota">
-          Para ver si la escuelita de chicos se sostiene sola
         </div>
       </div>
     </div>
@@ -134,7 +133,6 @@
   <aside class="card">
     <div class="seccion">Respaldo de los gastos</div>
     <div class="seccion-nota">
-      Lo facturado es lo que podés justificar ante el SRI
     </div>
 
     <div class="item-dia" style="border-color:var(--teal)">
@@ -171,7 +169,7 @@
   <div class="card-cabecera">
     <div>
       <div class="seccion">En qué se fue</div>
-      <div class="seccion-nota">Los gastos del período, de mayor a menor</div>
+      <div class="seccion-nota">Gastos del período</div>
     </div>
   </div>
   <table>
@@ -201,7 +199,7 @@
 {% if not datos.n_facturas and not datos.n_gastos %}
 <div class="card" style="margin-top:18px;">
   <div class="vacio" style="padding:26px;">
-    No hay movimientos en este período. Probá con otro rango de fechas.
+    No hay movimientos en este período. Pruebe con otro rango de fechas.
   </div>
 </div>
 {% endif %}

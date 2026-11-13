@@ -9,12 +9,12 @@
  PARA QUÉ SIRVE ESTE ARCHIVO
 ---------------------------------------------------------------
 
-Reúne en un solo lugar los 95 textos de ayuda que aparecen en las
+Reúne en un solo lugar los textos de ayuda que aparecen en las
 pantallas, para poder revisarlos de corrido en vez de ir
 formulario por formulario.
 
-Si querés cambiar alguno, marcalo acá y pasámelo. También podés
-cambiarlo vos: cada entrada dice el archivo y el número de línea.
+Si quiere cambiar alguno, márquelo aquí y me lo pasa. También
+puede cambiarlo usted: cada entrada dice el archivo y la línea.
 
 
 ---------------------------------------------------------------
@@ -42,14 +42,14 @@ NOTA DE SECCIÓN
 SE PUEDE cambiar libremente el texto entre comillas de cualquier
 marcador, pista o nota. Es texto, no afecta a nada más.
 
-NO cambies lo que está entre corchetes, como [telefono]. Ese es
+NO cambie lo que está entre corchetes, como [telefono]. Ese es
 el nombre interno del campo: lo usan el servidor, la base de
 datos y las validaciones. Cambiarlo rompe la pantalla.
 
 Las ETIQUETAS de los campos (el texto negro arriba del campo)
 tampoco están en esta lista, porque cambiarlas suele implicar
-revisar también el documento de especificación. Si querés cambiar
-alguna, decímelo y lo hago junto con la documentación.
+revisar también el documento de especificación. Si quiere cambiar
+alguna, dígamelo y lo hago junto con la documentación.
 
 Un marcador no es obligatorio. Si uno sobra, se puede dejar vacío.
 
@@ -82,7 +82,7 @@ mientras completa el campo, va como PISTA y no como marcador.
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
     linea   12
-               "Por nombre o cédula. Te lleva a su ficha."
+               "Por nombre o cédula."
 
     linea   82
                "Lo que necesita atención hoy"
@@ -106,12 +106,6 @@ mientras completa el campo, va como PISTA y no como marcador.
 
   MARCADORES (el texto gris dentro del campo vacio)
 
-    linea   38  [nombre] Nombre
-               "Ej. Mariana"
-
-    linea   39  [apellido] Apellido
-               "Ej. Lopez Vera"
-
     linea   41  [cedula] Cédula
                "0912345678"
 
@@ -119,28 +113,19 @@ mientras completa el campo, va como PISTA y no como marcador.
                "cliente@correo.com"
 
     linea   43  [telefono] Celular
-               "0991234567"
+               "0912345678"
 
     linea   61  [contacto_emergencia] Celular del contacto
                "0997654321"
 
-    linea   62  [referencia] Referencia
-               "Ej. Mamá, esposo/a, hermano/a..."
-
-    linea   82  [seguro_nombre] Nombre del seguro
-               "Ej. Seguros Equinoccial"
-
     linea   83  [seguro_numero] Celular del seguro
                "0991234567"
-
-    linea  148  [menor_nombre] Nombre
-               "Ej. Lucas"
 
     linea  152  [menor_apellido] Apellido
                "Ej. Lopez Vera"
 
     linea  160  [menor_cedula] Fecha de nacimiento
-               "0912345679"
+               "0912345678"
 
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
@@ -151,7 +136,7 @@ mientras completa el campo, va como PISTA y no como marcador.
                "Recomendado por el tipo de actividad."
 
     linea  119
-               "Solo lectura. Para cambiar sus datos, entra al perfil del
+               "Solo lectura. Para cambiar sus datos, ingrese al perfil del
                 menor."
 
 
@@ -163,7 +148,7 @@ mientras completa el campo, va como PISTA y no como marcador.
   MARCADORES (el texto gris dentro del campo vacio)
 
     linea   53  [cedula] Cédula
-               "0912345679"
+               "0912345678"
 
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
@@ -188,7 +173,7 @@ mientras completa el campo, va como PISTA y no como marcador.
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
     linea   19
-               "Busca por nombre o cédula."
+               "Busque por nombre o cédula."
 
     linea   43
                "Productos y planes de membresía en una sola lista."
@@ -208,7 +193,7 @@ mientras completa el campo, va como PISTA y no como marcador.
                "Cliente, cédula o N° de factura..."
 
     linea  272  [motivo] Motivo de la anulación
-               "Ej. Cobro duplicado por error"
+               "Ej. Cobro duplicado"
 
 
 ===============================================================
@@ -221,11 +206,10 @@ mientras completa el campo, va como PISTA y no como marcador.
                "De qué forma entró el dinero."
 
     linea  120
-               "Cuánto vino de membresías Junior, de Senior y de productos.
-                Los pases cuentan como Senior."
+               "Cuánto vino de membresías Junior, de Senior y de productos."
 
     linea  126
-               "Quién registró cada cobro."
+               "Registro de cobro."
 
     linea  132
                "Ítems con mayor monto en el período."
@@ -240,14 +224,8 @@ mientras completa el campo, va como PISTA y no como marcador.
 ===============================================================
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
-    linea   96
-               "Para ver si la escuelita de chicos se sostiene sola"
-
-    linea  136
-               "Lo facturado es lo que podés justificar ante el SRI"
-
-    linea  174
-               "Los gastos del período, de mayor a menor"
+    linea  172
+               "Gastos del período"
 
 
 ===============================================================
@@ -261,12 +239,12 @@ mientras completa el campo, va como PISTA y no como marcador.
                "Concepto o descripción..."
 
     linea  199  [motivo] Motivo de la anulación
-               "Ej. Cargado dos veces por error"
+               "Ej. Cargado dos veces"
 
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
     linea   96
-               "Agrupado por concepto, de mayor a menor"
+               "Agrupado por concepto"
 
 
 ===============================================================
@@ -276,20 +254,14 @@ mientras completa el campo, va como PISTA y no como marcador.
 
   MARCADORES (el texto gris dentro del campo vacio)
 
-    linea   51  [concepto] Concepto
-               "Ej. Arriendo, Luz, Magnesio"
-
-    linea  123  [descripcion] descripcion
-               "Detalle, número de factura, a quién se le pagó..."
+    linea  122  [descripcion] descripcion
+               "Detalle"
 
   PISTAS (la explicacion gris debajo del campo)
 
     linea   56
-               "Usá siempre el mismo nombre para el mismo gasto: el balance
+               "Use siempre el mismo nombre para el mismo gasto: el balance
                 agrupa por este campo."
-
-    linea   88
-               "Sirve para saber si la escuelita de chicos se sostiene sola."
 
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
@@ -316,25 +288,19 @@ mientras completa el campo, va como PISTA y no como marcador.
 
   MARCADORES (el texto gris dentro del campo vacio)
 
-    linea   45  [nombre] Nombre
-               "Ej. Ana"
-
-    linea   46  [apellido] Apellido
-               "Ej. Pérez"
-
     linea   47  [correo] Correo
-               "ana@correo.com"
+               "cliente@correo.com"
 
     linea   48  [telefono] Celular
-               "0991234567"
+               "0912345678"
 
   PISTAS (la explicacion gris debajo del campo)
 
     linea   14
                "«dato»"
 
-    linea  101
-               "La clase dura una hora."
+    linea   98
+               "La clase tiene duración de una hora."
 
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
@@ -343,18 +309,14 @@ mientras completa el campo, va como PISTA y no como marcador.
                 después si esta persona terminó inscribiéndose."
 
     linea   53
-               "Se puede dejar sin asignar y elegirlo después. Es lo que
-                permite saber qué coach trae más socios."
+               "Se puede dejar sin asignar y elegirlo después."
 
-    linea   90
-               "Si ya hay una clase de prueba ese día a esa hora, se suma a
-                ella en vez de crear otra."
+    linea  138
+               "Marcarlo es lo que permite distinguir a un coach cuyos
+                agendados no asisten, de uno al que sí le asisten pero no se
+                inscriben."
 
-    linea  141
-               "Marcarlo es lo que permite distinguir a un coach que agenda y
-                no llena, de uno que llena y no convierte."
-
-    linea  161
+    linea  158
                "Pagó su primera membresía el «dato». Ya es cliente del
                 gimnasio."
 
@@ -391,22 +353,21 @@ mientras completa el campo, va como PISTA y no como marcador.
     linea  163  [id_cliente] id_cliente
                "Inscribir a alguien más..."
 
-    linea  191  [mensaje] Qué querés decirles
+    linea  191  [mensaje] Mensaje para los inscritos
                "Ej. La clase de mañana se pasa a las 16:00."
 
   PISTAS (la explicacion gris debajo del campo)
 
     linea   57
-               "Se pone una hora después del inicio. Podés cambiarla."
+               "Se pone una hora después del inicio."
 
     linea  192
-               "La fecha, la hora y la dirección se agregan solas: no hace
-                falta repetirlas acá."
+               "La fecha, la hora y la dirección se agregan solas."
 
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
     linea   91
-               "Busca por nombre o cédula. Puedes agregar varios."
+               "Busque por nombre o cédula."
 
     linea  111
                "«dato» · cupo completo"
@@ -416,7 +377,7 @@ mientras completa el campo, va como PISTA y no como marcador.
                 hora y cómo llegar. Cada uno recibe su propio correo. Ninguno
                 de los inscritos tiene correo registrado."
 
-    linea  206
+    linea  205
                "Se borra el evento y todas sus inscripciones. No se puede
                 deshacer."
 
@@ -436,29 +397,15 @@ mientras completa el campo, va como PISTA y no como marcador.
  CATALOGO (ALTA DE ITEM)
  catalogo/formulario.html
 ===============================================================
-
-  MARCADORES (el texto gris dentro del campo vacio)
-
-    linea   51  [nombre] Nombre
-               "Ej. Magnesio (bolsa 56g)"
-
-    linea   52  [precio] Precio
-               "0.00"
-
-    linea   93  [dias_incluidos] Entradas incluidas
-               "Ej. 10"
-
   PISTAS (la explicacion gris debajo del campo)
 
-    linea   97
+    linea   95
                "Cuántas visitas trae el pase antes de agotarse."
 
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
     linea   58
-               "La duración es el plazo máximo de validez. Un pase, además,
-                trae un número de entradas contadas. Los pases son Senior: el
-                tipo solo dice la categoría, no cómo se cobra."
+               "La duración es el plazo máximo de validez."
 
 
 ===============================================================
@@ -468,26 +415,14 @@ mientras completa el campo, va como PISTA y no como marcador.
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
     linea   96
-               "De cada posible cliente asignado, cuántos vinieron y cuántos
-                terminaron inscribiéndose."
+               "De cada posible cliente asignado, cuántos terminaron
+                inscribiéndose."
 
 
 ===============================================================
  EMPLEADO (ALTA Y EDICION)
  empleados/formulario.html
 ===============================================================
-
-  MARCADORES (el texto gris dentro del campo vacio)
-
-    linea   45  [nombre] Nombre
-               "Ej. Camila"
-
-    linea   46  [apellido] Apellido
-               "Ej. Rojas"
-
-    linea   80  [usuario] Usuario
-               "camila"
-
   NOTAS DE SECCION (la bajada debajo de un titulo)
 
     linea   36
@@ -495,20 +430,17 @@ mientras completa el campo, va como PISTA y no como marcador.
                 cumpleaños salga en el calendario."
 
     linea  101
-               "Mínimo 8 caracteres. Se guarda cifrada; ni el administrador
+               "Mínimo 8 caracteres. Se guarda cifrada: ni el administrador
                 puede verla después, solo reemplazarla."
 
     linea  136
                "Lo que ha registrado en el sistema."
 
-    linea  155
-               "Cuántos posibles clientes se le asignaron y en qué terminaron."
-
-    linea  206
-               "Vas a cambiar tu propia contraseña. La contraseña anterior no
+    linea  205
+               "Va a cambiar su propia contraseña. La contraseña anterior no
                 se puede recuperar, solo reemplazar."
 
-    linea  233
+    linea  232
                "Pierde el acceso al sistema, pero sus facturas y su rastro en
                 la bitácora se conservan. Deja de aparecer para asignarle
                 posibles clientes, pero los que ya tiene asignados siguen
@@ -524,9 +456,6 @@ mientras completa el campo, va como PISTA y no como marcador.
 
   MARCADORES (el texto gris dentro del campo vacio)
 
-    linea   65  [gym_direccion] Dirección
-               "Calle, número y referencia"
-
     linea   74  [gym_mapa_url] Enlace de Google Maps
                "https://maps.app.goo.gl/..."
 
@@ -540,8 +469,8 @@ mientras completa el campo, va como PISTA y no como marcador.
   PISTAS (la explicacion gris debajo del campo)
 
     linea   76
-               "En Google Maps, buscá el gimnasio, tocá «Compartir» y pegá acá
-                el enlace. En el correo se convierte en un botón «Ver cómo
+               "En Google Maps, busque el gimnasio, use «Compartir» y pegue el
+                enlace. En el correo se convierte en un botón «Ver cómo
                 llegar»."
 
     linea   89
@@ -572,5 +501,7 @@ mientras completa el campo, va como PISTA y no como marcador.
 Este archivo se extrae de las plantillas, no se escribe a mano:
 así no se desactualiza en silencio ni se olvida ninguno.
 
-Si agregás o cambiás textos en las plantillas, volvé a generarlo
-para que la lista siga sirviendo.
+Si agrega o cambia textos en las plantillas, vuelva a generarlo
+para que la lista siga sirviendo:
+
+    python -m scripts.extraer_textos

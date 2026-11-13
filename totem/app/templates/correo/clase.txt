@@ -7,9 +7,9 @@
 {% if destinatario.nombre %}Hola, {{ destinatario.nombre }}.{% else %}Hola.{% endif %}
 
 {% if modo == 'confirmacion' -%}
-Quedaste agendado para {{ evento.titulo }}. Te esperamos.
+Su lugar quedo reservado para {{ evento.titulo }}. Lo esperamos.
 {%- elif modo == 'recordatorio' -%}
-Te recordamos que manana tenes {{ evento.titulo }}.
+Le recordamos que manana tiene {{ evento.titulo }}.
 {%- else -%}
 {{ mensaje }}
 {%- endif %}
@@ -18,7 +18,7 @@ CUANDO
 {{ fecha_texto }}
 {{ hora_texto }}{% if hora_fin_texto %} a {{ hora_fin_texto }}{% endif %}
 {% if coach_texto %}
-TU COACH
+SU COACH
 {{ coach_texto }}
 {% endif %}
 {%- if gym.direccion or gym.mapa_url %}
@@ -33,9 +33,9 @@ QUE TRAER
 {% endif %}
 --
 {% if gym.telefono -%}
-Si no podes venir o necesitas cambiar el horario, escribinos al {{ gym.telefono }}.
+Si no puede asistir o necesita cambiar el horario, escribanos al {{ gym.telefono }}.
 {%- else -%}
-Si no podes venir, avisanos asi le damos el lugar a alguien mas.
+Si no puede asistir, avisenos para ofrecer el lugar a otra persona.
 {%- endif %}
 
 Totem Climb Gym

@@ -40,7 +40,7 @@ def nuevo():
         try:
             EmpleadoService().crear(request.form.to_dict(), g.empleado["id_empleado"])
         except ErrorValidacion as e:
-            flash("Revisa los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "empleados/formulario.html",
                 ficha=None,

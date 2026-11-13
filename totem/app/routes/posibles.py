@@ -52,7 +52,7 @@ def nuevo():
         try:
             servicio.agendar(request.form.to_dict(), g.empleado["id_empleado"])
         except ErrorValidacion as e:
-            flash("Revisa los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "posibles/formulario.html",
                 ficha=None,
@@ -90,7 +90,7 @@ def editar(id_posible):
                 id_posible, request.form.to_dict(), g.empleado["id_empleado"]
             )
         except ErrorValidacion as e:
-            flash("Revisa los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "posibles/formulario.html",
                 ficha=ficha,

@@ -9,7 +9,7 @@
 {# Buscar un cliente es lo que más se hace en el día: va antes que todo. #}
 <div class="card buscador-panel">
   <label class="seccion" for="buscar-panel">Buscar cliente</label>
-  <div class="seccion-nota">Por nombre o cédula. Te lleva a su ficha.</div>
+  <div class="seccion-nota">Por nombre o cédula.</div>
   <div class="picker">
     <input type="text" id="buscar-panel" placeholder="Nombre o cédula..."
            autocomplete="off" aria-controls="lista-panel">
@@ -202,7 +202,7 @@
           datos = await r.json();
         } catch (e) {
           if (mia !== peticion) return;
-          lista.innerHTML = '<div class="picker-opt vacia">No se pudo buscar. Revisá la conexión.</div>';
+          lista.innerHTML = '<div class="picker-opt vacia">No se pudo buscar. Revise la conexión.</div>';
           lista.classList.add('open');
           return;
         }

@@ -42,17 +42,16 @@
     </div>
 
     <div class="rejilla">
-      {{ campo('nombre', 'Nombre', marcador='Ej. Ana') }}
-      {{ campo('apellido', 'Apellido', marcador='Ej. Pérez') }}
-      {{ campo('correo', 'Correo', tipo='email', marcador='ana@correo.com') }}
-      {{ campo('telefono', 'Celular', marcador='0991234567', opcional=true) }}
+      {{ campo('nombre', 'Nombre', marcador='') }}
+      {{ campo('apellido', 'Apellido', marcador='') }}
+      {{ campo('correo', 'Correo', tipo='email', marcador='cliente@correo.com') }}
+      {{ campo('telefono', 'Celular', marcador='0912345678', opcional=true) }}
     </div>
 
     <hr class="divisor">
     <div class="seccion">Coach</div>
     <div class="seccion-nota">
-      Se puede dejar sin asignar y elegirlo después. Es lo que permite
-      saber qué coach trae más socios.
+      Se puede dejar sin asignar y elegirlo después.
     </div>
     {# Un desplegable con una sola opción muerta parece un campo roto.
        Si no hay coaches, se dice por qué y qué hacer. #}
@@ -88,8 +87,6 @@
     <hr class="divisor">
     <div class="seccion">Día de la clase</div>
     <div class="seccion-nota">
-      Si ya hay una clase de prueba ese día a esa hora, se suma a ella en
-      vez de crear otra.
     </div>
     <div class="rejilla">
       {{ campo('fecha', 'Fecha', tipo='date') }}
@@ -98,7 +95,7 @@
         <input id="hora_inicio" name="hora_inicio" type="time"
                value="{{ datos.get('hora_inicio') or '10:00' }}"
                class="{{ 'con-error' if errores.get('hora_inicio') }}">
-        <div class="pista">La clase dura una hora.</div>
+        <div class="pista">La clase tiene duración de una hora.</div>
         {% if errores.get('hora_inicio') %}<div class="error">{{ errores['hora_inicio'] }}</div>{% endif %}
       </div>
     </div>
@@ -139,8 +136,8 @@
     <div class="card" style="margin-top:16px;">
       <div class="seccion">¿Vino a la clase?</div>
       <div class="seccion-nota">
-        Marcarlo es lo que permite distinguir a un coach que agenda y no
-        llena, de uno que llena y no convierte.
+        Marcarlo es lo que permite distinguir a un coach cuyos agendados
+        no asisten, de uno al que sí le asisten pero no se inscriben.
       </div>
       <div class="acciones">
         <form method="post" action="{{ url_for('posibles.asistencia', id_posible=ficha.id_posible) }}">

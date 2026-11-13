@@ -94,7 +94,7 @@ def nuevo():
                 g.empleado["id_empleado"],
             )
         except ErrorValidacion as e:
-            flash("Revisa los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "clientes/formulario.html",
                 cliente=None,
@@ -136,7 +136,7 @@ def editar(id_cliente):
                 id_cliente, request.form.to_dict(), g.empleado["id_empleado"]
             )
         except ErrorValidacion as e:
-            flash("Revisa los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "clientes/formulario.html",
                 cliente=cliente,
@@ -173,7 +173,7 @@ def menor(id_cliente):
                 id_cliente, request.form.to_dict(), g.empleado["id_empleado"]
             )
         except ErrorValidacion as e:
-            flash("Revisa los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "clientes/menor.html", cliente=cliente, datos=request.form,
                 errores=e.errores,
