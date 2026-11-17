@@ -457,3 +457,8 @@ venv/
 logs/
 __pycache__/
 *.pyc
+
+# Salida de scripts/sri_prueba.py: XML firmados con los datos reales
+# del emisor y las respuestas del SRI. No van al repositorio.
+sri_pruebas/
+totem/sri_pruebas/
