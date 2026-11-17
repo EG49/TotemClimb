@@ -270,6 +270,123 @@ class ServicioCorreo:
         hilo.start()
         return destino
 
+    # --- Factura electrónica -------------------------------------
+
+    def enviar_factura(
+        self, factura, id_empleado: int, destinatario: str | None = None
+    ) -> tuple[str, bool]:
+        """Manda la factura del SRI si existe, y si no el comprobante.
+
+        Devuelve a quién se le manda y si salió la factura electrónica.
+
+        El mismo botón hace las dos cosas a propósito: quien cobra no
+        tiene por qué saber en qué estado quedó el comprobante ante el
+        SRI, ni elegir entre dos envíos parecidos. Si la factura está
+        autorizada se manda esa, que es la que vale; si todavía no, se
+        manda el comprobante interno, que es lo que hay.
+        """
+        electronica = self._factura_electronica(factura)
+        if electronica is None:
+            return self.enviar_comprobante(factura, id_empleado, destinatario), False
+
+        if not self.configurado():
+            raise CorreoNoConfigurado(
+                "Falta configurar el correo en el archivo .env."
+            )
+        destino = (destinatario or factura.cliente_correo or "").strip()
+        if not destino:
+            raise ValueError("Este cliente no tiene un correo registrado.")
+
+        pdf, autorizacion, numero = electronica
+        from flask import render_template
+
+        asunto = f"Factura {numero} — Totem Climb Gym"
+        if autorizacion.es_prueba:
+            asunto = f"[PRUEBA] {asunto}"
+
+        html = render_template(
+            "correo/factura_electronica.html",
+            factura=factura,
+            numero=numero,
+            autorizacion=autorizacion.numero,
+            es_prueba=autorizacion.es_prueba,
+        )
+        texto = (
+            f"Factura {numero} — Totem Climb Gym\n\n"
+            f"Adjuntamos su factura electrónica autorizada por el SRI en "
+            f"dos archivos: el PDF, para leer o imprimir, y el XML, que "
+            f"es el comprobante oficial.\n\n"
+            f"Total: ${factura.total:.2f}\n\n"
+            f"Número de autorización:\n{autorizacion.numero}\n\n"
+            f"Puede verificarla en www.sri.gob.ec con esa clave de acceso.\n"
+        )
+
+        mensaje = self.armar_con_adjuntos(
+            destino, asunto, texto,
+            [
+                (f"{autorizacion.numero}.pdf", pdf, "application", "pdf"),
+                (f"{autorizacion.numero}.xml",
+                 autorizacion.comprobante.encode("utf-8"), "application", "xml"),
+            ],
+            html=html,
+        )
+
+        app = current_app._get_current_object()
+        datos = {
+            "numero": factura.numero_factura,
+            "id_factura": factura.id_factura,
+            "destino": destino,
+            "autorizacion": autorizacion.numero,
+        }
+        hilo = threading.Thread(
+            target=self._enviar_en_segundo_plano,
+            args=(app, mensaje, id_empleado, datos),
+            daemon=True,
+        )
+        _anotar_hilo(hilo)
+        hilo.start()
+        return destino, True
+
+    @staticmethod
+    def _factura_electronica(factura):
+        """El RIDE y la autorización, o None si todavía no hay factura.
+
+        Se arma desde la respuesta del SRI que quedó guardada, no desde
+        los datos del sistema: lo que recibe el cliente tiene que ser
+        lo que el SRI autorizó. Ver app/services/sri/ride.py.
+        """
+        from app.db import obtener_cursor
+        from app.services.sri.ride import ErrorRide, generar_desde_respuesta
+
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT sri_estado, sri_xml, sri_establecimiento,
+                       sri_punto_emision, sri_secuencial
+                  FROM facturas WHERE id_factura = %s
+                """,
+                (factura.id_factura,),
+            )
+            fila = cursor.fetchone()
+
+        if fila is None or fila["sri_estado"] != "AUTORIZADA" or not fila["sri_xml"]:
+            return None
+
+        try:
+            pdf, autorizacion = generar_desde_respuesta(fila["sri_xml"])
+        except ErrorRide as error:
+            current_app.logger.warning(
+                "No se pudo armar el RIDE de la factura %s: %s",
+                factura.numero_factura, error,
+            )
+            return None
+
+        numero = (
+            f"{fila['sri_establecimiento']}-{fila['sri_punto_emision']}-"
+            f"{str(fila['sri_secuencial']).zfill(9)}"
+        )
+        return pdf, autorizacion, numero
+
     def _enviar_en_segundo_plano(self, app, mensaje, id_empleado, datos) -> None:
         with app.app_context():
             try:
