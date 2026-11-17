@@ -112,7 +112,7 @@
           <td>{{ monto(s.gastos) }}</td>
           <td>
             {% if s.comparable %}
-              <b style="color:{{ 'var(--teal)' if s.resultado >= 0 else 'var(--error)' }}">
+              <b style="color:{{ 'var(--teal-texto)' if s.resultado >= 0 else 'var(--error)' }}">
                 {{ monto(s.resultado) }}
               </b>
             {% else %}

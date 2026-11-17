@@ -80,6 +80,22 @@ class Factura:
     detalle: list = field(default_factory=list)
 
     @property
+    def base_imponible(self) -> Decimal:
+        """Lo cobrado sin el IVA.
+
+        Los precios del catálogo INCLUYEN IVA, así que `subtotal` y
+        `total` ya lo traen adentro. La base sale restando, nunca
+        dividiendo de nuevo: dividir redondea una segunda vez y deja
+        base + IVA distinto del total.
+
+        Está acá y no en cada plantilla porque la pantalla del
+        comprobante, la de la factura y el correo mostraban los tres
+        números por su cuenta, y los tres decían "Subtotal $65.00,
+        IVA $8.48, Total $65.00", que no suma.
+        """
+        return (self.total - self.iva).quantize(CENTAVO)
+
+    @property
     def esta_fiada(self) -> bool:
         return self.estado == PENDIENTE
 

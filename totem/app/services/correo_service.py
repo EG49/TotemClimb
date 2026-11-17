@@ -143,8 +143,9 @@ class ServicioCorreo:
             )
         lineas += [
             "",
-            f"Subtotal: ${factura.subtotal:.2f}",
-            f"IVA {factura.iva_porcentaje}%: ${factura.iva:.2f}",
+            f"Subtotal con IVA: ${factura.subtotal:.2f}",
+            f"Base imponible: ${factura.base_imponible:.2f}",
+            f"IVA {factura.iva_porcentaje}% incluido: ${factura.iva:.2f}",
             f"TOTAL: ${factura.total:.2f}",
         ]
         if factura.esta_fiada:
@@ -155,6 +156,69 @@ class ServicioCorreo:
             "venta autorizado por el SRI.",
         ]
         return "\n".join(lineas)
+
+    # --- Correo con archivos adjuntos ----------------------------------
+
+    def armar_con_adjuntos(
+        self,
+        destinatario: str,
+        asunto: str,
+        texto: str,
+        adjuntos: list[tuple[str, bytes, str, str]],
+        html: str | None = None,
+    ) -> EmailMessage:
+        """Un correo con archivos encima.
+
+        `adjuntos` son tuplas (nombre, contenido, tipo, subtipo), por
+        ejemplo ("factura.pdf", b"...", "application", "pdf").
+
+        Existe para la factura electrónica: al cliente hay que
+        mandarle el XML autorizado Y el RIDE en PDF. El XML es la
+        factura ante el SRI y el PDF es la que se lee; entregar solo
+        uno de los dos deja al cliente a medias.
+        """
+        ajustes = self._ajustes()
+        mensaje = EmailMessage()
+        mensaje["Subject"] = asunto
+        mensaje["From"] = formataddr((ajustes["nombre"], ajustes["remitente"]))
+        mensaje["To"] = destinatario
+        remitente = ajustes["remitente"] or ""
+        dominio = remitente.split("@")[-1] if "@" in remitente else None
+        mensaje["Message-ID"] = make_msgid(domain=dominio)
+
+        mensaje.set_content(texto)
+        if html:
+            mensaje.add_alternative(html, subtype="html")
+
+        for nombre, contenido, tipo, subtipo in adjuntos:
+            mensaje.add_attachment(
+                contenido, maintype=tipo, subtype=subtipo, filename=nombre
+            )
+        return mensaje
+
+    def enviar_con_adjuntos(
+        self,
+        destinatario: str,
+        asunto: str,
+        texto: str,
+        adjuntos: list[tuple[str, bytes, str, str]],
+        html: str | None = None,
+    ) -> None:
+        """Arma y entrega en el acto, sin hilo.
+
+        A diferencia de enviar_comprobante(), este espera: quien lo
+        llama quiere saber si salió. Para el envío desde una pantalla
+        hace falta la versión en segundo plano.
+        """
+        if not self.configurado():
+            raise CorreoNoConfigurado(
+                "Falta configurar el correo en el archivo .env."
+            )
+        self._entregar(
+            self.armar_con_adjuntos(
+                destinatario, asunto, texto, adjuntos, html
+            )
+        )
 
     # --- Envío ---------------------------------------------------------
 

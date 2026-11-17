@@ -4,3 +4,23 @@ psycopg_pool==3.3.3
 bcrypt==5.0.0
 python-dotenv==1.0.1
 gunicorn==23.0.0
+
+# ─── Facturación electrónica (SRI) ─────────────────────────────────
+# La firma XAdES-BES está escrita en app/services/sri/firma.py y solo
+# necesita estas dos. Las dos vienen de PyPI con rueda precompilada
+# para Windows: no hace falta compilador, ni openssl, ni xmllint, ni
+# instalar nada desde GitHub.
+#
+# Se probaron las dos librerías de firma que circulan y ninguna sirve;
+# el motivo de cada una está en la cabecera de firma.py.
+lxml>=5.3
+cryptography>=42
+
+# El RIDE en PDF: la representacion impresa que se le entrega al
+# cliente. Puro Python, con rueda para Windows.
+reportlab>=4.0
+
+# Solo para pruebas/sri_ride.py, que levanta un servidor SMTP de
+# mentira para no mandar correos de verdad. Si falta, esa prueba
+# avisa y se omite.
+aiosmtpd>=1.4

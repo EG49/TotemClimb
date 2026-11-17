@@ -108,7 +108,7 @@
         <table role="presentation" align="right" cellpadding="0" cellspacing="0"
                style="font-size:14px;">
           <tr>
-            <td style="padding:3px 0; color:#6A6A67;">Subtotal</td>
+            <td style="padding:3px 0; color:#6A6A67;">Subtotal con IVA</td>
             <td align="right" style="padding:3px 0 3px 26px;">
               ${{ '%.2f'|format(factura.subtotal) }}
             </td>
@@ -124,7 +124,13 @@
           </tr>
           {% endif %}
           <tr>
-            <td style="padding:3px 0; color:#6A6A67;">IVA {{ factura.iva_porcentaje }}%</td>
+            <td style="padding:3px 0; color:#6A6A67;">Base imponible</td>
+            <td align="right" style="padding:3px 0 3px 26px;">
+              ${{ '%.2f'|format(factura.base_imponible) }}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0; color:#6A6A67;">IVA {{ factura.iva_porcentaje }}% incluido</td>
             <td align="right" style="padding:3px 0 3px 26px;">
               ${{ '%.2f'|format(factura.iva) }}
             </td>

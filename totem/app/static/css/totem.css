@@ -6,11 +6,19 @@
   --ink:#2B3210;
   --cream:#FFFFFF;
   --teal:#3395A0;
+  /* El mismo turquesa, oscurecido, para cuando lleva texto encima o
+     es texto. El de marca da 3.53:1 contra el blanco, por debajo del
+     4.5:1 que hace falta para leer cómodo; este da 5.47:1. El de
+     marca se sigue usando en bordes, barras y rellenos, que no
+     tienen que leerse. */
+  --teal-texto:#27737C;
   --gray-light:#CCCCCC;
   --gray:#6A6A67;
   --lime:#C2DD58;
   --lime-soft:#DEFA73;
-  --ink-soft: rgba(43,50,16,0.65);
+  /* 0.65 daba 4.46:1 contra el blanco: a dos centésimas del mínimo.
+     Con 0.70 da 5.18:1 y a la vista es casi lo mismo. */
+  --ink-soft: rgba(43,50,16,0.70);
   --error:#B3261E;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
@@ -54,7 +62,9 @@ nav{ display:flex; flex-direction:column; gap:4px; }
 .nav-item.active{ background:rgba(51,149,160,0.18); color:var(--cream); border-left:3px solid var(--teal); }
 .sidebar-footer{ margin-top:auto; padding-top:24px; border-top:1px solid rgba(255,255,255,0.12); }
 .tagline{ font-family:'Shadows Into Light Two',cursive; font-size:19px; color:var(--lime); line-height:1.1; }
-.tagline-sub{ font-size:11px; color:rgba(255,255,255,0.45); margin-top:6px; }
+/* 0.45 daba 4:1 sobre el fondo de la barra, por debajo del minimo
+   para 11px. */
+.tagline-sub{ font-size:11px; color:rgba(255,255,255,0.62); margin-top:6px; }
 .sesion{ font-size:12px; color:rgba(255,255,255,0.75); margin-bottom:10px; }
 .sesion b{ display:block; color:var(--cream); font-size:13px; }
 .btn-salir{
@@ -76,7 +86,7 @@ main{
 .page-sub{ color:var(--ink-soft); font-size:14px; margin-top:2px; margin-bottom:26px; }
 
 .btn-primary{
-  background:var(--teal); color:#fff; border:none; padding:12px 20px; border-radius:9px;
+  background:var(--teal-texto); color:#fff; border:none; padding:12px 20px; border-radius:9px;
   font-weight:600; font-size:14px; cursor:pointer; font-family:inherit;
   display:inline-flex; align-items:center; gap:8px;
   box-shadow:0 4px 14px rgba(51,149,160,0.35);
@@ -116,8 +126,21 @@ td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px;
   padding:38px 36px; width:100%; max-width:390px;
   box-shadow:0 18px 50px rgba(43,50,16,0.10);
 }
-.login-logo{ display:flex; justify-content:center; margin-bottom:26px; }
-.login-logo img{ max-width:170px; height:auto; }
+/* El logo va sobre un fondo oscuro, no sobre el blanco de la tarjeta.
+   En el archivo del logo el oso y la palabra TOTEM son blancos sobre
+   fondo transparente: sobre blanco desaparecen y solo queda el aro
+   turquesa. En la barra lateral se ve bien porque el fondo ya es
+   oscuro; acá hay que ponérselo. */
+.login-logo{
+  display:flex; justify-content:center; margin-bottom:26px;
+}
+.login-logo img{
+  max-width:132px; height:auto;
+  background:var(--ink); border-radius:16px; padding:14px 18px;
+  /* El fondo va en la imagen y no en el contenedor: en el contenedor
+     se estira a todo el ancho de la tarjeta y pesa demasiado. */
+  box-sizing:border-box;
+}
 .login-title{ font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:.5px; text-align:center; }
 .login-sub{ font-size:13px; color:var(--ink-soft); text-align:center; margin-bottom:24px; }
 .field{ margin-bottom:16px; }
@@ -128,7 +151,7 @@ td{ padding:13px 18px; border-top:1px solid var(--gray-light); font-size:13.5px;
 }
 .login-card .btn-primary{ width:100%; justify-content:center; margin-top:6px; }
 .login-pie{
-  font-family:'Shadows Into Light Two',cursive; font-size:17px; color:var(--teal);
+  font-family:'Shadows Into Light Two',cursive; font-size:17px; color:var(--teal-texto);
   text-align:center; margin-top:24px;
 }
 
@@ -184,7 +207,7 @@ body.sin-scroll{ overflow:hidden; }
 .encabezado{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:22px; }
 .encabezado .page-sub{ margin-bottom:0; }
 .migas{ font-size:12.5px; color:var(--ink-soft); margin-bottom:6px; }
-.migas a{ color:var(--teal); font-weight:600; text-decoration:none; }
+.migas a{ color:var(--teal-texto); font-weight:600; text-decoration:none; }
 
 .btn-ghost{
   background:none; border:1px solid var(--gray-light); color:var(--ink);
@@ -192,7 +215,7 @@ body.sin-scroll{ overflow:hidden; }
   cursor:pointer; font-family:inherit; text-decoration:none;
   display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
 }
-.btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+.btn-ghost:hover{ border-color:var(--teal-texto); color:var(--teal-texto); }
 .btn-ghost.small{ padding:6px 12px; font-size:12.5px; }
 .btn-ghost[disabled]{ opacity:.45; cursor:not-allowed; }
 .btn-ghost[disabled]:hover{ border-color:var(--gray-light); color:var(--ink); }
@@ -216,7 +239,7 @@ a.btn-primary{ text-decoration:none; }
   font-size:12.5px; font-weight:600; color:var(--ink-soft);
   cursor:pointer; text-decoration:none;
 }
-.chip:hover{ border-color:var(--teal); color:var(--teal); }
+.chip:hover{ border-color:var(--teal-texto); color:var(--teal-texto); }
 .chip span{ color:var(--gray); font-weight:500; margin-left:3px; }
 .chip.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
 .chip.active span{ color:rgba(255,255,255,0.6); }
@@ -229,16 +252,16 @@ a.btn-primary{ text-decoration:none; }
   color:var(--ink); font-weight:700; font-size:12.5px; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
 }
-.avatar.menor{ background:rgba(51,149,160,0.15); color:var(--teal); }
+.avatar.menor{ background:rgba(51,149,160,0.15); color:var(--teal-texto); }
 .nombre{ font-weight:600; font-size:14px; }
 .meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
-.meta.nota{ color:var(--teal); font-weight:600; }
+.meta.nota{ color:var(--teal-texto); font-weight:600; }
 .vacio{ color:var(--ink-soft); text-align:center; padding:36px 18px; }
 .acciones{ display:flex; gap:8px; justify-content:flex-end; }
 .paginacion{ display:flex; align-items:center; gap:14px; justify-content:center; margin-top:18px; }
 
 .etiqueta-menor{
-  display:inline-block; background:rgba(51,149,160,0.12); color:var(--teal);
+  display:inline-block; background:rgba(51,149,160,0.12); color:var(--teal-texto);
   border-radius:20px; padding:2px 9px; font-size:10.5px; font-weight:700;
   text-transform:uppercase; letter-spacing:.3px; margin-left:6px; vertical-align:middle;
 }
@@ -253,7 +276,7 @@ a.btn-primary{ text-decoration:none; }
   display:inline-block; padding:5px 12px; border-radius:20px;
   font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.3px;
 }
-.pill.vigente{ background:rgba(51,149,160,0.12); color:var(--teal); }
+.pill.vigente{ background:rgba(51,149,160,0.12); color:var(--teal-texto); }
 .pill.por_vencer{ background:rgba(194,221,88,0.35); color:var(--ink); }
 .pill.vencido{ background:rgba(179,38,30,0.10); color:var(--error); }
 .pill.sin_membresia{ background:rgba(106,106,103,0.12); color:var(--gray); }
@@ -263,7 +286,7 @@ a.btn-primary{ text-decoration:none; }
   font-size:12px; font-weight:600; background:rgba(106,106,103,0.10); color:var(--ink);
 }
 .plan-tag.junior{ background:rgba(194,221,88,0.35); }
-.plan-tag.senior{ background:rgba(51,149,160,0.12); color:var(--teal); }
+.plan-tag.senior{ background:rgba(51,149,160,0.12); color:var(--teal-texto); }
 .plan-tag.pases{ background:rgba(106,106,103,0.14); color:var(--gray); }
 
 /* Formulario */
@@ -343,11 +366,11 @@ a.btn-primary{ text-decoration:none; }
   padding:10px 18px; font-size:13.5px; font-weight:600; color:var(--ink-soft);
   text-decoration:none; border-bottom:3px solid transparent; margin-bottom:-1px;
 }
-.pestana:hover{ color:var(--teal); }
-.pestana.active{ color:var(--ink); border-bottom-color:var(--teal); }
+.pestana:hover{ color:var(--teal-texto); }
+.pestana.active{ color:var(--ink); border-bottom-color:var(--teal-texto); }
 
 .barra-opciones{ margin-bottom:14px; }
-.enlace-sutil{ font-size:12.5px; color:var(--teal); font-weight:600; text-decoration:none; }
+.enlace-sutil{ font-size:12.5px; color:var(--teal-texto); font-weight:600; text-decoration:none; }
 .enlace-sutil:hover{ text-decoration:underline; }
 
 tr.inactiva td{ opacity:.55; }
@@ -363,8 +386,8 @@ tr.inactiva .nombre{ text-decoration:line-through; }
 }
 .opcion-tipo .t-titulo{ font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.4px; color:var(--ink); }
 .opcion-tipo .t-sub{ font-size:11.5px; color:var(--ink-soft); }
-.opcion-tipo.active{ border-color:var(--teal); background:rgba(51,149,160,0.08); }
-.opcion-tipo.active .t-titulo{ color:var(--teal); }
+.opcion-tipo.active{ border-color:var(--teal-texto); background:rgba(51,149,160,0.08); }
+.opcion-tipo.active .t-titulo{ color:var(--teal-texto); }
 
 .duracion{ display:flex; gap:8px; }
 .duracion input{ flex:2; }
@@ -498,7 +521,7 @@ tr.inactiva .nombre{ text-decoration:line-through; }
 
 .num-factura{ font-weight:700; color:var(--ink-soft); font-size:12.5px; }
 .contador-items{
-  display:inline-block; font-size:11px; font-weight:600; color:var(--teal);
+  display:inline-block; font-size:11px; font-weight:600; color:var(--teal-texto);
   background:rgba(51,149,160,0.10); padding:2px 8px; border-radius:20px;
   margin-left:4px; cursor:help;
 }
@@ -550,8 +573,8 @@ tr.fila-abonos:hover td{ background:rgba(194,221,88,0.10); }
 }
 .opcion-periodo.active{ background:var(--ink); color:#fff; }
 
-.summary-card.destacada{ border-color:var(--teal); background:rgba(51,149,160,0.04); }
-.summary-card.destacada .summary-value{ color:var(--teal); }
+.summary-card.destacada{ border-color:var(--teal-texto); background:rgba(51,149,160,0.04); }
+.summary-card.destacada .summary-value{ color:var(--teal-texto); }
 
 .rejilla-reporte{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 
@@ -579,7 +602,7 @@ tr.fila-abonos:hover td{ background:rgba(194,221,88,0.10); }
   margin-top:16px; background:rgba(106,106,103,0.08); border-radius:10px;
   padding:12px 16px; font-size:13px; color:var(--ink-soft);
 }
-#btn-ojo.activo{ border-color:var(--teal); color:var(--teal); }
+#btn-ojo.activo{ border-color:var(--teal-texto); color:var(--teal-texto); }
 
 @media (max-width:1000px){ .rejilla-reporte{ grid-template-columns:1fr; } }
 
@@ -592,7 +615,7 @@ tr.fila-abonos:hover td{ background:rgba(194,221,88,0.10); }
   border-radius:9px; cursor:pointer; font-size:18px; color:var(--ink);
   display:flex; align-items:center; justify-content:center; text-decoration:none;
 }
-.icono-boton:hover{ border-color:var(--teal); color:var(--teal); }
+.icono-boton:hover{ border-color:var(--teal-texto); color:var(--teal-texto); }
 .titulo-rango{ font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.5px; text-transform:capitalize; }
 a.opcion-periodo{ text-decoration:none; display:inline-block; }
 
@@ -635,7 +658,7 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
 .cabeza{ text-align:center; }
 .nombre-dia{ font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--ink-soft); font-weight:600; }
 .numero-dia{ font-family:'Bebas Neue',sans-serif; font-size:26px; line-height:1.1; }
-.columna.hoy .numero-dia{ color:var(--teal); }
+.columna.hoy .numero-dia{ color:var(--teal-texto); }
 .evento-semana{ border-left:4px solid; border-radius:6px; padding:6px 8px; font-size:12px; background:rgba(204,204,204,0.18); }
 .evento-semana .t{ font-weight:700; line-height:1.25; }
 .evento-semana .h{ color:var(--ink-soft); font-size:11px; margin-top:2px; }
@@ -644,7 +667,7 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
 .rejilla-anio{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; padding:18px; }
 .mini-mes{ min-width:0; }
 .mini-titulo{ font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.5px; margin-bottom:4px; display:block; text-transform:capitalize; color:var(--ink); text-decoration:none; }
-.mini-titulo:hover{ color:var(--teal); }
+.mini-titulo:hover{ color:var(--teal-texto); }
 .mini-rejilla{ display:grid; grid-template-columns:repeat(7,1fr); gap:1px; text-align:center; }
 .mini-cabeza{ font-size:9.5px; color:var(--ink-soft); font-weight:600; padding-bottom:2px; }
 .mini-dia{ font-size:11px; padding:3px 0 8px; position:relative; border-radius:5px; color:var(--ink); text-decoration:none; display:block; }
@@ -664,11 +687,11 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
 
 .disposicion-evento{ display:grid; grid-template-columns:1fr 330px; gap:20px; align-items:start; }
 .chips .chip-cli{
-  background:rgba(51,149,160,0.12); color:var(--teal); border-radius:20px;
+  background:rgba(51,149,160,0.12); color:var(--teal-texto); border-radius:20px;
   padding:4px 6px 4px 12px; font-size:12.5px; font-weight:600;
   display:inline-flex; align-items:center; gap:6px;
 }
-.chip-cli button{ border:none; background:none; cursor:pointer; color:var(--teal); font-size:15px; line-height:1; }
+.chip-cli button{ border:none; background:none; cursor:pointer; color:var(--teal-texto); font-size:15px; line-height:1; }
 
 .ficha-cliente{ margin-bottom:14px; padding:18px 20px; }
 .ficha-cabeza{ display:flex; align-items:center; gap:14px; margin-bottom:14px; }
@@ -699,7 +722,7 @@ a.opcion-periodo{ text-decoration:none; display:inline-block; }
 }
 .resultado-cifra{
   font-family:'Bebas Neue',sans-serif; font-size:46px; line-height:1.1;
-  letter-spacing:1px; margin-top:6px; color:var(--teal);
+  letter-spacing:1px; margin-top:6px; color:var(--teal-texto);
 }
 .resultado-balance.en-rojo .resultado-cifra{ color:var(--error); }
 .resultado-cuenta{ font-size:13.5px; color:var(--ink-soft); margin-top:8px; }
@@ -736,10 +759,10 @@ aside .nota-pie{ padding:0; border-top:0; }
   background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:20px 22px;
   transition:transform .12s, box-shadow .12s, border-color .12s;
 }
-.acceso:hover{ transform:translateY(-2px); box-shadow:0 8px 22px rgba(43,50,16,0.08); border-color:var(--teal); }
+.acceso:hover{ transform:translateY(-2px); box-shadow:0 8px 22px rgba(43,50,16,0.08); border-color:var(--teal-texto); }
 .acceso-icono{
   width:46px; height:46px; border-radius:12px; flex-shrink:0;
-  background:rgba(51,149,160,0.12); color:var(--teal);
+  background:rgba(51,149,160,0.12); color:var(--teal-texto);
   display:flex; align-items:center; justify-content:center;
 }
 .acceso-icono svg{ width:22px; height:22px; }
@@ -752,7 +775,7 @@ aside .nota-pie{ padding:0; border-top:0; }
   background:none; border:none; cursor:pointer; color:var(--ink-soft);
   padding:2px; display:flex; align-items:center;
 }
-.ojo:hover, .ojo.activo{ color:var(--teal); }
+.ojo:hover, .ojo.activo{ color:var(--teal-texto); }
 
 .disposicion-panel{ display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start; }
 .card-cabecera{ display:flex; justify-content:space-between; align-items:center; padding:18px 20px 10px; }
@@ -764,7 +787,7 @@ aside .nota-pie{ padding:0; border-top:0; }
   display:flex; align-items:flex-start; gap:10px; cursor:pointer;
   border:1px solid var(--gray-light); border-radius:10px; padding:12px 14px;
 }
-.opcion-prueba:hover{ border-color:var(--teal); }
+.opcion-prueba:hover{ border-color:var(--teal-texto); }
 .opcion-prueba input{ width:auto; margin-top:3px; }
 .opcion-prueba b{ display:block; font-size:13px; }
 .opcion-prueba small{ font-size:11.5px; color:var(--ink-soft); }
@@ -851,7 +874,9 @@ aside .nota-pie{ padding:0; border-top:0; }
 .pagina-error{ max-width:560px; padding-top:40px; }
 .error-codigo{
   font-family:'Bebas Neue',sans-serif; font-size:86px; line-height:1;
-  color:var(--gray-light); letter-spacing:2px; margin-bottom:4px;
+  /* Era --gray-light: 1.61:1 contra el blanco, apenas visible. Aun
+     siendo decorativo, el numero dice de que error se trata. */
+  color:var(--gray); letter-spacing:2px; margin-bottom:4px;
 }
 .error-texto{ color:var(--ink-soft); font-size:14.5px; line-height:1.6; margin-top:12px; }
 .error-acciones{ display:flex; gap:12px; margin-top:26px; flex-wrap:wrap; }
@@ -866,7 +891,7 @@ aside .nota-pie{ padding:0; border-top:0; }
   background:var(--cream); border:1px solid var(--gray-light);
   border-radius:12px; padding:16px 18px;
 }
-.tarjeta-dato.destacada{ border-color:var(--teal); }
+.tarjeta-dato.destacada{ border-color:var(--teal-texto); }
 .dato-etiqueta{
   font-size:11px; text-transform:uppercase; letter-spacing:.6px;
   color:var(--gray);
@@ -875,7 +900,7 @@ aside .nota-pie{ padding:0; border-top:0; }
   font-family:'Bebas Neue',sans-serif; font-size:34px; line-height:1.1;
   color:var(--ink); margin-top:2px;
 }
-.tarjeta-dato.destacada .dato-valor{ color:var(--teal); }
+.tarjeta-dato.destacada .dato-valor{ color:var(--teal-texto); }
 .dato-nota{ font-size:11.5px; color:var(--gray); margin-top:2px; }
 
 /* El botón de filtrar se alinea con los campos, no con sus etiquetas. */
