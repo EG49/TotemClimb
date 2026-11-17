@@ -15,3 +15,12 @@ gunicorn==23.0.0
 # el motivo de cada una está en la cabecera de firma.py.
 lxml>=5.3
 cryptography>=42
+
+# El RIDE en PDF: la representacion impresa que se le entrega al
+# cliente. Puro Python, con rueda para Windows.
+reportlab>=4.0
+
+# Solo para pruebas/sri_ride.py, que levanta un servidor SMTP de
+# mentira para no mandar correos de verdad. Si falta, esa prueba
+# avisa y se omite.
+aiosmtpd>=1.4
