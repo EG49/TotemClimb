@@ -121,8 +121,9 @@
         <div class="linea" id="linea-descuento" style="display:none">
           <span>Descuento</span><b id="t-descuento">−$0.00</b>
         </div>
-        <div class="linea"><span>IVA {{ iva }}%</span><b id="t-iva">$0.00</b></div>
-        <div class="linea total"><span>Total</span><b id="t-total">$0.00</b></div>
+        <div class="linea"><span>Base imponible</span><b id="t-base">$0.00</b></div>
+        <div class="linea"><span>IVA {{ iva }}% <small>incluido</small></span><b id="t-iva">$0.00</b></div>
+        <div class="linea total"><span>Total a cobrar</span><b id="t-total">$0.00</b></div>
       </div>
 
       <hr class="divisor">
@@ -171,6 +172,9 @@
 
   // Punto decimal, igual que el comprobante que arma el servidor.
   const dinero = n => '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  // Al centavo, y sin los errores de coma flotante de JavaScript:
+  // 8.475 tiene que dar 8.48 y no 8.47.
+  const redondear = n => Math.round((n + Number.EPSILON) * 100) / 100;
 
   function agregarItem(){
     const sel = document.getElementById('sel-item');
@@ -251,15 +255,24 @@
     const aplica = chk.checked && !bloqueante;
     document.getElementById('campo-descuento').style.display = aplica ? 'block' : 'none';
 
+    // Los precios del catálogo YA INCLUYEN el IVA, así que acá se
+    // extrae del total, igual que en cobro_service.calcular(). Antes
+    // se sumaba encima: la pantalla mostraba $74.75 para una
+    // mensualidad de $65 mientras el servidor facturaba $65. Quien
+    // cobra lee esta pantalla, así que el cliente pagaba de más.
+    //
+    // Se redondea la base y el IVA sale por resta, nunca al revés:
+    // así base + IVA da exactamente el total.
     const pct = aplica ? (parseFloat(document.getElementById('descuento').value) || 0) : 0;
-    const descuento = subtotal * pct / 100;
-    const base = subtotal - descuento;
-    const iva = base * IVA / 100;
-    const total = base + iva;
+    const descuento = redondear(subtotal * pct / 100);
+    const total = redondear(subtotal - descuento);
+    const base = redondear(total / (1 + IVA / 100));
+    const iva = redondear(total - base);
 
     document.getElementById('t-subtotal').textContent = dinero(subtotal);
     document.getElementById('t-descuento').textContent = '−' + dinero(descuento);
     document.getElementById('linea-descuento').style.display = aplica ? 'flex' : 'none';
+    document.getElementById('t-base').textContent = dinero(base);
     document.getElementById('t-iva').textContent = dinero(iva);
     document.getElementById('t-total').textContent = dinero(total);
 

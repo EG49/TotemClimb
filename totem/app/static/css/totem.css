@@ -893,3 +893,106 @@ aside .nota-pie{ padding:0; border-top:0; }
 .tarjeta-menor .acciones{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
 .tarjeta-menor .nombre .etiqueta-menor{ margin-left:6px; }
 .tarjeta-menor .pill{ font-size:10.5px; }
+
+/* ===== TABLAS QUE SE VUELVEN TARJETAS EN PANTALLA ANGOSTA =====
+
+   Hasta ahora una tabla de seis columnas en un teléfono se cortaba y
+   obligaba a deslizar de lado. Nadie desliza: simplemente no ve el
+   estado ni las acciones.
+
+   Debajo de 760px cada fila pasa a ser una tarjeta con lo esencial
+   -la primera columna y los botones- y el resto se despliega al
+   tocarla. Los rótulos los pone tablas-responsivas.js leyendo el
+   encabezado, así que una columna nueva funciona sin tocar el CSS.
+
+   Arriba de 760px no cambia absolutamente nada. */
+
+@media (max-width:760px){
+
+  .card.tabla{ overflow:visible; }
+  .card.tabla table{ display:block; width:100%; }
+  .card.tabla thead{ display:none; }
+  .card.tabla tbody{ display:block; }
+
+  .card.tabla tbody tr{
+    display:block; position:relative;
+    padding:14px 16px;
+    border-bottom:1px solid var(--gray-light);
+  }
+  .card.tabla tbody tr:last-child{ border-bottom:0; }
+
+  .card.tabla tbody td{
+    display:block; border:0; padding:0;
+    /* El ancho que traiga de la tabla no aplica apilado. */
+    width:auto !important; max-width:none;
+    white-space:normal; word-break:break-word;
+  }
+
+  /* El resumen: lo que se ve sin desplegar. Deja sitio a la flecha. */
+  .celda-resumen{ padding-right:30px !important; }
+
+  /* El estado va en el resumen, alineado con el nombre. */
+  .celda-insignia{ margin-top:8px; }
+  .celda-insignia .pill{ display:inline-block; }
+
+  /* El detalle, oculto hasta que se toca la fila. */
+  .celda-detalle{ display:none !important; }
+  .celda-vacia{ display:none !important; }
+
+  /* El rótulo flota a la izquierda y el contenido se alinea a la
+     derecha. Se hace con float y no con flex ni grid porque varias
+     celdas traen texto suelto, sin envolver en ninguna etiqueta: un
+     selector de hijos no lo alcanza y quedaba desalineado. Con
+     text-align en la celda se alinea todo, elementos y texto. */
+  tr.abierta .celda-detalle{
+    display:block !important;
+    padding:7px 0 0 !important;
+    font-size:13px;
+    text-align:right;
+    overflow:hidden;
+  }
+  tr.abierta .celda-detalle::before{
+    content:attr(data-rotulo);
+    float:left; margin-right:14px;
+    font-size:11px; letter-spacing:0.6px; text-transform:uppercase;
+    color:var(--ink-soft);
+    /* Alinea con la primera línea del valor, que es más grande. */
+    line-height:1.5;
+  }
+  /* Sin rótulo no se pinta la etiqueta vacía. */
+  tr.abierta .celda-detalle:not([data-rotulo])::before{ content:none; }
+  tr.abierta .celda-detalle > *{ text-align:right; }
+
+  .card.tabla tbody tr:first-child .celda-resumen{ padding-top:0 !important; }
+
+  /* Las acciones no se esconden: un botón detrás de un despliegue es
+     peor que un botón a la vista. */
+  .celda-acciones{ padding-top:12px !important; }
+  .celda-acciones .acciones{ justify-content:flex-start; flex-wrap:wrap; }
+
+  /* La flecha indica que hay más debajo. */
+  .fila-desplegable{ cursor:pointer; }
+  .flecha-fila{
+    position:absolute; top:16px; right:14px;
+    width:9px; height:9px;
+    border-right:2px solid var(--gray); border-bottom:2px solid var(--gray);
+    transform:rotate(45deg); transform-origin:center;
+    transition:transform .18s ease;
+  }
+  tr.abierta .flecha-fila{ transform:rotate(-135deg); }
+
+  .fila-desplegable:focus-visible{
+    outline:2px solid var(--teal); outline-offset:-2px;
+  }
+  .fila-desplegable:active{ background:rgba(51,149,160,0.05); }
+
+  .fila-mensaje td{ text-align:center; }
+
+  /* Totales y pies de tabla siguen siendo una fila corriente. */
+  .card.tabla tfoot{ display:block; }
+  .card.tabla tfoot tr{ display:block; }
+}
+
+@media (max-width:760px) and (prefers-reduced-motion:reduce){
+  .flecha-fila{ transition:none; }
+}
