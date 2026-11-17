@@ -22,6 +22,8 @@ import calendar
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
+from flask import current_app
+
 from app.db import obtener_cursor
 from app.models.catalogo import MES
 from app.models.factura import (
@@ -42,6 +44,7 @@ from app.repositories.factura_repo import (
     MembresiaRepositorio,
 )
 from app.repositories.posible_cliente_repo import PosibleClienteRepositorio
+from app.services.sri_service import ServicioSri
 from app.services import bitacora_service as bit
 from app.services.bitacora_service import BitacoraService
 from app.services.configuracion_service import CLAVE_IVA, interpretar_iva
@@ -85,6 +88,7 @@ class CobroService:
         self.configuracion = ConfiguracionRepositorio()
         self.bitacora = BitacoraService()
         self.posibles = PosibleClienteRepositorio()
+        self.sri = ServicioSri()
 
     # --- Lectura ------------------------------------------------------
 
@@ -362,6 +366,32 @@ class CobroService:
                         posible.id_posible, cliente.id_cliente, cursor
                     )
                     convertido = posible
+
+            # El comprobante electrónico: acá solo se reserva el
+            # número y se calcula la clave de acceso, que no toca la
+            # red. Va DENTRO de la transacción a propósito: si el
+            # cobro se deshace, el número vuelve con él.
+            #
+            # Si falla, el cobro sigue. Una venta no se puede perder
+            # porque la facturación electrónica tenga un problema:
+            # queda sin comprobante y se resuelve después.
+            try:
+                self.sri.reservar(cursor, id_factura)
+            except Exception as error:  # noqa: BLE001
+                current_app.logger.warning(
+                    "SRI: no se pudo reservar comprobante para la factura "
+                    "%s: %s", numero, error,
+                )
+
+        # Y el envío, ya fuera de la transacción y en segundo plano:
+        # la pantalla de cobro no espera al SRI. Si no sale ahora, la
+        # factura queda PENDIENTE y la toma el reintento.
+        try:
+            self.sri.emitir_en_segundo_plano(id_factura)
+        except Exception as error:  # noqa: BLE001
+            current_app.logger.warning(
+                "SRI: no se pudo lanzar el envío de %s: %s", numero, error
+            )
 
         self.bitacora.registrar(
             id_empleado,

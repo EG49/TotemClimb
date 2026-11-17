@@ -46,6 +46,29 @@ class Config:
     MAIL_REMITENTE = os.getenv("MAIL_REMITENTE")
     MAIL_NOMBRE_REMITENTE = os.getenv("MAIL_NOMBRE_REMITENTE", "Totem Climb Gym")
 
+    # ─── Facturación electrónica (SRI) ────────────────────────────
+    # Mientras falte cualquiera de los obligatorios, el sistema cobra
+    # igual y no emite comprobante electrónico. Es el estado del
+    # gimnasio hasta terminar de habilitarse, y no puede impedir
+    # vender. Ver .env.example para el detalle de cada uno.
+    #
+    # SRI_AMBIENTE: "1" certificación (pruebas), "2" producción. Los
+    # comprobantes de certificación NO tienen validez tributaria.
+    SRI_AMBIENTE = os.getenv("SRI_AMBIENTE", "1")
+    SRI_RUC = os.getenv("SRI_RUC")
+    SRI_RAZON_SOCIAL = os.getenv("SRI_RAZON_SOCIAL")
+    SRI_NOMBRE_COMERCIAL = os.getenv("SRI_NOMBRE_COMERCIAL")
+    SRI_DIR_MATRIZ = os.getenv("SRI_DIR_MATRIZ")
+    SRI_DIR_ESTABLECIMIENTO = os.getenv("SRI_DIR_ESTABLECIMIENTO")
+    SRI_ESTABLECIMIENTO = os.getenv("SRI_ESTABLECIMIENTO", "001")
+    SRI_PUNTO_EMISION = os.getenv("SRI_PUNTO_EMISION", "002")
+    SRI_OBLIGADO_CONTABILIDAD = os.getenv("SRI_OBLIGADO_CONTABILIDAD", "NO")
+    SRI_CONTRIBUYENTE_RIMPE = os.getenv("SRI_CONTRIBUYENTE_RIMPE", "NO")
+    SRI_RUC_PROVEEDOR = os.getenv("SRI_RUC_PROVEEDOR")
+    # El certificado NO va dentro del repositorio.
+    SRI_P12_RUTA = os.getenv("SRI_P12_RUTA")
+    SRI_P12_CLAVE = os.getenv("SRI_P12_CLAVE")
+
     # ─── Registro técnico (logging) ───────────────────────────────
     # Carpeta del archivo totem.log. Vacío = carpeta "logs" junto al
     # proyecto. El archivo rota al llegar al tamaño máximo.
