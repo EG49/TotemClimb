@@ -79,14 +79,15 @@
   </table>
 
   <div class="totales comp-totales">
-    <div class="linea"><span>Subtotal</span><b>${{ '%.2f'|format(factura.subtotal) }}</b></div>
+    <div class="linea"><span>Subtotal <small>con IVA</small></span><b>${{ '%.2f'|format(factura.subtotal) }}</b></div>
     {% if factura.descuento_porcentaje %}
       <div class="linea">
         <span>Descuento {{ factura.descuento_porcentaje }}%</span>
         <b>−${{ '%.2f'|format(factura.subtotal * factura.descuento_porcentaje / 100) }}</b>
       </div>
     {% endif %}
-    <div class="linea"><span>IVA {{ factura.iva_porcentaje }}%</span><b>${{ '%.2f'|format(factura.iva) }}</b></div>
+    <div class="linea"><span>Base imponible</span><b>${{ '%.2f'|format(factura.base_imponible) }}</b></div>
+    <div class="linea"><span>IVA {{ factura.iva_porcentaje }}% <small>incluido</small></span><b>${{ '%.2f'|format(factura.iva) }}</b></div>
     <div class="linea total"><span>Total</span><b>${{ '%.2f'|format(factura.total) }}</b></div>
     {% if factura.esta_fiada %}
       <div class="linea"><span>Abonado</span><b>${{ '%.2f'|format(factura.abonado) }}</b></div>

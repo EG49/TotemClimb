@@ -143,8 +143,9 @@ class ServicioCorreo:
             )
         lineas += [
             "",
-            f"Subtotal: ${factura.subtotal:.2f}",
-            f"IVA {factura.iva_porcentaje}%: ${factura.iva:.2f}",
+            f"Subtotal con IVA: ${factura.subtotal:.2f}",
+            f"Base imponible: ${factura.base_imponible:.2f}",
+            f"IVA {factura.iva_porcentaje}% incluido: ${factura.iva:.2f}",
             f"TOTAL: ${factura.total:.2f}",
         ]
         if factura.esta_fiada:
