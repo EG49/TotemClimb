@@ -31,6 +31,9 @@ AMBIENTE_PRUEBAS = "PRUEBAS"
 # El fondo de la pastilla del logo. Ver donde se la dibuja.
 COLOR_PASTILLA = (0.125, 0.172, 0.204)
 
+# Blanco entre la pastilla del logo y el nombre del emisor.
+ESPACIO_BAJO_EL_LOGO = 17  # puntos, algo menos de 6 mm
+
 ETIQUETA_IDENTIFICACION = {
     "04": "RUC",
     "05": "Cédula",
@@ -257,7 +260,16 @@ def generar(autorizacion: Autorizacion) -> bytes:
                 width=ancho_logo, height=alto_logo,
                 mask="auto",  # respeta la transparencia del PNG
             )
-            y -= alto_logo + relleno + 10
+            # El desplazamiento se mide hasta la LINEA BASE del
+            # texto, no hasta donde el texto empieza a dibujarse, asi
+            # que hay que sumarle el alto de las mayusculas: si no,
+            # el nombre queda pegado a la pastilla.
+            from reportlab.pdfbase.pdfmetrics import getAscent
+
+            alto_mayusculas = getAscent("Helvetica-Bold", 11)
+            y -= (
+                alto_logo + relleno + ESPACIO_BAJO_EL_LOGO + alto_mayusculas
+            )
         except Exception:  # noqa: BLE001
             # Un logo que no se puede dibujar no es motivo para dejar
             # al cliente sin su factura.
