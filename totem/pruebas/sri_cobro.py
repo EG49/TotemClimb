@@ -32,8 +32,10 @@ from app.db import obtener_cursor  # noqa: E402
 from app.services import sri_service  # noqa: E402
 from app.services.cobro_service import CobroService  # noqa: E402
 from app.services.sri_service import ServicioSri  # noqa: E402
+from pruebas.ayudas_sri import (  # noqa: E402
+    CLAVE_P12, SriDeMentira, certificado_de_prueba,
+)
 
-CLAVE_P12 = "clave-solo-para-esta-prueba"
 PUNTO = "008"  # un punto de emision solo para esta prueba
 
 fallas = []
@@ -44,87 +46,6 @@ def revisar(etiqueta, condicion, detalle=""):
           + ("" if condicion else f"  ({detalle})"))
     if not condicion:
         fallas.append(etiqueta)
-
-
-def certificado_de_prueba(destino: Path) -> None:
-    from cryptography import x509
-    from cryptography.hazmat.primitives import hashes, serialization
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    from cryptography.hazmat.primitives.serialization import pkcs12
-    from cryptography.x509.oid import NameOID
-
-    clave = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    nombre = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "EC"),
-        x509.NameAttribute(NameOID.COMMON_NAME, "CERTIFICADO DE PRUEBA"),
-    ])
-    ahora = datetime.now(timezone.utc)
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(nombre).issuer_name(nombre)
-        .public_key(clave.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(ahora - timedelta(days=1))
-        .not_valid_after(ahora + timedelta(days=365))
-        .sign(clave, hashes.SHA256())
-    )
-    destino.write_bytes(pkcs12.serialize_key_and_certificates(
-        b"prueba", clave, cert, None,
-        serialization.BestAvailableEncryption(CLAVE_P12.encode()),
-    ))
-
-
-RECIBIDA = (
-    '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/'
-    'soap/envelope/"><s:Body><RespuestaRecepcionComprobante>'
-    "<estado>RECIBIDA</estado><comprobantes/>"
-    "</RespuestaRecepcionComprobante></s:Body></s:Envelope>"
-)
-
-DEVUELTA = (
-    '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/'
-    'soap/envelope/"><s:Body><RespuestaRecepcionComprobante>'
-    "<estado>DEVUELTA</estado><comprobantes><comprobante><mensajes><mensaje>"
-    "<identificador>43</identificador><mensaje>CLAVE ACCESO REGISTRADA"
-    "</mensaje><tipo>ERROR</tipo></mensaje></mensajes></comprobante>"
-    "</comprobantes></RespuestaRecepcionComprobante></s:Body></s:Envelope>"
-)
-
-
-def autorizado(clave):
-    return (
-        '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/'
-        'soap/envelope/"><s:Body><RespuestaAutorizacionComprobante>'
-        f"<claveAccesoConsultada>{clave}</claveAccesoConsultada>"
-        "<numeroComprobantes>1</numeroComprobantes><autorizaciones>"
-        "<autorizacion><estado>AUTORIZADO</estado>"
-        f"<numeroAutorizacion>{clave}</numeroAutorizacion>"
-        "<fechaAutorizacion>2026-11-17T10:00:00-05:00</fechaAutorizacion>"
-        "<ambiente>PRUEBAS</ambiente><comprobante></comprobante><mensajes/>"
-        "</autorizacion></autorizaciones>"
-        "</RespuestaAutorizacionComprobante></s:Body></s:Envelope>"
-    )
-
-
-class SriDeMentira:
-    """Reemplaza la salida a la red. Se le dice como tiene que portarse."""
-
-    def __init__(self):
-        self.modo = "bien"
-        self.llamadas = 0
-
-    def __call__(self, url, cuerpo):
-        self.llamadas += 1
-        if self.modo == "sin internet":
-            raise OSError("no hay conexion (simulado)")
-        if self.modo == "lento":
-            raise TimeoutError("el SRI no contesto (simulado)")
-        # En minusculas: la URL del SRI lleva "Recepcion".
-        if "recepcion" in url.lower():
-            return DEVUELTA if self.modo == "devuelta" else RECIBIDA
-        clave = cuerpo.split("<claveAccesoComprobante>")[1].split("<")[0]
-        return autorizado(clave)
-
 
 def estado_de(id_factura: int) -> dict:
     with obtener_cursor() as cursor:
