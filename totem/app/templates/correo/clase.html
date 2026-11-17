@@ -43,9 +43,9 @@
           TOTEM CLIMB GYM
         </div>
         <div style="font-size:12px; color:#C2DD58; margin-top:4px;">
-          {% if modo == 'confirmacion' %}Tu lugar está reservado
+          {% if modo == 'confirmacion' %}Su lugar está reservado
           {% elif modo == 'recordatorio' %}Es mañana
-          {% else %}Aviso sobre tu clase{% endif %}
+          {% else %}Aviso sobre su clase{% endif %}
         </div>
       </td>
     </tr>
@@ -58,9 +58,9 @@
         </div>
         <div style="font-size:15px; line-height:1.55; margin-top:10px; color:#4A5230;">
           {% if modo == 'confirmacion' %}
-            Quedaste agendado para <b>{{ evento.titulo }}</b>. Te esperamos.
+            Su lugar quedó reservado para <b>{{ evento.titulo }}</b>. Lo esperamos.
           {% elif modo == 'recordatorio' %}
-            Te recordamos que mañana tenés <b>{{ evento.titulo }}</b>.
+            Le recordamos que mañana tiene <b>{{ evento.titulo }}</b>.
           {% else %}
             {{ mensaje|replace('\n', '<br>')|safe }}
           {% endif %}
@@ -88,7 +88,7 @@
               {% if coach_texto %}
               <div style="font-size:11px; letter-spacing:1px; color:#6A6A67;
                           text-transform:uppercase; margin-top:14px;">
-                Tu coach
+                Su coach
               </div>
               <div style="font-size:15px; margin-top:3px;">{{ coach_texto }}</div>
               {% endif %}
@@ -142,10 +142,10 @@
         <div style="border-top:1px solid #E6E6E0; padding-top:16px;
                     font-size:13px; line-height:1.6; color:#6A6A67;">
           {% if gym.telefono %}
-            ¿No podés venir o necesitás cambiar el horario?
-            Escribinos al <b style="color:#2B3210;">{{ gym.telefono }}</b>.
+            ¿No puede asistir o necesita cambiar el horario?
+            Escríbanos al <b style="color:#2B3210;">{{ gym.telefono }}</b>.
           {% else %}
-            Si no podés venir, avisanos así le damos el lugar a alguien más.
+            Si no puede asistir, avísenos para ofrecer el lugar a otra persona.
           {% endif %}
         </div>
         <div style="font-size:12px; color:#9A9A95; margin-top:14px;">

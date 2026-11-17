@@ -97,7 +97,7 @@ class EmpleadoService:
         # a nadie. La base lo rechaza; aquí se avisa antes.
         if not datos.get("tiene_acceso") and not datos.get("es_coach"):
             errores["general"] = (
-                "Marca al menos una opción: o entra al sistema, o es coach."
+                "Marque al menos una opción: entra al sistema, o es coach."
             )
             return errores
 

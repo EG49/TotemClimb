@@ -108,7 +108,7 @@ class ServicioCorreo:
     def _armar(self, factura, destinatario: str) -> EmailMessage:
         a = self._ajustes()
         mensaje = EmailMessage()
-        mensaje["Subject"] = f"Tu comprobante {factura.numero_factura} — Totem Climb Gym"
+        mensaje["Subject"] = f"Comprobante {factura.numero_factura} — Totem Climb Gym"
         mensaje["From"] = formataddr((a["nombre"], a["remitente"]))
         mensaje["To"] = destinatario
         # Un Message-ID propio ayuda a que los clientes de correo no

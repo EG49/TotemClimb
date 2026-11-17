@@ -257,7 +257,7 @@ def avisar(id_evento):
     """
     mensaje = (request.form.get("mensaje") or "").strip()
     if len(mensaje) < 10:
-        flash("Escribí el mensaje que querés mandarles.", "error")
+        flash("Escriba el mensaje que desea enviarles.", "error")
         return redirect(url_for("calendario.editar_evento", id_evento=id_evento))
 
     try:
@@ -266,7 +266,7 @@ def avisar(id_evento):
         )
     except CorreoNoConfigurado:
         flash(
-            "El correo no está configurado. Revisá las variables MAIL_ del .env.",
+            "El correo no está configurado. Revise las variables MAIL_ del .env.",
             "error",
         )
     except ValueError as error:

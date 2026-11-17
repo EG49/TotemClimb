@@ -48,13 +48,13 @@
       <label for="concepto">Concepto</label>
       <input id="concepto" name="concepto" type="text" list="lista-conceptos"
              value="{{ datos.get('concepto') or '' }}" maxlength="80"
-             placeholder="Ej. Arriendo, Luz, Magnesio"
+             placeholder=""
              class="{{ 'con-error' if errores.get('concepto') }}">
       <datalist id="lista-conceptos">
         {% for c in conceptos %}<option value="{{ c }}">{% endfor %}
       </datalist>
       <div class="pista">
-        Usá siempre el mismo nombre para el mismo gasto: el balance
+        Use siempre el mismo nombre para el mismo gasto: el balance
         agrupa por este campo.
       </div>
       {% if errores.get('concepto') %}<div class="error">{{ errores['concepto'] }}</div>{% endif %}
@@ -86,7 +86,6 @@
         {% endfor %}
       </select>
       <div class="pista">
-        Sirve para saber si la escuelita de chicos se sostiene sola.
       </div>
       {% if errores.get('segmento') %}<div class="error">{{ errores['segmento'] }}</div>{% endif %}
     </div>
@@ -120,7 +119,7 @@
       <label for="descripcion">Descripción <span class="opcional">(opcional)</span></label>
       <input id="descripcion" name="descripcion" type="text" maxlength="255"
              value="{{ datos.get('descripcion') or '' }}"
-             placeholder="Detalle, número de factura, a quién se le pagó..."
+             placeholder="Detalle"
              class="{{ 'con-error' if errores.get('descripcion') }}">
       {% if errores.get('descripcion') %}<div class="error">{{ errores['descripcion'] }}</div>{% endif %}
     </div>

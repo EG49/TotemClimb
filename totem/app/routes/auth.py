@@ -59,7 +59,7 @@ def login():
         password = request.form.get("password", "")
 
         if not usuario or not password:
-            flash("Escribe tu usuario y contraseña.", "error")
+            flash("Ingrese su usuario y contraseña.", "error")
             return render_template("login.html", usuario=usuario)
 
         faltan = _esta_bloqueado(usuario)
@@ -82,7 +82,7 @@ def login():
             return render_template("login.html", usuario=usuario)
         except EmpleadoInactivo:
             flash(
-                "Tu usuario está desactivado. Habla con el administrador.",
+                "Su usuario está desactivado. Comuníquese con el administrador.",
                 "error",
             )
             return render_template("login.html", usuario=usuario)

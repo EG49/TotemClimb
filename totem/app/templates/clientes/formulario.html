@@ -35,12 +35,12 @@
   <div class="seccion">Datos del cliente</div>
   <div class="seccion-nota">Información básica de contacto e identificación.</div>
   <div class="rejilla">
-    {{ campo('nombre', 'Nombre', marcador='Ej. Mariana') }}
-    {{ campo('apellido', 'Apellido', marcador='Ej. Lopez Vera') }}
+    {{ campo('nombre', 'Nombre', marcador='') }}
+    {{ campo('apellido', 'Apellido', marcador='') }}
     {{ campo('fecha_nacimiento', 'Fecha de nacimiento', tipo='date') }}
     {{ campo('cedula', 'Cédula', marcador='0912345678', opcional=true) }}
     {{ campo('correo', 'Correo electrónico', tipo='email', marcador='cliente@correo.com', opcional=true) }}
-    {{ campo('telefono', 'Celular', tipo='tel', marcador='0991234567', opcional=true) }}
+    {{ campo('telefono', 'Celular', tipo='tel', marcador='0912345678', opcional=true) }}
     <div class="campo">
       <label for="genero">Género <span class="opcional">(opcional)</span></label>
       <select id="genero" name="genero">
@@ -59,7 +59,7 @@
   <div class="caja-emergencia">
     <div class="rejilla">
       {{ campo('contacto_emergencia', 'Celular del contacto', tipo='tel', marcador='0997654321') }}
-      {{ campo('referencia', 'Referencia', marcador='Ej. Mamá, esposo/a, hermano/a...') }}
+      {{ campo('referencia', 'Referencia', marcador='') }}
     </div>
   </div>
 
@@ -79,7 +79,7 @@
       {# El campo guarda el CELULAR de la aseguradora, no el número de
          póliza: en una emergencia lo que hace falta es a quién llamar.
          La columna sigue llamándose seguro_numero en la base. #}
-      {{ campo('seguro_nombre', 'Nombre del seguro', marcador='Ej. Seguros Equinoccial') }}
+      {{ campo('seguro_nombre', 'Nombre del seguro', marcador='') }}
       {{ campo('seguro_numero', 'Celular del seguro', tipo='tel', marcador='0991234567') }}
     </div>
   </div>
@@ -117,7 +117,7 @@
 <div class="card" style="margin-top:20px;">
   <div class="seccion">Menores a cargo</div>
   <div class="seccion-nota">
-    Solo lectura. Para cambiar sus datos, entra al perfil del menor.
+    Solo lectura. Para cambiar sus datos, ingrese al perfil del menor.
   </div>
   {% for m in menores %}
   <div class="tarjeta-menor">
@@ -145,7 +145,7 @@
     <div class="rejilla">
       <div class="campo">
         <label>Nombre</label>
-        <input name="menor_nombre" type="text" placeholder="Ej. Lucas">
+        <input name="menor_nombre" type="text" placeholder="">
       </div>
       <div class="campo">
         <label>Apellido</label>
@@ -157,7 +157,7 @@
       </div>
       <div class="campo">
         <label>Cédula <span class="opcional">(opcional)</span></label>
-        <input name="menor_cedula" type="text" placeholder="0912345679">
+        <input name="menor_cedula" type="text" placeholder="0912345678">
       </div>
     </div>
   </div>

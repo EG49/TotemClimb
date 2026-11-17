@@ -16,7 +16,7 @@ Dos decisiones que cambian las cifras y conviene entender:
     separa facturado de no facturado para que se vea qué parte es
     justificable.
 
-El resultado que sale de acá es de caja, no un estado de resultados
+El resultado que sale de aquí es de caja, no un estado de resultados
 con las reglas del SRI. Para eso haría falta además depreciación,
 devengado y el crédito tributario.
 

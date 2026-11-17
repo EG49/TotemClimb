@@ -112,7 +112,7 @@ class ClienteService:
         if cedula:
             if not validar_cedula(cedula):
                 errores["cedula"] = (
-                    "La cédula no es válida. Revisa que tenga 10 dígitos "
+                    "La cédula no es válida. Revise que tenga 10 dígitos "
                     "y esté bien escrita."
                 )
             elif self.repositorio.cedula_ocupada(cedula, excluir_id):

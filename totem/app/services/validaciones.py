@@ -67,7 +67,7 @@ def validar_fecha_nacimiento(fecha: date) -> str | None:
     if fecha > hoy:
         return "La fecha de nacimiento no puede ser futura."
     if fecha.year < hoy.year - 120:
-        return "Revisa la fecha de nacimiento, parece equivocada."
+        return "Revise la fecha de nacimiento, parece equivocada."
     return None
 
 

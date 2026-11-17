@@ -54,7 +54,7 @@
         <input id="hora_fin" name="hora_fin" type="time"
                value="{{ datos.get('hora_fin') or '11:00' }}"
                class="{{ 'con-error' if errores.get('hora_fin') }}">
-        <div class="pista" id="pista-hora-fin">Se pone una hora después del inicio. Podés cambiarla.</div>
+        <div class="pista" id="pista-hora-fin">Se pone una hora después del inicio.</div>
         {% if errores.get('hora_fin') %}<div class="error">{{ errores['hora_fin'] }}</div>{% endif %}
       </div>
 
@@ -88,7 +88,7 @@
     {% if not editando %}
     <hr class="divisor">
     <div class="seccion">Inscribir clientes <span class="opcional" style="font-family:inherit;font-size:12.5px;">(opcional)</span></div>
-    <div class="seccion-nota">Busca por nombre o cédula. Puedes agregar varios.</div>
+    <div class="seccion-nota">Busque por nombre o cédula.</div>
     <div class="picker">
       <input type="text" id="buscar-cliente" placeholder="Buscar cliente..." autocomplete="off">
       <div class="picker-list" id="lista-clientes"></div>
@@ -185,13 +185,12 @@
       <form method="post" action="{{ url_for('calendario.avisar', id_evento=evento.id_evento) }}"
             onsubmit="return confirm('¿Mandar este aviso a {{ con_correo|length }} persona(s)?');">
         <div class="campo" style="margin-top:12px;">
-          <label for="mensaje">Qué querés decirles</label>
+          <label for="mensaje">Mensaje para los inscritos</label>
           <textarea id="mensaje" name="mensaje" rows="3" required minlength="10"
                     style="width:100%; resize:vertical;"
                     placeholder="Ej. La clase de mañana se pasa a las 16:00."></textarea>
           <div class="pista">
-            La fecha, la hora y la dirección se agregan solas: no hace
-            falta repetirlas acá.
+            La fecha, la hora y la dirección se agregan solas.
           </div>
         </div>
         <div class="acciones-formulario">

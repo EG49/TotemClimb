@@ -53,7 +53,7 @@ def nuevo():
                 servicio.guardar_producto(request.form.to_dict(), id_empleado=g.empleado['id_empleado'])
                 destino = "productos"
         except ErrorValidacion as e:
-            flash("Revisa los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "catalogo/formulario.html",
                 item=None,
@@ -86,7 +86,7 @@ def editar_producto(id_producto):
         try:
             servicio.guardar_producto(request.form.to_dict(), id_producto, g.empleado['id_empleado'])
         except ErrorValidacion as e:
-            flash("Revisa los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "catalogo/formulario.html",
                 item=producto,
@@ -118,7 +118,7 @@ def editar_plan(id_plan):
         try:
             servicio.guardar_plan(request.form.to_dict(), id_plan, g.empleado['id_empleado'])
         except ErrorValidacion as e:
-            flash("Revisa los campos marcados.", "error")
+            flash("Revise los campos marcados.", "error")
             return render_template(
                 "catalogo/formulario.html",
                 item=plan,
