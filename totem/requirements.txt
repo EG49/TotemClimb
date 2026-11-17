@@ -4,3 +4,24 @@ psycopg_pool==3.3.3
 bcrypt==5.0.0
 python-dotenv==1.0.1
 gunicorn==23.0.0
+
+# ─── Facturación electrónica (SRI) ─────────────────────────────────
+# La firma XAdES-BES. Se instala desde GitHub porque no está en PyPI.
+# Trae sus propias versiones de lxml y cryptography; no se las fija
+# acá para no entrar en conflicto con las suyas.
+#
+# En Python 3.12 (el de la PC del gimnasio) las dos entran como rueda
+# precompilada y no hace falta compilador, ni openssl, ni xmllint:
+#   lxml-5.1.0-cp312-cp312-win_amd64.whl
+#   cryptography-42.0.5-cp39-abi3-win_amd64.whl
+#
+# En Python 3.13 NO hay rueda de lxml 5.1.0 y pip intentaría
+# compilarla. Si alguna vez se sube a 3.13:
+#   pip install "lxml>=5.3" "cryptography>=42"
+#   pip install --no-deps "git+https://github.com/jsonfm/xades-bes-sri@0.1.0"
+#
+# No se usa `xades-bes-sri-ec`, la otra opción que aparece al buscar:
+# clava cryptography, pyOpenSSL y lxml en versiones de 2020 y 2021
+# que no compilan en Python 3.12, y llama por consola a xmllint y
+# openssl, que en Windows no existen. Ver app/services/sri/firma.py.
+xadessri @ git+https://github.com/jsonfm/xades-bes-sri@0.1.0

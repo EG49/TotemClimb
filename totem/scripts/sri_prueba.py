@@ -12,25 +12,26 @@ Lo que hace:
   4. Consulta AUTORIZACION y muestra lo que respondio el SRI
   5. Guarda los XML en una carpeta, para poder mirarlos
 
-AVISO: los pasos 3 y 4 no pudieron probarse contra el SRI al
-escribirlos, porque el entorno de desarrollo no alcanza esos
-servidores. El armado del XML y el reparto de la base SI estan
-probados (pruebas/sri_factura_xml.py y pruebas/sri_clave_acceso.py).
-Si el SRI devuelve un error de estructura, es acá donde hay que
-mirar primero.
+AVISO: los pasos 3 y 4 (los envios por red) no pudieron probarse
+contra el SRI al escribirlos, porque el entorno de desarrollo no
+alcanza esos servidores. Todo lo demas SI esta probado: la clave de
+acceso, el reparto de la base, el armado del XML y la firma, esta
+ultima verificada criptograficamente contra un certificado de prueba
+(pruebas/sri_clave_acceso.py, sri_bases.py, sri_factura_xml.py y
+sri_firma.py). Si el SRI rechaza, lo mas probable es que falte un
+dato del emisor o que el punto de emision no exista todavia.
 
 Como se corre, desde la carpeta totem:
 
     python -m scripts.sri_prueba
 
-Antes hay que instalar la libreria de firma:
+Antes hay que instalar las dependencias de firma, que ya estan en
+requirements.txt:
 
-    pip install libxml2-utils-no-aplica   # NO: ver LEEME abajo
-    pip install git+https://github.com/alfredo138923/xades-bes-sri-ec@0.1.2
+    pip install -r requirements.txt
 
-En Linux esa libreria pide ademas:  apt-get install libxml2-utils
-En Windows, si falla, avisar: hay que ver la alternativa sin esa
-dependencia del sistema.
+No hace falta instalar nada mas: ni openssl, ni xmllint, ni un
+compilador. Ver app/services/sri/firma.py si interesa por que.
 """
 
 import base64
@@ -101,25 +102,22 @@ def revisar_que_el_p12_no_este_en_el_repositorio(ruta: Path) -> None:
 
 
 def firmar(xml: str, ruta_p12: Path, clave_p12: str, destino: Path) -> Path:
-    try:
-        from xades_bes_sri_ec import xades
-    except ImportError:
-        print(
-            "\nFalta la librería de firma. Instálela con:\n\n"
-            "  pip install git+https://github.com/alfredo138923/"
-            "xades-bes-sri-ec@0.1.2\n"
-        )
-        sys.exit(1)
+    """Firma y deja en el disco el antes y el despues.
 
-    sin_firmar = destino.with_name(destino.stem + "-sin-firmar.xml")
-    sin_firmar.write_text(xml, encoding="utf-8")
-    # La librería trabaja con rutas absolutas.
-    xades.firmar_comprobante(
-        str(ruta_p12.resolve()),
-        clave_p12,
-        str(sin_firmar.resolve()),
-        str(destino.resolve()),
+    Se guarda tambien el XML sin firmar: si el SRI rechaza por
+    estructura, ese archivo es el que hay que mirar.
+    """
+    from app.services.sri.firma import ErrorFirma, firmar as firmar_xades
+
+    destino.with_name(destino.stem + "-sin-firmar.xml").write_text(
+        xml, encoding="utf-8"
     )
+    try:
+        firmado = firmar_xades(xml, ruta_p12, clave_p12)
+    except ErrorFirma as error:
+        print(f"\n{error}")
+        sys.exit(1)
+    destino.write_text(firmado, encoding="utf-8")
     return destino
 
 
