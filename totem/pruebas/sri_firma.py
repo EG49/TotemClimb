@@ -47,7 +47,6 @@ try:
     from cryptography.hazmat.primitives.serialization import pkcs12
     from cryptography.x509.oid import NameOID
     from lxml import etree
-    import xadessri  # noqa: F401
 except ImportError as error:
     print(f"\nNo estan las dependencias de firma ({error.name}).")
     print("Instalelas con:  pip install -r requirements.txt")
@@ -171,6 +170,60 @@ with TemporaryDirectory() as carpeta:
     revisar("firma RSA-SHA1, como pide el esquema del SRI",
             metodo == "http://www.w3.org/2000/09/xmldsig#rsa-sha1", metodo)
 
+    print("\nNADA DE ESPACIOS ALREDEDOR DE LA FIRMA")
+    # Es el defecto que hizo rechazar la primera factura: la libreria
+    # insertaba la firma indentada, esos espacios pasaban a ser
+    # contenido de <factura> y el digest del comprobante ya no cerraba.
+    cuerpo = firmado.split("?>", 1)[1]
+    revisar("la firma arranca pegada a </detalles>",
+            "</detalles><ds:Signature" in cuerpo,
+            cuerpo[cuerpo.find("</detalles>"):][:60])
+    revisar("y cierra pegada a </factura>",
+            "</ds:Signature></factura>" in cuerpo,
+            cuerpo[-60:])
+    revisar("el comprobante firmado no tiene saltos de linea",
+            "\n" not in cuerpo.strip(),
+            f"{cuerpo.count(chr(10))} saltos")
+
+    print("\nLAS TRES REFERENCIAS CIERRAN (lo que verifica el SRI)")
+    # Un XML con los nodos del XAdES en su lugar y un digest que no
+    # cierra se ve bien y el SRI lo devuelve con el error 39.
+    import copy
+    import hashlib
+
+    def c14n(nodo):
+        return etree.tostring(nodo, method="c14n", exclusive=False,
+                              with_comments=False)
+
+    def digest(datos):
+        return base64.b64encode(hashlib.sha1(datos).digest()).decode()
+
+    info = next(raiz.iter(f"{{{DS}}}SignedInfo"))
+    por_uri = {}
+    for referencia in info.findall(f"{{{DS}}}Reference"):
+        por_uri[referencia.get("URI").lstrip("#")] = (
+            referencia.findtext(f"{{{DS}}}DigestValue").strip()
+        )
+
+    # 1. La factura sin la firma, que es lo que deja el transform.
+    copia = copy.deepcopy(raiz)
+    copia.remove(copia.find(f"{{{DS}}}Signature"))
+    revisar("el digest de la factura sin la firma",
+            digest(c14n(copia)) == por_uri["comprobante"],
+            f"declarado {por_uri['comprobante']}, "
+            f"calculado {digest(c14n(copia))}")
+
+    # 2. El KeyInfo y 3. las SignedProperties, por su Id.
+    for etiqueta, espacio, nombre in (
+        ("KeyInfo", DS, "el digest del KeyInfo"),
+        ("SignedProperties", XADES, "el digest de las SignedProperties"),
+    ):
+        nodo = next(raiz.iter(f"{{{espacio}}}{etiqueta}"))
+        declarado = por_uri.get(nodo.get("Id"))
+        revisar(nombre, declarado is not None
+                and digest(c14n(nodo)) == declarado,
+                f"declarado {declarado}, calculado {digest(c14n(nodo))}")
+
     print("\nLA FIRMA CIERRA (lo que no se ve mirando el XML)")
     b64 = "".join(next(raiz.iter(f"{{{DS}}}X509Certificate")).text.split())
     cert_en_xml = x509.load_der_x509_certificate(base64.b64decode(b64))
@@ -192,6 +245,34 @@ with TemporaryDirectory() as carpeta:
         revisar("la firma es criptograficamente valida", False,
                 type(error).__name__)
 
+    print("\nUN COMPROBANTE SIN id=comprobante SE RECHAZA")
+    try:
+        fr.firmar(xml.replace('id="comprobante"', 'id="otro"'),
+                  ruta_p12, CLAVE_DE_PRUEBA)
+        revisar("avisa que falta id=comprobante", False, "no levanto")
+    except fr.ErrorFirma as error:
+        revisar("avisa que falta id=comprobante",
+                "comprobante" in str(error))
+
+    print("\nEL EMISOR DEL CERTIFICADO NO QUEDA VACIO")
+    # La libreria dejaba <X509IssuerName> vacio.
+    emisor = next(raiz.iter(f"{{{DS}}}X509IssuerName")).text
+    revisar("X509IssuerName trae el nombre del emisor",
+            bool(emisor and emisor.strip()), repr(emisor))
+    serie = next(raiz.iter(f"{{{DS}}}X509SerialNumber")).text
+    revisar("X509SerialNumber es la serie del certificado",
+            serie == str(cert_original.serial_number), serie)
+    digest_declarado = next(
+        next(raiz.iter(f"{{{XADES}}}CertDigest")).iter(f"{{{DS}}}DigestValue")
+    ).text.strip()
+    import hashlib as _h
+    revisar("el digest declarado es el del certificado",
+            digest_declarado == base64.b64encode(_h.sha1(
+                cert_original.public_bytes(
+                    __import__("cryptography.hazmat.primitives.serialization",
+                               fromlist=["Encoding"]).Encoding.DER)
+            ).digest()).decode(), digest_declarado)
+
     print("\nSI ALGO ESTA MAL, SE DICE CLARO")
     try:
         fr.firmar(xml, ruta_p12, "clave-equivocada")
@@ -208,7 +289,7 @@ with TemporaryDirectory() as carpeta:
     except fr.ErrorFirma:
         revisar("un certificado que no existe levanta ErrorFirma", True)
 
-total = 27
+total = 37
 print(f"\n{total} comprobaciones")
 if fallas:
     print(f"{len(fallas)} FALLAS: " + ", ".join(fallas))
