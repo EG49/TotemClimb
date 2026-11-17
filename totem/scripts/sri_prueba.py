@@ -4,7 +4,7 @@ Este script se corre EN LA MAQUINA DONDE ESTA EL CERTIFICADO. No corre
 en el entorno de desarrollo de la nube: el .p12 no debe salir de la PC
 del gimnasio, y ese entorno tampoco tiene salida a celcer.sri.gob.ec.
 
-Lo que hace:
+Lo que hace, en orden:
 
   1. Arma el XML de una factura de prueba con los datos del .env
   2. Lo firma con el .p12 (XAdES-BES)

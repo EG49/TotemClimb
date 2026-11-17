@@ -37,6 +37,9 @@ De ahí las dos reglas de este archivo:
      de namespace de los ancestros, así que el mismo nodo fuera del
      árbol da otro digest.
 
+Con esta firma el SRI autorizo el comprobante en el ambiente de
+certificacion el 16/11/2026, sin mensajes de error.
+
 Lo que el SRI verifica, y que pruebas/sri_firma.py comprueba acá:
 
   - el digest de la factura sin la firma

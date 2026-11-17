@@ -19,8 +19,7 @@ Como se corre, desde la carpeta totem:
 Se puede preguntar las veces que haga falta: la consulta no emite ni
 cambia nada.
 
-AVISO: el envio por red no pudo probarse al escribirlo, porque el
-entorno de desarrollo no alcanza los servidores del SRI.
+Probado contra el ambiente de certificacion el 16/11/2026.
 """
 
 import sys
