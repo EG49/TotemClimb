@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
+from pathlib import Path
 from xml.etree import ElementTree as ET
 
 AMBIENTE_PRUEBAS = "PRUEBAS"
@@ -116,6 +117,18 @@ def leer_autorizacion(respuesta_xml: str) -> Autorizacion:
     )
 
 
+def _ruta_logo():
+    """El logo del gimnasio, si está donde se lo espera.
+
+    Se lo busca por ruta y no se lo exige: que falte el archivo no
+    puede impedir emitir una factura.
+    """
+    ruta = (
+        Path(__file__).resolve().parents[2] / "static" / "img" / "totem-logo.png"
+    )
+    return ruta if ruta.exists() else None
+
+
 def _fecha_legible(texto: str) -> str:
     """La fecha del SRI viene en ISO; se muestra como se lee acá."""
     try:
@@ -123,6 +136,29 @@ def _fecha_legible(texto: str) -> str:
     except ValueError:
         return texto
     return momento.strftime("%d/%m/%Y %H:%M:%S")
+
+
+def _partir_ancho(pdf, texto: str, ancho_max: float, fuente: str,
+                  tamano: float) -> list[str]:
+    """Corta el texto midiendolo, no contando caracteres.
+
+    Contar caracteres no sirve: "GAIBOR ENCALADA EVANS ALEJANDRO" en
+    negrita de 11 puntos entra en 34 caracteres pero se monta encima
+    de la columna de la derecha.
+    """
+    palabras = (texto or "").split()
+    lineas: list[str] = []
+    actual = ""
+    for palabra in palabras:
+        tentativa = f"{actual} {palabra}".strip()
+        if pdf.stringWidth(tentativa, fuente, tamano) > ancho_max and actual:
+            lineas.append(actual)
+            actual = palabra
+        else:
+            actual = tentativa
+    if actual:
+        lineas.append(actual)
+    return lineas or [""]
 
 
 def _partir(texto: str, ancho: int) -> list[str]:
@@ -177,17 +213,42 @@ def generar(autorizacion: Autorizacion) -> bytes:
         pdf.saveState()
         pdf.setFillGray(0.85)
         pdf.setFont("Helvetica-Bold", 60)
-        pdf.translate(ancho / 2, alto / 2)
+        # Mas abajo que el centro: arriba cruzaria el codigo de
+        # barras y podria estorbar al escanearlo.
+        pdf.translate(ancho / 2, alto * 0.32)
         pdf.rotate(45)
         pdf.drawCentredString(0, 0, "SIN VALIDEZ TRIBUTARIA")
         pdf.restoreState()
 
-    # ─── Emisor ────────────────────────────────────────────────────
+    # ─── Emisor, con el logo si está ───────────────────────────────
     mitad = (ancho - 2 * margen) / 2 - 4 * mm
     arriba = y
 
+    # El logo va arriba y el texto debajo, no al lado: puesto al lado
+    # la razon social se monta sobre la columna de la derecha.
+    logo = _ruta_logo()
+    if logo is not None:
+        try:
+            from reportlab.lib.utils import ImageReader
+
+            imagen = ImageReader(str(logo))
+            ancho_px, alto_px = imagen.getSize()
+            alto_logo = 20 * mm
+            ancho_logo = alto_logo * ancho_px / alto_px
+            pdf.drawImage(
+                imagen, margen, y - alto_logo,
+                width=ancho_logo, height=alto_logo,
+                mask="auto",  # respeta la transparencia del PNG
+            )
+            y -= alto_logo + 8
+        except Exception:  # noqa: BLE001
+            # Un logo que no se puede dibujar no es motivo para dejar
+            # al cliente sin su factura.
+            pass
+
     pdf.setFont("Helvetica-Bold", 11)
-    for linea in _partir(t(trib, "razonSocial"), 42):
+    for linea in _partir_ancho(pdf, t(trib, "razonSocial"), mitad,
+                               "Helvetica-Bold", 11):
         pdf.drawString(margen, y, linea)
         y -= 13
     if t(trib, "nombreComercial"):
@@ -195,6 +256,7 @@ def generar(autorizacion: Autorizacion) -> bytes:
         pdf.drawString(margen, y, t(trib, "nombreComercial"))
         y -= 12
 
+    y -= 2
     pdf.setFont("Helvetica", 8)
     datos_emisor = [
         f"RUC: {t(trib, 'ruc')}",
@@ -205,7 +267,7 @@ def generar(autorizacion: Autorizacion) -> bytes:
     if t(trib, "contribuyenteRimpe"):
         datos_emisor.append(t(trib, "contribuyenteRimpe"))
     for dato in datos_emisor:
-        for linea in _partir(dato, 60):
+        for linea in _partir_ancho(pdf, dato, mitad, "Helvetica", 8):
             pdf.drawString(margen, y, linea)
             y -= 10
 
@@ -286,43 +348,53 @@ def generar(autorizacion: Autorizacion) -> bytes:
     pdf.drawString(margen + 390, y - 22, t(info, "fechaEmision"))
     y -= 46
 
-    # ─── Detalle ───────────────────────────────────────────────────
-    columnas = (
-        ("Cód.", margen + 4, 55),
-        ("Descripción", margen + 62, 230),
-        ("Cant.", margen + 300, 40),
-        ("P. unit.", margen + 348, 50),
-        ("Dcto.", margen + 404, 45),
-        ("Total", margen + 455, 55),
-    )
-    pdf.setFillGray(0.92)
-    pdf.rect(margen, y - 13, ancho - 2 * margen, 13, stroke=0, fill=1)
-    pdf.setFillGray(0)
-    pdf.setFont("Helvetica-Bold", 7.5)
-    for titulo, cx, _ in columnas:
-        pdf.drawString(cx, y - 9, titulo)
-    y -= 15
+    # ─── Detalle, como tabla ───────────────────────────────────────
+    # Se arma con Table y no dibujando a mano: el relleno de las
+    # celdas, el alto de las filas y las lineas quedan parejos solos.
+    from reportlab.lib import colors
+    from reportlab.platypus import Table, TableStyle
 
-    pdf.setFont("Helvetica", 7.5)
+    encabezados = ["Cód.", "Descripción", "Cant.", "P. unit.", "Dcto.", "Total"]
+    filas = [encabezados]
     for detalle in factura.findall("detalles/detalle"):
-        descripciones = _partir(t(detalle, "descripcion"), 48)
-        pdf.drawString(columnas[0][1], y, t(detalle, "codigoPrincipal"))
-        pdf.drawString(columnas[1][1], y, descripciones[0])
-        pdf.drawRightString(columnas[2][1] + 30, y, t(detalle, "cantidad"))
-        pdf.drawRightString(columnas[3][1] + 42, y, t(detalle, "precioUnitario"))
-        pdf.drawRightString(columnas[4][1] + 36, y, t(detalle, "descuento"))
-        pdf.drawRightString(columnas[5][1] + 46, y,
-                            t(detalle, "precioTotalSinImpuesto"))
-        y -= 10
-        for extra in descripciones[1:]:
-            pdf.drawString(columnas[1][1], y, extra)
-            y -= 10
-        y -= 2
+        filas.append([
+            t(detalle, "codigoPrincipal"),
+            "\n".join(_partir(t(detalle, "descripcion"), 44)),
+            t(detalle, "cantidad"),
+            t(detalle, "precioUnitario"),
+            t(detalle, "descuento"),
+            t(detalle, "precioTotalSinImpuesto"),
+        ])
 
-    y -= 6
-    pdf.setStrokeGray(0.6)
-    pdf.line(margen, y, ancho - margen, y)
-    y -= 16
+    anchos = [60, 215, 45, 55, 50, 60]
+    sobra = (ancho - 2 * margen) - sum(anchos)
+    anchos[1] += sobra  # la descripcion se queda con lo que sobre
+
+    tabla = Table(filas, colWidths=anchos, repeatRows=1)
+    tabla.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eceff1")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 7.5),
+        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 1), (-1, -1), 8),
+        # Relleno: es lo que faltaba. Sin esto el texto queda pegado
+        # al borde del sombreado y se lee apretado.
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("ALIGN", (2, 0), (-1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.6, colors.HexColor("#90a4ae")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+         [colors.white, colors.HexColor("#f7f9fa")]),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cfd8dc")),
+    ]))
+
+    ancho_tabla, alto_tabla = tabla.wrapOn(pdf, ancho - 2 * margen, alto)
+    tabla.drawOn(pdf, margen, y - alto_tabla)
+    y -= alto_tabla + 18
 
     # ─── Totales ───────────────────────────────────────────────────
     impuesto = factura.find("infoFactura/totalConImpuestos/totalImpuesto")
