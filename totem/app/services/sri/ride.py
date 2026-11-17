@@ -28,6 +28,9 @@ from xml.etree import ElementTree as ET
 
 AMBIENTE_PRUEBAS = "PRUEBAS"
 
+# El fondo de la pastilla del logo. Ver donde se la dibuja.
+COLOR_PASTILLA = (0.125, 0.172, 0.204)
+
 ETIQUETA_IDENTIFICACION = {
     "04": "RUC",
     "05": "Cédula",
@@ -235,12 +238,26 @@ def generar(autorizacion: Autorizacion) -> bytes:
             ancho_px, alto_px = imagen.getSize()
             alto_logo = 20 * mm
             ancho_logo = alto_logo * ancho_px / alto_px
+
+            # Una pastilla oscura detras del logo. No es decoracion:
+            # en el archivo el oso y la palabra TOTEM son blancos
+            # sobre fondo transparente, asi que sobre el papel blanco
+            # se pierden y solo queda el aro turquesa.
+            relleno = 3 * mm
+            pdf.saveState()
+            pdf.setFillColorRGB(*COLOR_PASTILLA)
+            pdf.roundRect(
+                margen, y - alto_logo - relleno,
+                ancho_logo + 2 * relleno, alto_logo + 2 * relleno,
+                2.5 * mm, stroke=0, fill=1,
+            )
+            pdf.restoreState()
             pdf.drawImage(
-                imagen, margen, y - alto_logo,
+                imagen, margen + relleno, y - alto_logo,
                 width=ancho_logo, height=alto_logo,
                 mask="auto",  # respeta la transparencia del PNG
             )
-            y -= alto_logo + 8
+            y -= alto_logo + relleno + 10
         except Exception:  # noqa: BLE001
             # Un logo que no se puede dibujar no es motivo para dejar
             # al cliente sin su factura.
