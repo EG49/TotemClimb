@@ -86,7 +86,7 @@
             <td style="padding:10px 0; border-bottom:1px solid #EDEDE8;">
               {{ d.nombre }}
               {% if d.tipo == 'plan' %}
-                <span style="font-size:11px; color:#3395A0;">· Membresía</span>
+                <span style="font-size:11px; color:#27737C;">· Membresía</span>
               {% endif %}
             </td>
             <td align="center" style="padding:10px 0; border-bottom:1px solid #EDEDE8;">
@@ -107,13 +107,18 @@
       <td style="padding:16px 28px 0;">
         <table role="presentation" align="right" cellpadding="0" cellspacing="0"
                style="font-size:14px;">
+          {# Las líneas suman de arriba abajo: base + IVA = total.
+             El subtotal con IVA solo aparece cuando hay descuento.
+             Sin descuento es igual al total, y verlo repetido arriba
+             y abajo con el IVA en medio hace pensar que los números
+             no cuadran. #}
+          {% if factura.descuento_porcentaje %}
           <tr>
             <td style="padding:3px 0; color:#6A6A67;">Subtotal con IVA</td>
             <td align="right" style="padding:3px 0 3px 26px;">
               ${{ '%.2f'|format(factura.subtotal) }}
             </td>
           </tr>
-          {% if factura.descuento_porcentaje %}
           <tr>
             <td style="padding:3px 0; color:#6A6A67;">
               Descuento {{ factura.descuento_porcentaje }}%

@@ -171,6 +171,33 @@ with app.test_request_context():
             "comprobar que los numeros cierren",
         )
 
+print("\nLAS LINEAS SUMAN DE ARRIBA ABAJO")
+# Sin descuento, el "Subtotal con IVA" es igual al Total. Mostrarlo
+# arriba y abajo con el IVA en medio hace pensar que los numeros no
+# cuadran: quien lee intenta sumar las tres lineas.
+with app.test_request_context():
+    from flask import render_template as _dibujar
+
+    for plantilla, descripcion in PLANTILLAS:
+        # Sin las etiquetas: en las pantallas el rotulo va como
+        # "Subtotal <small>con IVA</small>", y buscar la frase literal
+        # en el HTML no la encuentra.
+        def rotulos(html):
+            limpio = re.sub(r"<[^>]+>", " ", html)
+            return re.sub(r"\s+", " ", limpio)
+
+        f = factura_de("Membresia Junior", Decimal("65.00"))
+        revisar(f"{descripcion}: sin descuento no repite el subtotal",
+                "Subtotal con IVA" not in rotulos(_dibujar(plantilla, factura=f)),
+                "aparece junto al total, con el mismo importe")
+
+        con_descuento = factura_de("Membresia Junior", Decimal("65.00"),
+                                   Decimal("20"))
+        revisar(f"{descripcion}: con descuento si lo muestra",
+                "Subtotal con IVA" in rotulos(
+                    _dibujar(plantilla, factura=con_descuento)),
+                "sin el, no se entiende de donde sale el descuento")
+
 print("\nCON DESCUENTO TAMBIEN")
 for descuento in (Decimal("10"), Decimal("20"), Decimal("50")):
     f = factura_de("Membresia Junior", Decimal("65.00"), descuento)

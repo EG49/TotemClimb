@@ -143,7 +143,10 @@ class ServicioCorreo:
             )
         lineas += [
             "",
-            f"Subtotal con IVA: ${factura.subtotal:.2f}",
+            # Suman de arriba abajo; el subtotal con IVA solo si hubo
+            # descuento, porque si no es igual al total.
+            *([f"Subtotal con IVA: ${factura.subtotal:.2f}"]
+              if factura.descuento_porcentaje else []),
             f"Base imponible: ${factura.base_imponible:.2f}",
             f"IVA {factura.iva_porcentaje}% incluido: ${factura.iva:.2f}",
             f"TOTAL: ${factura.total:.2f}",
