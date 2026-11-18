@@ -3,7 +3,7 @@
 {% block nav_calendario %}active{% endblock %}
 
 {% macro marca(m) %}
-  <div class="marca" style="background:{{ m.categoria_color }}22; color:{{ '#2B3210' if m.categoria_color == '#C2DD58' else m.categoria_color }}"
+  <div class="marca" style="background:{{ m.categoria_color }}22; color:{{ m.categoria_color | color_legible }}"
        title="{{ m.titulo }} · {{ m.horario }}">
     <i style="background:{{ m.categoria_color }}"></i>{{ m.titulo }}
   </div>

@@ -48,6 +48,13 @@ def crear_app(config_clase=Config) -> Flask:
         posibles,
     )
 
+    # El color de texto legible para un fondo de ese mismo tono. Las
+    # categorías del calendario las crea el gimnasio, así que el
+    # contraste no se puede resolver eligiendo colores a mano.
+    from app.colores import legible
+
+    app.jinja_env.filters["color_legible"] = legible
+
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
     app.register_blueprint(clientes.bp)
