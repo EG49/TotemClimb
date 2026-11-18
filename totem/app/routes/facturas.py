@@ -16,7 +16,7 @@ from flask import (
     url_for,
 )
 
-from app.security import login_requerido
+from app.security import admin_requerido, login_requerido
 from app.services.correo_service import ServicioCorreo
 from app.services.factura_service import FacturaService
 from app.services.validaciones import ErrorValidacion
@@ -124,6 +124,67 @@ def detalle(id_factura):
         factura=factura,
         abonos=servicio.abonos_de(id_factura),
         correo_disponible=ServicioCorreo.configurado(),
+    )
+
+
+@bp.route("/bloques", methods=["GET", "POST"])
+@admin_requerido
+def bloques():
+    """Facturar al SRI los productos sueltos de un periodo.
+
+    Las membresías y los pases se facturan solos al cobrar. Los
+    productos van acá, juntados por periodo. Es de administrador: no
+    es una operación de caja y se hace cada tanto, no todos los días.
+    """
+    from datetime import date, timedelta
+
+    from app.services.bloque_service import ErrorBloque, ServicioBloque
+
+    servicio = ServicioBloque()
+    hoy = date.today()
+
+    def leer_fecha(nombre, por_omision):
+        texto = (request.values.get(nombre) or "").strip()
+        try:
+            return date.fromisoformat(texto) if texto else por_omision
+        except ValueError:
+            return por_omision
+
+    desde = leer_fecha("desde", hoy.replace(day=1))
+    hasta = leer_fecha("hasta", hoy)
+    if desde > hasta:
+        desde, hasta = hasta, desde
+
+    emitidas = None
+    if request.method == "POST":
+        try:
+            emitidas = servicio.emitir(desde, hasta, g.empleado["id_empleado"])
+        except ErrorBloque as error:
+            flash(str(error), "error")
+        else:
+            autorizadas = [e for e in emitidas if e["estado"] == "AUTORIZADA"]
+            if len(autorizadas) == len(emitidas):
+                flash(
+                    f"Se emitieron {len(emitidas)} factura"
+                    f"{'s' if len(emitidas) != 1 else ''} y el SRI las "
+                    "autorizó.", "ok",
+                )
+            else:
+                flash(
+                    f"Se emitieron {len(emitidas)} factura"
+                    f"{'s' if len(emitidas) != 1 else ''}, "
+                    f"{len(autorizadas)} ya autorizada"
+                    f"{'s' if len(autorizadas) != 1 else ''}. Las demás "
+                    "quedaron en camino; revíselas más tarde.", "aviso",
+                )
+
+    return render_template(
+        "facturas/bloques.html",
+        desde=desde,
+        hasta=hasta,
+        resumen=servicio.resumen(desde, hasta),
+        emitidas=emitidas,
+        historial=servicio.historial(),
     )
 
 

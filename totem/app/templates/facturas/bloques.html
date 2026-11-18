@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block titulo %}Facturar productos — Totem Climb Gym{% endblock %}
+{% block nav_facturas %}active{% endblock %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Facturar productos al SRI</div>
+    <div class="page-sub">
+      Las membresías y los pases se facturan solos al cobrar.
+      Los productos se facturan acá, por periodo.
+    </div>
+  </div>
+  <a class="btn-ghost" href="{{ url_for('facturas.lista') }}">Volver</a>
+</div>
+
+<div class="tarjeta" style="margin-bottom:18px;">
+  <form method="get" style="display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;">
+    <div class="campo" style="margin:0;">
+      <label for="desde">Desde</label>
+      <input type="date" id="desde" name="desde" value="{{ desde }}">
+    </div>
+    <div class="campo" style="margin:0;">
+      <label for="hasta">Hasta</label>
+      <input type="date" id="hasta" name="hasta" value="{{ hasta }}">
+    </div>
+    <button type="submit" class="btn-ghost">Ver qué hay pendiente</button>
+  </form>
+</div>
+
+{% if not resumen.lineas %}
+  <div class="tarjeta vacio">
+    <p>No hay productos pendientes de facturar entre esas fechas.</p>
+    <p class="pista">
+      Si ya los facturó, aparecen más abajo en el historial.
+    </p>
+  </div>
+{% else %}
+  <div class="tarjeta">
+    <h2 class="titulo-seccion">Pendiente de facturar</h2>
+
+    <table class="tabla-items" style="display:table;">
+      <thead>
+        <tr><th>Producto</th><th>Unid.</th><th>P. unit.</th><th>Total</th></tr>
+      </thead>
+      <tbody>
+        {% for linea in resumen.lineas %}
+        <tr>
+          <td>{{ linea.nombre }}</td>
+          <td>{{ linea.cantidad }}</td>
+          <td>${{ '%.2f'|format(linea.precio_unitario) }}</td>
+          <td><b>${{ '%.2f'|format(linea.total) }}</b></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="totales" style="margin-top:16px;">
+      <div class="linea">
+        <span>{{ resumen.unidades }} unidades en {{ resumen.ventas }} venta{{ 's' if resumen.ventas != 1 }}</span>
+        <b></b>
+      </div>
+      <div class="linea total"><span>Total</span><b>${{ '%.2f'|format(resumen.total) }}</b></div>
+    </div>
+
+    {% if resumen.facturas_necesarias > 1 %}
+      {# Una factura a consumidor final no puede pasar de USD 200, y
+         acá se vende a decenas de personas distintas: no hay a quién
+         identificar. Por eso se parte. #}
+      <div class="flash aviso" style="margin-top:16px;">
+        Se van a emitir <b>{{ resumen.facturas_necesarias }} facturas</b>.
+        Una factura a consumidor final no puede pasar de $200, así que el
+        periodo se reparte en varias.
+      </div>
+    {% endif %}
+
+    <form method="post" style="margin-top:18px;">
+      <input type="hidden" name="desde" value="{{ desde }}">
+      <input type="hidden" name="hasta" value="{{ hasta }}">
+      <button type="submit" class="btn-primary">
+        Emitir {{ resumen.facturas_necesarias }} factura{{ 's' if resumen.facturas_necesarias != 1 }} al SRI
+      </button>
+      <span class="pista" style="margin-left:12px;">
+        Estos productos quedan marcados como facturados y no se vuelven
+        a emitir.
+      </span>
+    </form>
+  </div>
+{% endif %}
+
+{% if historial %}
+<div class="tarjeta" style="margin-top:22px;">
+  <h2 class="titulo-seccion">Facturas en bloque ya emitidas</h2>
+  <p class="pista" style="margin-top:-6px;">
+    No son ventas: ese dinero ya se contó cuando se cobró, así que no
+    entran en el balance.
+  </p>
+
+  <table class="tabla-items" style="display:table; margin-top:12px;">
+    <thead>
+      <tr>
+        <th>Emitida</th><th>Periodo</th><th>Comprobante</th>
+        <th>Unid.</th><th>Total</th><th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in historial %}
+      <tr>
+        <td>{{ b.fecha_emision.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td>{{ b.desde.strftime('%d/%m') }} — {{ b.hasta.strftime('%d/%m') }}</td>
+        <td>
+          {% if b.sri_secuencial %}
+            {{ b.sri_establecimiento }}-{{ b.sri_punto_emision }}-{{ '%09d'|format(b.sri_secuencial) }}
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ b.unidades }}</td>
+        <td>${{ '%.2f'|format(b.total) }}</td>
+        <td>
+          <span class="pill {{ 'vigente' if b.sri_estado == 'AUTORIZADA' else 'vencida' }}">
+            {{ b.sri_estado or 'sin enviar' }}
+          </span>
+          {% if b.sri_mensaje %}
+            <div class="pista">{{ b.sri_mensaje.splitlines()[0][:70] }}</div>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
