@@ -376,7 +376,23 @@ class CobroService:
             # porque la facturación electrónica tenga un problema:
             # queda sin comprobante y se resuelve después.
             try:
-                self.sri.reservar(cursor, id_factura)
+                clave = self.sri.reservar(cursor, id_factura)
+                if clave is None:
+                    # No emitir tiene que DECIRSE. Antes se pasaba por
+                    # acá en silencio y la factura salía sin
+                    # comprobante sin que nada lo mencionara: desde
+                    # afuera se ve igual que si estuviera roto.
+                    current_app.logger.warning(
+                        "SRI: la factura %s sale SIN comprobante "
+                        "electrónico porque falta configuración. "
+                        "Revise con: python -m scripts.sri_estado  "
+                        "(y recuerde que el .env se lee al arrancar: "
+                        "si lo editó, hay que reiniciar)", numero,
+                    )
+                else:
+                    current_app.logger.info(
+                        "SRI: factura %s con clave %s", numero, clave
+                    )
             except Exception as error:  # noqa: BLE001
                 current_app.logger.warning(
                     "SRI: no se pudo reservar comprobante para la factura "
