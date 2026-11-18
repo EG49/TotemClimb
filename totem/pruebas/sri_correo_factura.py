@@ -159,7 +159,7 @@ with TemporaryDirectory() as carpeta, app.app_context():
         factura = servicio.facturas.obtener(id_factura)
 
         recibidos.clear()
-        destino, electronica = correo.enviar_factura(factura, id_empleado)
+        destino, electronica, motivo = correo.enviar_factura(factura, id_empleado)
         esperar_envios(30)
 
         revisar("sale la factura electronica, no el recibo interno",
@@ -203,10 +203,12 @@ with TemporaryDirectory() as carpeta, app.app_context():
         pendiente = servicio.facturas.obtener(id_pendiente)
 
         recibidos.clear()
-        destino, electronica = correo.enviar_factura(pendiente, id_empleado)
+        destino, electronica, motivo = correo.enviar_factura(pendiente, id_empleado)
         esperar_envios(30)
 
         revisar("sale el comprobante interno", electronica is False)
+        revisar("y dice que el comprobante sigue autorizandose",
+                motivo == "autorizandose", str(motivo))
         revisar("llego un correo", len(recibidos) == 1, str(len(recibidos)))
         if recibidos:
             mensaje, archivos = adjuntos_de(recibidos[0])
@@ -214,6 +216,36 @@ with TemporaryDirectory() as carpeta, app.app_context():
             revisar("y el cuerpo avisa que no es comprobante del SRI",
                     "No constituye comprobante" in
                     recibidos[0].decode("utf-8", "replace"))
+        print("\nSI LA AUTORIZACION LLEGA MIENTRAS SE ESPERA, SALE LA FACTURA")
+        # El caso real: se cobra y se pulsa Enviar un segundo despues,
+        # cuando el SRI todavia no resolvio. Sin la espera, el correo
+        # caia siempre en el comprobante interno justo cuando mas se
+        # queria la factura.
+        import threading as _hilos
+
+        falso.modo = "sin internet"
+        id_tarde = cobrar()
+        tarde = servicio.facturas.obtener(id_tarde)
+
+        def autorizar_en_3_segundos():
+            import time
+            time.sleep(3)
+            falso.modo = "bien"
+            with app.app_context():
+                sri_service.ServicioSri().reintentar_pendientes()
+
+        _hilos.Thread(target=autorizar_en_3_segundos, daemon=True).start()
+
+        recibidos.clear()
+        destino, electronica, motivo = correo.enviar_factura(tarde, id_empleado)
+        esperar_envios(30)
+
+        revisar("el correo espero y salio la factura electronica",
+                electronica is True, f"motivo: {motivo}")
+        if recibidos:
+            _, archivos = adjuntos_de(recibidos[0])
+            revisar("con sus dos adjuntos", len(archivos) == 2,
+                    str(list(archivos)))
     finally:
         control.stop()
 
