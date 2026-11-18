@@ -71,8 +71,14 @@
   </table>
 
   <div class="totales comp-totales">
-    <div class="linea"><span>Subtotal <small>con IVA</small></span><b>${{ '%.2f'|format(factura.subtotal) }}</b></div>
+    {# Las líneas suman de arriba abajo: base + IVA = total.
+
+       El subtotal con IVA solo aparece cuando hay descuento, que es
+       cuando aporta algo. Sin descuento es igual al total, y verlo
+       repetido arriba y abajo con el IVA en medio hace pensar que
+       los números no cuadran: quien lee intenta sumarlo. #}
     {% if factura.descuento_porcentaje %}
+      <div class="linea"><span>Subtotal <small>con IVA</small></span><b>${{ '%.2f'|format(factura.subtotal) }}</b></div>
       <div class="linea">
         <span>Descuento {{ factura.descuento_porcentaje }}%</span>
         <b>−${{ '%.2f'|format(factura.subtotal * factura.descuento_porcentaje / 100) }}</b>
