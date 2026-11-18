@@ -274,20 +274,35 @@ class ServicioCorreo:
 
     def enviar_factura(
         self, factura, id_empleado: int, destinatario: str | None = None
-    ) -> tuple[str, bool]:
+    ) -> tuple[str, bool, str | None]:
         """Manda la factura del SRI si existe, y si no el comprobante.
 
-        Devuelve a quién se le manda y si salió la factura electrónica.
+        Devuelve a quién se le manda, si salió la factura electrónica,
+        y cuando no salió, por qué: "autorizandose" si el comprobante
+        sigue en camino, "sin_comprobante" si esa factura no tiene.
+        Sirve para que la pantalla lo explique en lugar de dejar a
+        quien cobra adivinando cuál de los dos correos salió.
 
         El mismo botón hace las dos cosas a propósito: quien cobra no
         tiene por qué saber en qué estado quedó el comprobante ante el
         SRI, ni elegir entre dos envíos parecidos. Si la factura está
         autorizada se manda esa, que es la que vale; si todavía no, se
         manda el comprobante interno, que es lo que hay.
+
+        Si el comprobante todavía se está autorizando, espera unos
+        segundos antes de rendirse. Entre cobrar y pulsar "Enviar"
+        pasan uno o dos segundos, y la autorización tarda más: sin
+        esta espera, el correo caía siempre en el comprobante interno
+        justo cuando mas se queria la factura, y al rato la factura ya
+        estaba autorizada.
         """
+        self._esperar_autorizacion(factura)
         electronica = self._factura_electronica(factura)
         if electronica is None:
-            return self.enviar_comprobante(factura, id_empleado, destinatario), False
+            destino = self.enviar_comprobante(
+                factura, id_empleado, destinatario
+            )
+            return destino, False, self._por_que_no(factura)
 
         if not self.configurado():
             raise CorreoNoConfigurado(
@@ -345,7 +360,57 @@ class ServicioCorreo:
         )
         _anotar_hilo(hilo)
         hilo.start()
-        return destino, True
+        return destino, True, None
+
+    @staticmethod
+    def _por_que_no(factura) -> str:
+        """Por qué no salió la factura electrónica."""
+        from app.db import obtener_cursor
+
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                "SELECT sri_estado FROM facturas WHERE id_factura = %s",
+                (factura.id_factura,),
+            )
+            fila = cursor.fetchone()
+        estado = fila["sri_estado"] if fila else None
+        if estado in ("PENDIENTE", "FIRMADA", "ENVIADA"):
+            return "autorizandose"
+        return "sin_comprobante"
+
+    @staticmethod
+    def _esperar_autorizacion(factura, segundos: float = 12) -> None:
+        """Le da tiempo al SRI, si el comprobante va en camino.
+
+        Solo espera mientras el comprobante esté en vuelo. Si ya está
+        resuelto —autorizado o rechazado— vuelve en el acto, y si la
+        factura no tiene comprobante tampoco espera: no hay nada que
+        esperar.
+        """
+        import time
+
+        from app.db import obtener_cursor
+
+        EN_VUELO = ("PENDIENTE", "FIRMADA", "ENVIADA")
+        limite = time.monotonic() + segundos
+        while True:
+            with obtener_cursor() as cursor:
+                cursor.execute(
+                    "SELECT sri_estado FROM facturas WHERE id_factura = %s",
+                    (factura.id_factura,),
+                )
+                fila = cursor.fetchone()
+            estado = fila["sri_estado"] if fila else None
+            if estado not in EN_VUELO:
+                return
+            if time.monotonic() >= limite:
+                current_app.logger.info(
+                    "SRI: la factura %s seguía en %s al mandar el correo; "
+                    "sale el comprobante interno",
+                    factura.numero_factura, estado,
+                )
+                return
+            time.sleep(1)
 
     @staticmethod
     def _factura_electronica(factura):

@@ -128,7 +128,7 @@ def enviar_comprobante(id_factura):
         abort(404)
 
     try:
-        destino, electronica = ServicioCorreo().enviar_factura(
+        destino, electronica, motivo = ServicioCorreo().enviar_factura(
             factura, g.empleado["id_empleado"]
         )
     except CorreoNoConfigurado:
@@ -137,10 +137,20 @@ def enviar_comprobante(id_factura):
         flash(str(error), "error")
     else:
         # El envío va en segundo plano: aquí solo se confirma que salió.
-        # Se dice cuál de los dos salió, porque no es lo mismo para el
-        # cliente recibir su factura del SRI que un recibo interno.
-        qué = "la factura electrónica" if electronica else "el comprobante"
-        flash(f"Enviando {qué} a {destino}.", "ok")
+        # Se dice cuál de los dos salió y, cuando no es la factura,
+        # por qué: si no, quien cobra no entiende por qué al cliente le
+        # llegó un recibo interno en lugar de su factura.
+        if electronica:
+            flash(f"Enviando la factura electrónica a {destino}.", "ok")
+        elif motivo == "autorizandose":
+            flash(
+                f"Se envió el comprobante a {destino}. La factura "
+                "electrónica todavía se está autorizando en el SRI; "
+                "cuando termine, vuelva a enviar y saldrá la factura.",
+                "aviso",
+            )
+        else:
+            flash(f"Enviando el comprobante a {destino}.", "ok")
 
     # Se vuelve a donde estaba: el botón vive en dos pantallas (el
     # comprobante del cobro y el detalle de la factura), y saltar de una
