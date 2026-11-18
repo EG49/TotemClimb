@@ -32,6 +32,27 @@ PENDIENTE, FIRMADA y ENVIADA las vuelve a tomar el reintento. Las
 otras tres ya no: una AUTORIZADA está lista y las dos rechazadas
 necesitan que alguien mire el mensaje del SRI.
 
+Qué se factura y qué no
+-----------------------
+Al SRI van SOLO las membresías y los pases. Los productos —aguas,
+bebidas, magnesio— no se facturan uno por uno al cobrar: el gimnasio
+los factura aparte y en bloque, a mano.
+
+Eso tiene tres consecuencias que conviene tener presentes:
+
+  - En una venta mixta (membresía + aguas), la factura electrónica
+    lleva SOLO la membresía. El total del comprobante es menor que
+    el de la venta, y es lo correcto.
+  - Una venta de puros productos no genera comprobante ni gasta
+    número: un secuencial reservado y nunca usado deja un hueco en
+    la numeración que hay que explicarle al SRI.
+  - La caja y lo facturado al SRI no cuadran entre sí por diseño.
+    scripts/sri_sin_facturar.py lista lo que quedó fuera, que es lo
+    que hace falta para armar la factura en bloque.
+
+Si esa regla cambia, se cambia acá y en _armar_xml, no repartida por
+el sistema.
+
 Qué pasa si falta configuración
 -------------------------------
 Si no están los datos del emisor o el certificado, el sistema no
@@ -160,6 +181,12 @@ class ServicioSri:
         if not self.configurado():
             return None
 
+        # Si la venta no lleva membresía ni pase, no hay factura
+        # electrónica y no se gasta un número: un secuencial reservado
+        # y nunca usado es un hueco que hay que explicarle al SRI.
+        if not self._tiene_algo_que_facturar(cursor, id_factura):
+            return None
+
         emisor = self.emisor()
         ambiente = self.ambiente()
         hoy = date.today()
@@ -189,6 +216,24 @@ class ServicioSri:
             secuencial, clave, estado=PENDIENTE,
         )
         return clave
+
+    @staticmethod
+    def _tiene_algo_que_facturar(cursor, id_factura: int) -> bool:
+        """Si la venta lleva alguna membresía o pase.
+
+        Se consulta con el cursor del cobro porque corre dentro de su
+        transacción, donde el detalle recién insertado todavía no es
+        visible desde afuera.
+        """
+        cursor.execute(
+            """
+            SELECT 1 FROM detalle_factura
+             WHERE id_factura = %s AND id_plan IS NOT NULL
+             LIMIT 1
+            """,
+            (id_factura,),
+        )
+        return cursor.fetchone() is not None
 
     # --- Paso 2: después de confirmar, fuera de la transacción ----
 
@@ -354,7 +399,8 @@ class ServicioSri:
                 SELECT d.cantidad, d.precio_unitario, d.subtotal,
                        COALESCE(p.nombre, pm.nombre) AS nombre,
                        COALESCE(p.id_producto::text, 'P' || pm.id_plan::text)
-                           AS codigo
+                           AS codigo,
+                       d.id_plan IS NOT NULL AS va_al_sri
                   FROM detalle_factura d
                   LEFT JOIN productos p ON p.id_producto = d.id_producto
                   LEFT JOIN planes_membresia pm ON pm.id_plan = d.id_plan
@@ -376,6 +422,8 @@ class ServicioSri:
             correo=(datos.get("correo") or "").strip() or None,
         )
 
+        # Solo membresías y pases. Los productos se facturan aparte y
+        # en bloque, no uno por uno al cobrar. Ver la cabecera.
         lineas = [
             fx.LineaXML(
                 codigo=str(linea["codigo"]),
@@ -384,7 +432,13 @@ class ServicioSri:
                 precio_unitario_con_iva=Decimal(linea["precio_unitario"]),
             )
             for linea in datos["detalle"]
+            if linea["va_al_sri"]
         ]
+        if not lineas:
+            raise ValueError(
+                "esta venta no tiene membresías ni pases: no corresponde "
+                "emitirle factura electrónica"
+            )
 
         # "Por cobrar" se factura igual: la factura se emite cuando se
         # entrega el servicio, no cuando entra la plata. El método de
@@ -394,6 +448,10 @@ class ServicioSri:
             metodo = "EFECTIVO"
 
         fecha = datos["fecha"]
+        # OJO: el total del XML lo calcula factura_xml a partir de
+        # estas líneas, así que es el de la parte facturada y NO el
+        # de la venta. Es lo buscado: la venta puede incluir productos
+        # que no van en esta factura.
         return fx.generar(
             emisor=emisor,
             comprador=comprador,

@@ -119,10 +119,14 @@ with TemporaryDirectory() as carpeta, app.app_context():
             "AND correo IS NOT NULL ORDER BY id_cliente LIMIT 1"
         )
         fila = cursor.fetchone()
+        # Una membresia, no un producto: al SRI van solo membresias y
+        # pases, asi que una venta de productos no generaria factura
+        # electronica y esta prueba no probaria nada.
         cursor.execute(
-            "SELECT id_producto FROM productos WHERE activo ORDER BY id_producto LIMIT 1"
+            "SELECT id_plan FROM planes_membresia WHERE activo "
+            "ORDER BY id_plan LIMIT 1"
         )
-        id_producto = cursor.fetchone()["id_producto"]
+        id_plan = cursor.fetchone()["id_plan"]
         cursor.execute("SELECT id_empleado FROM empleados LIMIT 1")
         id_empleado = cursor.fetchone()["id_empleado"]
 
@@ -138,7 +142,7 @@ with TemporaryDirectory() as carpeta, app.app_context():
     def cobrar():
         id_factura, _ = servicio.cobrar(
             {"id_cliente": str(id_cliente), "metodo_pago": "EFECTIVO"},
-            [{"tipo": "producto", "id_item": id_producto, "cantidad": 1}],
+            [{"tipo": "plan", "id_item": id_plan, "cantidad": 1}],
             id_empleado,
         )
         creadas.append(id_factura)
