@@ -48,8 +48,9 @@ with TemporaryDirectory() as carpeta, app.app_context():
         c.execute("INSERT INTO sri_secuenciales VALUES ('001',%s,'01',0)",(PUNTO,))
         c.execute("SELECT id_cliente FROM clientes WHERE cedula IS NOT NULL LIMIT 1")
         cli=c.fetchone()["id_cliente"]
-        c.execute("SELECT id_producto FROM productos WHERE activo LIMIT 1")
-        prod=c.fetchone()["id_producto"]
+        # Una membresia: al SRI van solo membresias y pases.
+        c.execute("SELECT id_plan FROM planes_membresia WHERE activo LIMIT 1")
+        plan=c.fetchone()["id_plan"]
         c.execute("SELECT id_empleado FROM empleados LIMIT 1")
         emp=c.fetchone()["id_empleado"]
 
@@ -59,7 +60,7 @@ with TemporaryDirectory() as carpeta, app.app_context():
     app.config["SRI_RUC"] = None
     servicio = CobroService()
     idf,_ = servicio.cobrar({"id_cliente":str(cli),"metodo_pago":"EFECTIVO"},
-                            [{"tipo":"producto","id_item":prod,"cantidad":1}], emp)
+                            [{"tipo":"plan","id_item":plan,"cantidad":1}], emp)
     with obtener_cursor() as c:
         c.execute("SELECT numero_factura, sri_estado FROM facturas WHERE id_factura=%s",(idf,))
         f=c.fetchone()

@@ -21,6 +21,7 @@ Todo lo que escribe queda deshecho al terminar.
 
 import json
 import sys
+from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -68,10 +69,7 @@ def limpiar(ids):
                 "DELETE FROM detalle_factura WHERE id_factura = %s",
                 (id_factura,),
             )
-            cursor.execute(
-                "UPDATE membresias SET id_factura = NULL WHERE id_factura = %s",
-                (id_factura,),
-            )
+            # Se borran, no se desvinculan: id_factura no admite nulo.
             cursor.execute(
                 "DELETE FROM membresias WHERE id_factura = %s", (id_factura,)
             )
@@ -81,6 +79,31 @@ def limpiar(ids):
         cursor.execute(
             "DELETE FROM sri_secuenciales WHERE punto_emision = %s", (PUNTO,)
         )
+
+
+def limpiar_corridas_anteriores():
+    """Borra lo que haya quedado de una corrida que se cayo.
+
+    Sin esto, una corrida interrumpida deja facturas ocupando los
+    numeros de este punto de emision, y la siguiente choca contra el
+    indice unico sin que quede claro por que.
+    """
+    with obtener_cursor(commit=True) as cursor:
+        cursor.execute(
+            "SELECT id_factura FROM facturas WHERE sri_punto_emision = %s",
+            (PUNTO,),
+        )
+        viejas = [f["id_factura"] for f in cursor.fetchall()]
+        for id_factura in viejas:
+            cursor.execute("DELETE FROM detalle_factura WHERE id_factura = %s",
+                           (id_factura,))
+            cursor.execute("DELETE FROM membresias WHERE id_factura = %s",
+                           (id_factura,))
+            cursor.execute("DELETE FROM facturas WHERE id_factura = %s",
+                           (id_factura,))
+    if viejas:
+        print(f"  (se limpiaron {len(viejas)} facturas de una corrida "
+              "anterior)")
 
 
 app = crear_app()
@@ -102,6 +125,8 @@ with TemporaryDirectory() as carpeta, app.app_context():
         SRI_P12_RUTA=str(ruta_p12),
         SRI_P12_CLAVE=CLAVE_P12,
     )
+
+    limpiar_corridas_anteriores()
 
     with obtener_cursor(commit=True) as cursor:
         cursor.execute(
@@ -126,6 +151,12 @@ with TemporaryDirectory() as carpeta, app.app_context():
             "SELECT id_producto FROM productos WHERE activo ORDER BY id_producto LIMIT 1"
         )
         id_producto = cursor.fetchone()["id_producto"]
+        cursor.execute(
+            "SELECT id_plan, precio FROM planes_membresia WHERE activo "
+            "ORDER BY id_plan LIMIT 1"
+        )
+        plan = cursor.fetchone()
+        id_plan, precio_plan = plan["id_plan"], plan["precio"]
         cursor.execute("SELECT id_empleado FROM empleados LIMIT 1")
         id_empleado = cursor.fetchone()["id_empleado"]
 
@@ -137,9 +168,10 @@ with TemporaryDirectory() as carpeta, app.app_context():
     falso = SriDeMentira()
     sri_service.ServicioSri._soap = staticmethod(falso)
 
-    def cobrar():
+    def cobrar(items=None):
         formulario = {"id_cliente": str(id_cliente), "metodo_pago": "EFECTIVO"}
-        items = [{"tipo": "producto", "id_item": id_producto, "cantidad": 1}]
+        if items is None:
+            items = [{"tipo": "plan", "id_item": id_plan, "cantidad": 1}]
         id_factura, _ = servicio.cobrar(formulario, items, id_empleado)
         creadas.append(id_factura)
         sri_service.esperar_envios(30)
@@ -224,6 +256,63 @@ with TemporaryDirectory() as carpeta, app.app_context():
     revisar("y ni siquiera se intenta hablar con el SRI",
             falso.llamadas == antes, f"{falso.llamadas - antes} llamadas")
     app.config["SRI_RUC"] = guardado
+
+    print("\nAL SRI VAN SOLO MEMBRESIAS Y PASES")
+    # Los productos se facturan aparte y en bloque, a mano. En una
+    # venta mixta la factura electronica lleva solo la membresia, y
+    # su total es MENOR que el de la venta. Es lo correcto.
+    falso.modo = "bien"
+    antes_numero = ServicioSri().repo.ultimo_secuencial("001", PUNTO)
+
+    id_solo_productos = cobrar(
+        [{"tipo": "producto", "id_item": id_producto, "cantidad": 2}]
+    )
+    f = estado_de(id_solo_productos)
+    revisar("una venta de puros productos se registra igual",
+            f["estado"] in ("EMITIDA", "PAGADA"), f["estado"])
+    revisar("y NO genera comprobante electronico", f["sri_estado"] is None,
+            str(f["sri_estado"]))
+    revisar("ni gasta un numero de la numeracion",
+            ServicioSri().repo.ultimo_secuencial("001", PUNTO) == antes_numero,
+            f"paso de {antes_numero} a "
+            f"{ServicioSri().repo.ultimo_secuencial('001', PUNTO)}")
+
+    id_mixta = cobrar([
+        {"tipo": "plan", "id_item": id_plan, "cantidad": 1},
+        {"tipo": "producto", "id_item": id_producto, "cantidad": 2},
+    ])
+    f = estado_de(id_mixta)
+    revisar("una venta mixta SI genera comprobante",
+            f["sri_estado"] == "AUTORIZADA",
+            f"{f['sri_estado']} · {f['sri_mensaje']}")
+
+    # Lo que importa: el comprobante cubre solo la membresia.
+    from xml.etree import ElementTree as ET
+
+    with obtener_cursor() as cursor:
+        cursor.execute("SELECT sri_xml FROM facturas WHERE id_factura = %s",
+                       (id_mixta,))
+        guardado = cursor.fetchone()["sri_xml"]
+    comprobante = ET.fromstring(guardado.encode("utf-8"))
+    texto = next(comprobante.iter("comprobante")).text
+    xml = ET.fromstring(texto.encode("utf-8"))
+
+    detalles = xml.findall("detalles/detalle")
+    revisar("el comprobante lleva una sola linea", len(detalles) == 1,
+            f"{len(detalles)} lineas: "
+            + ", ".join(d.findtext('descripcion') for d in detalles))
+    revisar("y es la membresia, no el producto",
+            "agua" not in (detalles[0].findtext("descripcion") or "").lower()
+            if detalles else False,
+            detalles[0].findtext("descripcion") if detalles else "")
+
+    total_comprobante = Decimal(xml.findtext("infoFactura/importeTotal"))
+    revisar("el total del comprobante es el de la membresia sola",
+            total_comprobante == Decimal(precio_plan).quantize(Decimal("0.01")),
+            f"comprobante {total_comprobante}, plan {precio_plan}")
+    revisar("y es MENOR que el total de la venta",
+            total_comprobante < Decimal(f["total"]),
+            f"comprobante {total_comprobante}, venta {f['total']}")
 
     print("\nCADA FACTURA SE LLEVA UN NUMERO DISTINTO")
     with obtener_cursor() as cursor:
