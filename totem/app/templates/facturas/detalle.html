@@ -113,4 +113,79 @@
   </ul>
 </div>
 {% endif %}
+
+{# ── El comprobante electrónico ────────────────────────────────
+   Sin esto, una factura que el SRI rechazó es invisible: la venta
+   se ve perfecta y nadie se entera de que al cliente le falta su
+   factura. #}
+{% if comprobante %}
+<div class="tarjeta" style="margin-top:22px;">
+  <div class="seccion">Factura electrónica</div>
+
+  <div class="totales" style="margin-top:4px;">
+    <div class="linea">
+      <span>Estado ante el SRI</span>
+      <b>
+        <span class="pill {{ 'vigente' if comprobante.sri_estado == 'AUTORIZADA' else 'vencida' }}">
+          {{ comprobante.sri_estado }}
+        </span>
+      </b>
+    </div>
+    {% if comprobante.numero %}
+      <div class="linea"><span>Comprobante</span><b>{{ comprobante.numero }}</b></div>
+    {% endif %}
+    {% if comprobante.sri_fecha_autorizacion %}
+      <div class="linea">
+        <span>Autorizada</span>
+        <b>{{ comprobante.sri_fecha_autorizacion.strftime('%d/%m/%Y %H:%M') }}</b>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if comprobante.en_camino %}
+    <p class="pista" style="margin-top:12px;">
+      Todavía se está autorizando. Vuelva a mirar en un momento.
+    </p>
+  {% endif %}
+
+  {% if comprobante.rechazada %}
+    <div class="flash error" style="margin-top:14px;">
+      <b>El SRI rechazó esta factura.</b>
+      <div style="margin-top:6px; font-size:13px;">
+        {{ comprobante.sri_mensaje }}
+      </div>
+    </div>
+
+    <p class="pista" style="margin-top:14px;">
+      Reintentar sin cambiar nada da el mismo error. Si el motivo es la
+      identificación del cliente, corríjala en su ficha y reemita; el
+      comprobante sale con un número nuevo.
+    </p>
+
+    {% if empleado and empleado.es_admin %}
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+      <form method="post" action="{{ url_for('facturas.reemitir', id_factura=factura.id_factura) }}">
+        <button type="submit" class="btn-primary">Reemitir</button>
+      </form>
+
+      {% if factura.total <= 200 %}
+      <form method="post" action="{{ url_for('facturas.reemitir', id_factura=factura.id_factura) }}">
+        <input type="hidden" name="consumidor_final" value="si">
+        <button type="submit" class="btn-ghost">Emitir a consumidor final</button>
+      </form>
+      {% endif %}
+    </div>
+    <p class="pista" style="margin-top:10px;">
+      {% if factura.total <= 200 %}
+        A consumidor final sale sin identificar al cliente. Sirve cuando
+        la cédula no se puede corregir, y vale hasta $200.
+      {% else %}
+        Son más de $200, así que no se puede emitir sin identificar al
+        cliente: hay que corregir la cédula.
+      {% endif %}
+    </p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endif %}
 {% endblock %}

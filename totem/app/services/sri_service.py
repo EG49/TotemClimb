@@ -261,7 +261,7 @@ class ServicioSri:
             _envios[:] = [h for h in _envios if h.is_alive() or h is hilo]
         hilo.start()
 
-    def emitir(self, id_factura: int) -> str:
+    def emitir(self, id_factura: int, consumidor_final: bool = False) -> str:
         """Arma, firma, envía y consulta. Devuelve el estado final."""
         datos = self._datos_de_la_factura(id_factura)
         if datos is None:
@@ -276,7 +276,7 @@ class ServicioSri:
 
         xml_firmado = datos.get("sri_xml")
         if not xml_firmado:
-            xml = self._armar_xml(datos, clave)
+            xml = self._armar_xml(datos, clave, consumidor_final)
             try:
                 xml_firmado = firmar(
                     xml,
@@ -349,6 +349,116 @@ class ServicioSri:
         )
         return ENVIADA
 
+    # --- Volver a emitir una rechazada ---------------------------
+
+    TOPE_CONSUMIDOR_FINAL = Decimal("200.00")
+
+    def reemitir(self, id_factura: int,
+                 consumidor_final: bool = False,
+                 id_empleado: int | None = None) -> str:
+        """Emite de nuevo una factura que el SRI rechazó.
+
+        Hace falta porque una factura rechazada no se arregla
+        reintentando: el SRI devolvería el mismo error. Hay que
+        corregir el dato y emitir un comprobante NUEVO, con otro
+        número y otra clave de acceso.
+
+        El número anterior queda gastado. Es correcto: ese
+        comprobante existió y el SRI lo rechazó, así que el hueco en
+        la numeración tiene explicación.
+
+        `consumidor_final` emite sin identificar al comprador. Es la
+        salida para una cédula que el SRI no acepta y que no se puede
+        corregir, y solo vale hasta USD 200.
+        """
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT numero_factura, estado, total, sri_estado,
+                       sri_clave_acceso, sri_mensaje
+                  FROM facturas WHERE id_factura = %s
+                """,
+                (id_factura,),
+            )
+            factura = cursor.fetchone()
+
+        if factura is None:
+            raise ValueError(f"no existe la factura {id_factura}")
+        if factura["estado"] == "ANULADA":
+            raise ValueError("la factura está anulada: no se reemite")
+        if factura["sri_estado"] not in (NO_AUTORIZADA, DEVUELTA):
+            estado = factura["sri_estado"] or "sin comprobante"
+            raise ValueError(
+                f"la factura está en {estado} y solo se reemiten las "
+                "rechazadas. Para las que siguen en camino use el "
+                "reintento."
+            )
+        if consumidor_final and Decimal(factura["total"]) > self.TOPE_CONSUMIDOR_FINAL:
+            raise ValueError(
+                f"son ${factura['total']}, y una factura a consumidor "
+                f"final no puede pasar de ${self.TOPE_CONSUMIDOR_FINAL}. "
+                "Hay que corregir la identificación del cliente."
+            )
+
+        # El intento fallido queda en la BITACORA y no en el mensaje
+        # de la factura: al emitir de nuevo, el mensaje se pisa con el
+        # resultado nuevo y el rastro se perdería. La bitácora es el
+        # registro que no se pisa, y es donde hay que mirar si alguna
+        # vez hay que explicar un hueco en la numeración.
+        anterior = (factura["sri_mensaje"] or "").strip()
+        motivo = anterior.splitlines()[0] if anterior else "sin mensaje"
+        try:
+            from app.services.bitacora_service import BitacoraService
+
+            BitacoraService().registrar(
+                id_empleado or 0,
+                "COMPROBANTE_REEMITIDO",
+                "FACTURA",
+                id_factura,
+                {
+                    "numero": factura["numero_factura"],
+                    "clave_anterior": factura["sri_clave_acceso"],
+                    "estado_anterior": factura["sri_estado"],
+                    "motivo": motivo,
+                    "consumidor_final": consumidor_final,
+                },
+            )
+        except Exception as error:  # noqa: BLE001
+            # Que no se pueda anotar no puede impedir emitir: al
+            # cliente le falta su factura.
+            current_app.logger.warning(
+                "No se pudo anotar la reemisión de %s: %s",
+                factura["numero_factura"], error,
+            )
+        historia = (
+            f"[reemitida] el comprobante {factura['sri_clave_acceso']} "
+            f"quedó {factura['sri_estado']}: {motivo}"
+        )
+
+        with obtener_cursor(commit=True) as cursor:
+            # Se limpia el comprobante viejo para que el nuevo pueda
+            # tomar su lugar: la clave de acceso es única.
+            cursor.execute(
+                """
+                UPDATE facturas
+                   SET sri_clave_acceso = NULL, sri_secuencial = NULL,
+                       sri_establecimiento = NULL, sri_punto_emision = NULL,
+                       sri_xml = NULL, sri_autorizacion = NULL,
+                       sri_fecha_autorizacion = NULL,
+                       sri_estado = NULL, sri_mensaje = %s
+                 WHERE id_factura = %s
+                """,
+                (historia, id_factura),
+            )
+            clave = self.reservar(cursor, id_factura)
+
+        if clave is None:
+            raise ValueError(
+                "no se pudo reservar un comprobante nuevo. Revise con: "
+                "python -m scripts.sri_estado"
+            )
+        return self.emitir(id_factura, consumidor_final=consumidor_final)
+
     def reintentar_pendientes(self, limite: int = 25) -> dict:
         """Retoma lo que quedó sin resolver. Lo llama la tarea diaria."""
         if not self.configurado():
@@ -412,15 +522,24 @@ class ServicioSri:
             datos["detalle"] = [dict(f) for f in cursor.fetchall()]
         return datos
 
-    def _armar_xml(self, datos: dict, clave: str) -> str:
+    def _armar_xml(self, datos: dict, clave: str,
+                   consumidor_final: bool = False) -> str:
         emisor = self.emisor()
 
         nombre = f"{datos['nombre']} {datos['apellido']}".strip()
-        comprador = fx.Comprador(
-            identificacion=(datos.get("cedula") or "").strip() or None,
-            nombre=nombre,
-            correo=(datos.get("correo") or "").strip() or None,
-        )
+        if consumidor_final:
+            # Sin identificación: el comprador no se declara. Es la
+            # salida cuando el SRI rechaza la cédula del cliente y no
+            # hay forma de corregirla.
+            comprador = fx.Comprador(
+                correo=(datos.get("correo") or "").strip() or None
+            )
+        else:
+            comprador = fx.Comprador(
+                identificacion=(datos.get("cedula") or "").strip() or None,
+                nombre=nombre,
+                correo=(datos.get("correo") or "").strip() or None,
+            )
 
         # Solo membresías y pases. Los productos se facturan aparte y
         # en bloque, no uno por uno al cobrar. Ver la cabecera.

@@ -282,6 +282,30 @@ class ServicioBloque:
             except Exception as error:  # noqa: BLE001
                 estado = f"PENDIENTE ({type(error).__name__})"
 
+        # Queda en la bitácora: alguien decidió facturar un periodo,
+        # y eso marca ventas como facturadas de forma irreversible.
+        try:
+            from app.services.bitacora_service import BitacoraService
+
+            BitacoraService().registrar(
+                id_empleado, "BLOQUE_FACTURADO", "FACTURA", None,
+                {
+                    "id_bloque": id_bloque,
+                    "desde": desde.isoformat(),
+                    "hasta": hasta.isoformat(),
+                    "total": str(total),
+                    "unidades": propuesto.unidades,
+                    "estado": estado,
+                },
+            )
+        except Exception as error:  # noqa: BLE001
+            from flask import current_app
+
+            current_app.logger.warning(
+                "No se pudo anotar la factura en bloque %s: %s",
+                id_bloque, error,
+            )
+
         return {
             "id_bloque": id_bloque,
             "total": total,

@@ -124,7 +124,84 @@ def detalle(id_factura):
         factura=factura,
         abonos=servicio.abonos_de(id_factura),
         correo_disponible=ServicioCorreo.configurado(),
+        comprobante=_estado_sri(id_factura),
     )
+
+
+def _estado_sri(id_factura: int) -> dict | None:
+    """El comprobante electrónico de la factura, si lo tiene.
+
+    Va en la pantalla porque si no, una factura que el SRI rechazó es
+    invisible: la venta se ve bien y nadie se entera de que al cliente
+    le falta su factura.
+    """
+    from app.db import obtener_cursor
+
+    with obtener_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT sri_estado, sri_mensaje, sri_secuencial, sri_intentos,
+                   sri_establecimiento, sri_punto_emision,
+                   sri_autorizacion, sri_fecha_autorizacion
+              FROM facturas WHERE id_factura = %s
+            """,
+            (id_factura,),
+        )
+        fila = cursor.fetchone()
+    if fila is None or fila["sri_estado"] is None:
+        return None
+    datos = dict(fila)
+    datos["numero"] = (
+        f"{datos['sri_establecimiento']}-{datos['sri_punto_emision']}-"
+        f"{str(datos['sri_secuencial']).zfill(9)}"
+        if datos["sri_secuencial"] else None
+    )
+    datos["rechazada"] = datos["sri_estado"] in ("NO_AUTORIZADA", "DEVUELTA")
+    datos["en_camino"] = datos["sri_estado"] in (
+        "PENDIENTE", "FIRMADA", "ENVIADA"
+    )
+    return datos
+
+
+@bp.route("/<int:id_factura>/reemitir", methods=["POST"])
+@admin_requerido
+def reemitir(id_factura):
+    """Vuelve a emitir una factura que el SRI rechazó.
+
+    Una rechazada no se arregla reintentando: el SRI devolvería el
+    mismo error. Hay que corregir el dato y emitir un comprobante
+    nuevo, con otro número.
+    """
+    from app.services.sri_service import ServicioSri
+
+    sin_identificar = request.form.get("consumidor_final") == "si"
+    try:
+        estado = ServicioSri().reemitir(
+            id_factura,
+            consumidor_final=sin_identificar,
+            id_empleado=g.empleado["id_empleado"],
+        )
+    except ValueError as error:
+        flash(str(error), "error")
+    except Exception as error:  # noqa: BLE001
+        flash(
+            f"No se pudo emitir: {error}. La factura quedó con su "
+            "comprobante nuevo reservado; reintente más tarde.", "error",
+        )
+    else:
+        if estado == "AUTORIZADA":
+            flash("El SRI autorizó la factura.", "ok")
+        elif estado in ("NO_AUTORIZADA", "DEVUELTA"):
+            flash(
+                "El SRI la volvió a rechazar. Revise el motivo abajo.",
+                "error",
+            )
+        else:
+            flash(
+                "La factura se envió y todavía no se resuelve. "
+                "Vuelva a mirar en un momento.", "aviso",
+            )
+    return redirect(url_for("facturas.detalle", id_factura=id_factura))
 
 
 @bp.route("/bloques", methods=["GET", "POST"])

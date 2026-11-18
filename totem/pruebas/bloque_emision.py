@@ -168,6 +168,23 @@ with app.app_context():
     revisar("el bloque no aparece entre las ventas",
             cursor is not None)
 
+    print("\nQUEDA EN LA BITACORA")
+    # Facturar un periodo marca ventas de forma irreversible: tiene
+    # que quedar quien lo hizo y cuando.
+    with obtener_cursor() as cursor:
+        cursor.execute(
+            "SELECT detalle FROM bitacora WHERE accion = 'BLOQUE_FACTURADO' "
+            "ORDER BY id_bitacora DESC LIMIT %s", (len(resultados),)
+        )
+        anotados = [dict(f) for f in cursor.fetchall()]
+    revisar("se anoto una vez por factura emitida",
+            len(anotados) == len(resultados),
+            f"{len(anotados)} de {len(resultados)}")
+    revisar("con el periodo y el total",
+            anotados and "desde" in str(anotados[0]["detalle"])
+            and "total" in str(anotados[0]["detalle"]),
+            str(anotados[0]["detalle"])[:70] if anotados else "")
+
     print("\nNO SE FACTURA DOS VECES")
     segundo = servicio.resumen(hoy, hoy)
     revisar("ya no queda nada pendiente", segundo["unidades"] == 0,
