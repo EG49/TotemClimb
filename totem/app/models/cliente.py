@@ -32,6 +32,10 @@ class Cliente:
     cedula: str | None = None
     fecha_nacimiento: date | None = None
     correo: str | None = None
+    # Su correo rebotó: hay que preguntarle el bueno. Se limpia solo
+    # cuando alguien se lo corrige.
+    correo_rebotado_en: object | None = None
+    correo_rebote_motivo: str | None = None
     telefono: str | None = None
     genero: str | None = None
     contacto_emergencia: str | None = None

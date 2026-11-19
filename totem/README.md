@@ -125,7 +125,7 @@ línea por visita llenaría el archivo de ruido.
 
 Cuando algo falla, el usuario ve una pantalla propia —404 o 500— con
 el menú y la marca, no la pantalla pelada de Flask. La de 500 incluye
-un consejo que importa en el mostrador: **si estabas cobrando, revisá
+un consejo que importa en el mostrador: **si estaba cobrando, revise
 en Facturas antes de volver a cobrar**, porque la venta pudo haberse
 guardado antes del fallo.
 
@@ -405,6 +405,55 @@ Hay que usar este script y no el botón de la aplicación. El botón dice
 "Enviando..." siempre, porque el envío sale en segundo plano y la
 pantalla no espera el resultado. El script sí espera, y cuando falla
 explica cuál de las causas conocidas es.
+
+### Saber cuáles correos NO llegaron
+
+Que el correo salga no quiere decir que haya llegado. Si la dirección
+está mal escrita, el servidor del gimnasio lo acepta igual y el aviso
+de rechazo vuelve minutos después, cuando ya nadie está mirando. Sin
+leer ese aviso, la factura queda como enviada y el cliente nunca la
+recibió.
+
+Hay tres defensas, en orden de cuándo actúan:
+
+1. **Al registrar, se revisa que el dominio exista.** Una consulta al
+   DNS: si `micorreo.ec` no tiene servidor de correo, ahí no le llega
+   nada a nadie y no se guarda. Si el DNS no responde —sin internet, o
+   un DNS que miente— el correo se acepta: que no se pueda inscribir a
+   un cliente por falta de señal sería mucho peor que aceptar una
+   dirección con un error.
+2. **Se sugiere la corrección de los dominios mal escritos.** Si
+   alguien escribe `@gmial.com` aparece "¿Quiso decir gmail.com?" con
+   un botón para corregirlo. Solo sugiere: un dominio raro puede ser
+   perfectamente real.
+3. **Se leen los rebotes.** Esto es lo único que confirma de verdad un
+   correo malo, y llega después del envío:
+
+```bash
+python -m scripts.revisar_rebotes
+```
+
+Conviene correrlo una vez al día, junto con `sri_reintentar`. Lee el
+buzón de `MAIL_REMITENTE` por IMAP —solo lee: no borra ni marca como
+leído—, marca la factura cuyo correo rebotó y señala al cliente, para
+que la próxima vez que venga alguien le pregunte el correo bueno. La
+marca se quita sola cuando se le corrige la dirección.
+
+Hace falta configurar `IMAP_SERVIDOR`, `IMAP_USUARIO` e
+`IMAP_PASSWORD` en el `.env`; con Gmail son la misma cuenta y la misma
+contraseña de aplicación del envío. Si queda vacío, todo lo demás
+funciona igual: simplemente no se detectan los correos que no llegan.
+
+Lo que **no** se hace es preguntarle al servidor del destinatario si
+el buzón existe antes de enviar. Suena a la solución obvia y no
+funciona: Gmail y Outlook responden que sí a todo, y hacerlo seguido
+hace que marquen como spam la dirección del gimnasio.
+
+De dónde vienen los rebotes está detrás de una interfaz
+(`app/services/rebotes/fuente.py`). Hoy es un buzón IMAP; cuando el
+gimnasio tenga dominio propio y un proveedor transaccional, los
+rebotes llegan por otro camino y se escribe una clase al lado sin
+tocar el resto.
 
 **Cómo está pensado:**
 

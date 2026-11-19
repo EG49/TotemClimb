@@ -18,6 +18,15 @@ MINIMO = 4.5
 # del final del color en la plantilla: 0x22 = 34, sobre 255.
 TRANSPARENCIA_FONDO = 34 / 255
 
+# Sobre qué se apoya ese fondo semitransparente. No es el blanco: en
+# el calendario, los días del mes vecino tienen su propio gris
+# (rgba(204,204,204,0.14) en .celda.fuera), y el recuadro del evento
+# se mezcla encima. Asumiendo blanco, el contraste calculado sale
+# mejor que el real y los avisos de esos días quedaban en 4.42:1,
+# apenas por debajo. Se parte del fondo más oscuro sobre el que la
+# marca puede caer, así el cálculo vale para todos los casos.
+FONDO_BASE = tuple(round(255 - 0.14 * (255 - 204)) for _ in range(3))
+
 
 def _a_rgb(color: str) -> tuple[int, int, int] | None:
     color = (color or "").strip().lstrip("#")
@@ -45,9 +54,14 @@ def contraste(uno, otro) -> float:
     return (max(a, b) + 0.05) / (min(a, b) + 0.05)
 
 
-def sobre_blanco(rgb, parte: float) -> tuple[float, float, float]:
-    """El color mezclado con blanco, que es el fondo que se ve."""
-    return tuple(c * parte + 255 * (1 - parte) for c in rgb)
+def sobre_blanco(rgb, parte: float, base=None) -> tuple[float, float, float]:
+    """El color mezclado con el fondo de abajo, que es lo que se ve.
+
+    Se sigue llamando así porque ese fondo casi siempre es blanco; el
+    parámetro ``base`` existe para los casos en que no lo es.
+    """
+    debajo = FONDO_BASE if base is None else base
+    return tuple(c * parte + d * (1 - parte) for c, d in zip(rgb, debajo))
 
 
 def legible(color: str, por_omision: str = "#2B3210") -> str:

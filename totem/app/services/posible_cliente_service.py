@@ -25,6 +25,7 @@ from app.repositories.posible_cliente_repo import PosibleClienteRepositorio
 from app.services import bitacora_service as bit
 from app.services.aviso_clase_service import AvisoClaseService
 from app.services.bitacora_service import BitacoraService
+from app.services.correo_dominio import dominio_de, dominio_recibe_correo
 from app.services.validaciones import (
     ErrorValidacion,
     limpiar,
@@ -99,6 +100,11 @@ class PosibleClienteService:
             )
         elif not validar_correo(correo):
             errores["correo"] = "Ese correo no tiene un formato válido."
+        elif not dominio_recibe_correo(dominio_de(correo)):
+            errores["correo"] = (
+                f"El dominio «{dominio_de(correo)}» no recibe correo. "
+                "Revise que esté bien escrito."
+            )
 
         if datos.get("telefono") and not validar_celular(datos["telefono"]):
             errores["telefono"] = "El celular debe tener 10 dígitos y empezar en 09."

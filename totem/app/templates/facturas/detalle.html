@@ -116,6 +116,48 @@
 </div>
 {% endif %}
 
+{# ── Los correos de esta factura ───────────────────────────────
+   Que el correo haya salido no quiere decir que haya llegado. El
+   rebote vuelve minutos después, cuando ya nadie está mirando; acá
+   es donde se ve. #}
+{% if envios %}
+<div class="tarjeta" style="margin-top:22px;">
+  <div class="seccion">Envíos por correo</div>
+  <table class="tabla-items" style="display:table; margin-top:12px;">
+    <tbody>
+      {% for envio in envios %}
+        <tr>
+          <td>
+            {{ envio.destinatario }}
+            {% if envio.estado == 'REBOTADO' %}
+              <div class="meta nota" style="color:var(--error);">
+                No se pudo entregar{% if envio.motivo %} — {{ envio.motivo }}{% endif %}
+              </div>
+            {% endif %}
+          </td>
+          <td class="meta">{{ envio.enviado_en.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td style="text-align:right;">
+            {% if envio.estado == 'REBOTADO' %}
+              <span class="pill vencido">Rebotó</span>
+            {% elif envio.estado == 'FALLIDO' %}
+              <span class="pill por_vencer">No salió</span>
+            {% else %}
+              <span class="pill vigente">Enviado</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if envios | selectattr('estado', 'equalto', 'REBOTADO') | list %}
+    <div class="meta nota" style="margin-top:10px;">
+      Un correo que rebota no se reintenta solo: corrija la dirección en
+      la ficha del cliente y vuelva a enviarlo desde acá.
+    </div>
+  {% endif %}
+</div>
+{% endif %}
+
 {# ── El comprobante electrónico ────────────────────────────────
    Sin esto, una factura que el SRI rechazó es invisible: la venta
    se ve perfecta y nadie se entera de que al cliente le falta su

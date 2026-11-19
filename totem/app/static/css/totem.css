@@ -307,6 +307,29 @@ a.btn-primary{ text-decoration:none; }
 .campo input.con-error{ border-color:var(--error); background:rgba(179,38,30,0.03); }
 .campo .error{ color:var(--error); font-size:12px; margin-top:5px; }
 
+/* Aviso bajo un campo: lo que el servidor contesta al revisar el correo
+   antes de guardar. "es-duda" solo sugiere; "es-error" avisa de algo
+   que al guardar va a ser rechazado. Los dos colores estan medidos
+   contra el fondo del formulario. */
+.aviso-campo{ font-size:12px; margin-top:5px; line-height:1.5; }
+.aviso-campo.es-duda{ color:#7A5200; }
+.aviso-campo.es-error{ color:var(--error); }
+.aviso-aplicar{
+  font:inherit; font-size:12px; color:var(--teal-texto);
+  background:none; border:none; padding:0; margin-left:2px;
+  text-decoration:underline; cursor:pointer;
+}
+.aviso-aplicar:hover{ opacity:.8; }
+
+/* El correo de este cliente rebotó: hay que preguntarle el bueno. */
+.aviso-rebote{
+  grid-column:1 / -1;
+  background:rgba(179,38,30,0.06); border:1px solid rgba(179,38,30,0.22);
+  border-radius:9px; padding:11px 13px; margin:-6px 0 4px;
+  font-size:12.5px; line-height:1.55; color:#8A2017;
+}
+.aviso-rebote-motivo{ font-style:italic; }
+
 .caja-emergencia{
   background:rgba(51,149,160,0.05); border:1px dashed var(--gray-light);
   border-radius:10px; padding:18px;

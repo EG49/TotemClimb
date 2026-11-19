@@ -19,8 +19,8 @@ SELECT 'TOTEM - verificacion de la base';
 SELECT '';
 
 -- ---------- 1. Estructura ----------
-SELECT CASE WHEN COUNT(*) >= 15 THEN 'OK    ' || COUNT(*) || ' tablas'
-            ELSE 'FALTA tablas: hay ' || COUNT(*) || ', deberian ser 15 o mas' END
+SELECT CASE WHEN COUNT(*) >= 20 THEN 'OK    ' || COUNT(*) || ' tablas'
+            ELSE 'FALTA tablas: hay ' || COUNT(*) || ', deberian ser 20 o mas' END
   FROM information_schema.tables
  WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 
@@ -183,6 +183,21 @@ SELECT CASE WHEN pg_get_constraintdef(oid) LIKE '%COMPROBANTE_REEMITIDO%'
   FROM pg_constraint
  WHERE conname = 'chk_bitacora_accion';
 
+-- Rebotes de correo: saber cuales comprobantes NO llegaron.
+SELECT CASE WHEN COUNT(*) = 2
+            THEN 'OK    los correos enviados quedan registrados'
+            ELSE 'FALTA correr alter-envios-correo.sql (sin esto, un'
+                 || ' comprobante que rebota se da por entregado)' END
+  FROM information_schema.tables
+ WHERE table_name IN ('envios_correo', 'rebotes_revision');
+
+SELECT CASE WHEN COUNT(*) = 2
+            THEN 'OK    la ficha del cliente avisa si su correo rebota'
+            ELSE 'FALTA correr alter-envios-correo.sql' END
+  FROM information_schema.columns
+ WHERE table_name = 'clientes'
+   AND column_name IN ('correo_rebotado_en', 'correo_rebote_motivo');
+
 -- Y el punto de emision cargado, que es lo unico de esta seccion que
 -- no arregla una migracion sino una decision: cual usa el gimnasio.
 --
@@ -215,3 +230,6 @@ SELECT 'Las migraciones del SRI van en este orden:';
 SELECT '  1. alter-sri-secuenciales.sql';
 SELECT '  2. alter-sri-bloques.sql';
 SELECT '  3. alter-bitacora-sri.sql';
+SELECT '';
+SELECT 'Y despues:';
+SELECT '  4. alter-envios-correo.sql';

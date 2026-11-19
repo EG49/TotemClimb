@@ -5,6 +5,7 @@ from flask import (
     abort,
     flash,
     g,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -13,6 +14,11 @@ from flask import (
 
 from app.security import login_requerido
 from app.services.cliente_service import ClienteService
+from app.services.correo_dominio import (
+    dominio_de,
+    dominio_recibe_correo,
+    sugerir_dominio,
+)
 from app.services.validaciones import ErrorValidacion
 
 
@@ -193,3 +199,33 @@ def quitar_representante(id_cliente):
     ClienteService().quitar_representante(id_cliente, g.empleado["id_empleado"])
     flash("El cliente quedó como titular independiente.", "ok")
     return redirect(url_for("clientes.editar", id_cliente=id_cliente))
+
+
+@bp.route("/revisar-correo")
+@login_requerido
+def revisar_correo():
+    """Revisa un correo mientras se lo escribe, para el aviso en pantalla.
+
+    Esto es solo para avisar antes de guardar. La validación de verdad
+    la hace ClienteService al guardar, porque esta ruta se puede saltar
+    y el navegador no es de fiar.
+    """
+    correo = (request.args.get("correo") or "").strip().lower()
+    if not correo or "@" not in correo:
+        return jsonify({"aviso": None, "tipo": None})
+
+    dominio = dominio_de(correo)
+    if not dominio_recibe_correo(dominio):
+        return jsonify({
+            "tipo": "error",
+            "aviso": f"El dominio «{dominio}» no recibe correo.",
+        })
+
+    sugerencia = sugerir_dominio(correo)
+    if sugerencia:
+        return jsonify({
+            "tipo": "duda",
+            "aviso": f"¿Quiso decir {sugerencia}?",
+            "sugerencia": sugerencia,
+        })
+    return jsonify({"aviso": None, "tipo": None})

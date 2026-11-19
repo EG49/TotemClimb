@@ -19,6 +19,7 @@ from flask import (
 from app.security import admin_requerido, login_requerido
 from app.services.correo_service import ServicioCorreo
 from app.services.factura_service import FacturaService
+from app.services.rebote_service import ReboteService
 from app.services.validaciones import ErrorValidacion
 
 bp = Blueprint("facturas", __name__, url_prefix="/facturas")
@@ -126,6 +127,9 @@ def detalle(id_factura):
         abonos=servicio.abonos_de(id_factura),
         correo_disponible=ServicioCorreo.configurado(),
         comprobante=_estado_sri(id_factura),
+        # Que el correo haya salido no quiere decir que haya llegado.
+        # Si rebotó, acá es donde alguien lo va a ver.
+        envios=ReboteService.de_la_factura(id_factura),
     )
 
 

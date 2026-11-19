@@ -15,6 +15,7 @@ from app.models.cliente import Cliente
 from app.repositories.cliente_repo import ClienteRepositorio
 from app.services import bitacora_service as bit
 from app.services.bitacora_service import BitacoraService
+from app.services.correo_dominio import dominio_de, dominio_recibe_correo
 from app.services.validaciones import (
     ErrorValidacion,
     limpiar,
@@ -119,8 +120,17 @@ class ClienteService:
                 errores["cedula"] = "Ya existe un cliente con esa cédula."
 
         correo = datos.get("correo")
-        if correo and not validar_correo(correo):
-            errores["correo"] = "El correo no tiene un formato válido."
+        if correo:
+            if not validar_correo(correo):
+                errores["correo"] = "El correo no tiene un formato válido."
+            elif not dominio_recibe_correo(dominio_de(correo)):
+                # El dominio no existe o no recibe correo: lo que se
+                # mande ahí no le llega a nadie. Si el DNS no responde
+                # esta función devuelve True y el correo pasa.
+                errores["correo"] = (
+                    f"El dominio «{dominio_de(correo)}» no recibe correo. "
+                    "Revise que esté bien escrito."
+                )
 
         telefono = datos.get("telefono")
         if telefono and not validar_celular(telefono):
@@ -204,6 +214,15 @@ class ClienteService:
 
         cambios = self._diferencias(actual, datos)
         self.repositorio.actualizar(id_cliente, datos)
+
+        # Si le corrigieron el correo, la marca de rebote ya no
+        # corresponde: era de la dirección vieja. Dejarla puesta haría
+        # que alguien le vuelva a preguntar por un correo que ya se
+        # arregló.
+        if (actual.correo or "") != (datos.get("correo") or ""):
+            from app.services.rebote_service import ReboteService
+
+            ReboteService.limpiar_marca(id_cliente)
 
         if cambios:
             self.bitacora.registrar(

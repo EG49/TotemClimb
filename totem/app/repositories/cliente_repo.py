@@ -29,6 +29,7 @@ _SELECT_BASE = """
     SELECT c.id_cliente, c.nombre, c.apellido, c.cedula, c.fecha_nacimiento,
            c.correo, c.telefono, c.genero, c.contacto_emergencia, c.referencia,
            c.seguro_nombre, c.seguro_numero, c.id_representante, c.fecha_registro,
+           c.correo_rebotado_en, c.correo_rebote_motivo,
            r.nombre || ' ' || r.apellido AS representante_nombre,
            (SELECT count(*) FROM clientes h
              WHERE h.id_representante = c.id_cliente) AS menores_a_cargo,
