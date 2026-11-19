@@ -15,6 +15,15 @@ _ESTADOS = {
     "anuladas": "f.estado = 'ANULADA'",
 }
 
+_SRI = {
+    "AUTORIZADA": "f.sri_estado = 'AUTORIZADA'",
+    "RECHAZADA": "f.sri_estado IN ('NO_AUTORIZADA', 'DEVUELTA')",
+    "EN_CAMINO": "f.sri_estado IN ('PENDIENTE', 'FIRMADA', 'ENVIADA')",
+    # Ventas que no generaron comprobante: las de puros productos, y
+    # las de antes de configurar el SRI.
+    "SIN": "f.sri_estado IS NULL",
+}
+
 _TIPOS = {
     "todos": None,
     "membresias": (
@@ -69,6 +78,14 @@ class ConsultaFacturaRepositorio:
             condiciones.append("f.metodo_pago = %s")
             parametros.append(filtros["metodo"])
 
+        # El estado ante el SRI. "En camino" y "rechazada" agrupan
+        # varios estados internos: a quien mira la lista le importa si
+        # la factura salió, si va a salir o si hay que hacer algo, no
+        # el nombre exacto del paso en que quedó.
+        sri = (filtros.get("sri") or "").strip()
+        if sri:
+            condiciones.append(_SRI.get(sri, "TRUE"))
+
         where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
         return where, parametros
 
@@ -80,6 +97,7 @@ class ConsultaFacturaRepositorio:
             cursor.execute(
                 f"""
                 SELECT f.id_factura, f.numero_factura, f.fecha, f.metodo_pago,
+                       f.sri_estado,
                        f.descuento_porcentaje, f.iva_porcentaje, f.subtotal,
                        f.iva, f.total, f.estado, f.motivo_anulacion,
                        f.saldo_pendiente,

@@ -57,6 +57,16 @@
     </select>
   </div>
   <div class="campo-filtro">
+    <label>SRI</label>
+    <select name="sri">
+      {% for v, e in [('', 'Todas'), ('AUTORIZADA','Autorizadas'),
+                      ('RECHAZADA','Rechazadas'), ('EN_CAMINO','En camino'),
+                      ('SIN','Sin comprobante')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.sri == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo-filtro">
     <label>Tipo</label>
     <select name="tipo">
       {% for v, e in [('todos','Todos'), ('membresias','Membresías'), ('productos','Productos')] %}
@@ -140,7 +150,7 @@
   <table>
     <thead>
       <tr><th>N° factura</th><th>Cliente</th><th>Fecha</th><th>Ítems</th>
-          <th>Método</th><th>Monto</th><th>Estado</th><th></th></tr>
+          <th>Método</th><th>Monto</th><th>Estado</th><th>SRI</th><th></th></tr>
     </thead>
     <tbody>
       {% for f in facturas %}

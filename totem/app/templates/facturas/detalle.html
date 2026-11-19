@@ -18,6 +18,8 @@
        pide cuando ya no está la pantalla del cobro. Una factura anulada
        no se manda: ya no vale. #}
     {% if correo_disponible and factura.cliente_correo and factura.estado != 'ANULADA' %}
+      <a class="btn-ghost" target="_blank" rel="noopener"
+         href="{{ url_for('facturas.imprimir', id_factura=factura.id_factura) }}">Imprimir</a>
       <form method="post"
             action="{{ url_for('cobrar.enviar_comprobante', id_factura=factura.id_factura) }}"
             style="display:inline"

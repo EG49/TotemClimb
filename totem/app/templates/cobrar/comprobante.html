@@ -25,7 +25,11 @@
         Sin correo registrado
       </span>
     {% endif %}
-    <button type="button" class="btn-ghost" onclick="window.print()">Imprimir</button>
+    {# Abre el PDF: el RIDE si el SRI autorizo, y si no el comprobante
+   interno, que lo dice en la cara. Imprimir la pagina web sacaba un
+   papel sin ninguna de las dos aclaraciones. #}
+<a class="btn-ghost" target="_blank" rel="noopener"
+   href="{{ url_for('facturas.imprimir', id_factura=factura.id_factura) }}">Imprimir</a>
     <a class="btn-primary" href="{{ url_for('cobrar.cobrar') }}">Cobrar otra</a>
   </div>
 </div>
