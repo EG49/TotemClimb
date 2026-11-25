@@ -134,13 +134,50 @@ SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM configuracion WHERE clave = 'gym_dire
 SELECT '';
 
 -- ---------- 4. Facturas emitidas ----------
-SELECT CASE WHEN COUNT(*) = 0
-            THEN 'OK    todas las facturas cuadran (base + IVA = total)'
-            ELSE 'REVISAR ' || COUNT(*) || ' factura(s) donde base + IVA <> total.'
-                 || ' Si son anteriores al cambio de IVA es normal: se'
-                 || ' cobraron con el calculo viejo y no se tocan.' END
-  FROM facturas
- WHERE estado <> 'ANULADA' AND subtotal - (subtotal * descuento_porcentaje / 100) <> total;
+-- Las facturas donde el subtotal menos el descuento no da el total.
+--
+-- Antes del cambio de IVA el subtotal guardaba la base y el total le
+-- sumaba el IVA encima: subtotal + iva = total. Ahora los precios ya
+-- incluyen IVA, el subtotal tambien, y la columna iva guarda el IVA
+-- CONTENIDO en el total, no sumado encima; asi que subtotal menos
+-- descuento tiene que dar el total exacto.
+--
+-- La distincion se hace con el iva guardado en cada factura y no
+-- suponiendo una tasa, porque entre las viejas hay cobradas al 12% y
+-- al 14%.
+--
+-- Este aviso antes decia "si son anteriores al cambio de IVA es
+-- normal" y dejaba la decision al que lo leia. Un aviso que siempre
+-- hay que interpretar es un aviso que se acaba ignorando, asi que
+-- ahora la consulta lo decide: si el total coincide con el calculo
+-- viejo, esta explicado y no se toca; si no coincide con ninguno de
+-- los dos, no tiene explicacion y hay que mirarlo.
+WITH descuadres AS (
+    SELECT numero_factura, fecha, subtotal, total,
+           abs(subtotal + iva - total) <= 0.02 AS calculo_viejo
+      FROM facturas
+     WHERE estado <> 'ANULADA'
+       AND subtotal - (subtotal * descuento_porcentaje / 100) <> total
+)
+SELECT CASE
+    WHEN (SELECT COUNT(*) FROM descuadres) = 0
+        THEN 'OK    todas las facturas cuadran (subtotal - descuento = total)'
+    WHEN (SELECT COUNT(*) FROM descuadres WHERE NOT calculo_viejo) = 0
+        THEN 'OK    ' || (SELECT COUNT(*) FROM descuadres)
+             || ' factura(s) con el calculo viejo de IVA, de '
+             || (SELECT to_char(min(fecha), 'DD/MM/YYYY') FROM descuadres)
+             || ' a '
+             || (SELECT to_char(max(fecha), 'DD/MM/YYYY') FROM descuadres)
+             || '. Es lo esperado: se cobraron asi y no se tocan.'
+    ELSE 'REVISAR ' || (SELECT COUNT(*) FROM descuadres WHERE NOT calculo_viejo)
+         || ' factura(s) que no cuadran ni con el calculo viejo ni con el'
+         || ' nuevo: '
+         || (SELECT string_agg(numero_factura, ', ' ORDER BY numero_factura)
+               FROM descuadres WHERE NOT calculo_viejo)
+         || '. Las otras '
+         || (SELECT COUNT(*) FROM descuadres WHERE calculo_viejo)
+         || ' son del calculo viejo y estan bien.'
+END;
 
 SELECT '';
 
