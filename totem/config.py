@@ -46,6 +46,20 @@ class Config:
     MAIL_REMITENTE = os.getenv("MAIL_REMITENTE")
     MAIL_NOMBRE_REMITENTE = os.getenv("MAIL_NOMBRE_REMITENTE", "Totem Climb Gym")
 
+    # ─── Rebotes ──────────────────────────────────────────────────
+    # Que el correo salga no quiere decir que haya llegado. Cuando la
+    # dirección no existe, el aviso vuelve al buzón del remitente
+    # minutos después. Esto es para leer ese buzón y enterarse.
+    # Con Gmail: imap.gmail.com / 993 / la misma cuenta y la misma
+    # contraseña de aplicación del envío.
+    # Si queda vacío, los correos que no llegan no se detectan: todo
+    # lo demás sigue funcionando igual.
+    IMAP_SERVIDOR = os.getenv("IMAP_SERVIDOR")
+    IMAP_PUERTO = int(os.getenv("IMAP_PUERTO", "993"))
+    IMAP_USUARIO = os.getenv("IMAP_USUARIO")
+    IMAP_PASSWORD = os.getenv("IMAP_PASSWORD")
+    IMAP_CARPETA = os.getenv("IMAP_CARPETA", "INBOX")
+
     # ─── Facturación electrónica (SRI) ────────────────────────────
     # Mientras falte cualquiera de los obligatorios, el sistema cobra
     # igual y no emite comprobante electrónico. Es el estado del

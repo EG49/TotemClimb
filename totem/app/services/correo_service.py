@@ -262,6 +262,7 @@ class ServicioCorreo:
         datos = {
             "numero": factura.numero_factura,
             "id_factura": factura.id_factura,
+            "id_cliente": getattr(factura, "id_cliente", None),
             "destino": destino,
         }
         hilo = threading.Thread(
@@ -353,6 +354,7 @@ class ServicioCorreo:
         datos = {
             "numero": factura.numero_factura,
             "id_factura": factura.id_factura,
+            "id_cliente": getattr(factura, "id_cliente", None),
             "destino": destino,
             "autorizacion": autorizacion.numero,
         }
@@ -476,6 +478,23 @@ class ServicioCorreo:
                     "Comprobante %s enviado a %s", datos["numero"], datos["destino"]
                 )
                 self._registrar(id_empleado, bit.CORREO_ENVIADO, datos, {})
+                # Que el servidor lo haya aceptado no quiere decir que
+                # haya llegado. Se guarda el Message-ID para poder
+                # reconocer el rebote si vuelve.
+                self._anotar_envio(mensaje, datos)
+
+    @staticmethod
+    def _anotar_envio(mensaje: EmailMessage, datos: dict) -> None:
+        """Deja el mensaje anotado para poder casarlo con su rebote."""
+        from app.services.rebote_service import ReboteService
+
+        ReboteService.registrar_envio(
+            destinatario=datos["destino"],
+            message_id=mensaje.get("Message-ID", ""),
+            asunto=mensaje.get("Subject", ""),
+            id_factura=datos.get("id_factura"),
+            id_cliente=datos.get("id_cliente"),
+        )
 
     def _registrar(self, id_empleado, accion, datos, extra) -> None:
         try:

@@ -13,6 +13,7 @@
            value="{{ datos.get(nombre) or '' }}"
            class="{{ 'con-error' if errores.get(nombre) }}">
     {% if errores.get(nombre) %}<div class="error">{{ errores[nombre] }}</div>{% endif %}
+    <div class="aviso-campo" id="aviso-{{ nombre }}" hidden></div>
   </div>
 {% endmacro %}
 
@@ -40,6 +41,15 @@
     {{ campo('fecha_nacimiento', 'Fecha de nacimiento', tipo='date') }}
     {{ campo('cedula', 'Cédula', marcador='0912345678', opcional=true) }}
     {{ campo('correo', 'Correo electrónico', tipo='email', marcador='cliente@correo.com', opcional=true) }}
+    {% if editando and cliente.correo_rebotado_en %}
+      <div class="aviso-rebote">
+        <strong>Este correo no recibe.</strong>
+        El {{ cliente.correo_rebotado_en.strftime('%d/%m/%Y') }} el envío volvió
+        rechazado{% if cliente.correo_rebote_motivo %}:
+        <span class="aviso-rebote-motivo">{{ cliente.correo_rebote_motivo }}</span>{% endif %}
+        Pregúntele el correo correcto; al guardarlo, este aviso desaparece.
+      </div>
+    {% endif %}
     {{ campo('telefono', 'Celular', tipo='tel', marcador='0912345678', opcional=true) }}
     <div class="campo">
       <label for="genero">Género <span class="opcional">(opcional)</span></label>
@@ -178,6 +188,49 @@
     const plantilla = document.getElementById('plantilla-menor');
     document.getElementById('lista-menores').appendChild(plantilla.content.cloneNode(true));
   }
+  // Aviso del correo: se revisa al salir del campo, no al teclear, para
+  // no consultar el servidor con el correo a medio escribir.
+  (function(){
+    const campo = document.getElementById('correo');
+    const aviso = document.getElementById('aviso-correo');
+    if (!campo || !aviso) return;
+
+    let ultimo = '';
+    campo.addEventListener('blur', async function(){
+      const valor = campo.value.trim().toLowerCase();
+      if (valor === ultimo) return;
+      ultimo = valor;
+      aviso.hidden = true;
+      if (!valor.includes('@')) return;
+      try {
+        const r = await fetch('{{ url_for("clientes.revisar_correo") }}?correo='
+                              + encodeURIComponent(valor));
+        if (!r.ok) return;
+        const datos = await r.json();
+        if (!datos.aviso) return;
+        aviso.textContent = datos.aviso;
+        aviso.className = 'aviso-campo ' + (datos.tipo === 'error' ? 'es-error' : 'es-duda');
+        if (datos.sugerencia) {
+          const boton = document.createElement('button');
+          boton.type = 'button';
+          boton.className = 'aviso-aplicar';
+          boton.textContent = 'Corregir';
+          boton.addEventListener('click', function(){
+            campo.value = datos.sugerencia;
+            ultimo = datos.sugerencia;
+            aviso.hidden = true;
+          });
+          aviso.appendChild(document.createTextNode(' '));
+          aviso.appendChild(boton);
+        }
+        aviso.hidden = false;
+      } catch (e) {
+        // Sin conexión no se avisa nada: el aviso es una ayuda, no un
+        // requisito. Al guardar se vuelve a revisar en el servidor.
+      }
+    });
+  })();
+
   // Si el formulario volvió con errores en algún menor, se reabre la sección.
   {% if 'menor_' in errores.keys()|join(' ') %}
     document.getElementById('chk-menores').checked = true;

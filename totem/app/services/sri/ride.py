@@ -67,9 +67,51 @@ class Autorizacion:
     ambiente: str
     comprobante: str
 
+    # Marca al documento que NO es una factura, sino el comprobante
+    # interno de una venta que el SRI todavía no autorizó o rechazó.
+    es_interno: bool = False
+
     @property
     def es_prueba(self) -> bool:
         return self.ambiente.strip().upper() == AMBIENTE_PRUEBAS
+
+    # ─── Lo que distingue a los dos documentos ───────────────────
+    # Juntas acá a propósito: el resto del dibujo es idéntico, y ese
+    # es el punto. Si se separaran en dos funciones, con el tiempo
+    # dejarían de parecerse.
+
+    @property
+    def sin_validez(self) -> bool:
+        """Si hay que avisar que este papel no vale ante el SRI."""
+        return self.es_interno or self.es_prueba
+
+    @property
+    def titulo(self) -> str:
+        return "COMPROBANTE INTERNO" if self.es_interno else "FACTURA"
+
+    @property
+    def marca_de_agua(self) -> str:
+        if self.es_interno:
+            return "SIN VALIDEZ TRIBUTARIA"
+        return "SIN VALIDEZ TRIBUTARIA"
+
+    @property
+    def aviso_pie(self) -> str:
+        if self.es_interno:
+            return ("DOCUMENTO INTERNO DE CONTROL — NO ES UN COMPROBANTE "
+                    "DE VENTA AUTORIZADO POR EL SRI")
+        return ("COMPROBANTE EMITIDO EN EL AMBIENTE DE PRUEBAS — "
+                "SIN VALIDEZ TRIBUTARIA")
+
+    @property
+    def leyenda_pie(self) -> str:
+        if self.es_interno:
+            return ("Comprobante de la venta para control del gimnasio. "
+                    "La factura electrónica se entrega aparte cuando el "
+                    "SRI la autoriza.")
+        return ("Este documento es la representación impresa de un "
+                "comprobante electrónico y tiene la misma validez. "
+                "Verifíquelo en www.sri.gob.ec con la clave de acceso.")
 
 
 def leer_autorizacion(respuesta_xml: str) -> Autorizacion:
@@ -214,8 +256,8 @@ def generar(autorizacion: Autorizacion) -> bytes:
     margen = 15 * mm
     y = alto - margen
 
-    # ─── Marca de prueba, antes que nada ───────────────────────────
-    if autorizacion.es_prueba:
+    # ─── Marca de agua, antes que nada ─────────────────────────────
+    if autorizacion.sin_validez:
         pdf.saveState()
         pdf.setFillGray(0.85)
         pdf.setFont("Helvetica-Bold", 60)
@@ -223,7 +265,7 @@ def generar(autorizacion: Autorizacion) -> bytes:
         # barras y podria estorbar al escanearlo.
         pdf.translate(ancho / 2, alto * 0.32)
         pdf.rotate(45)
-        pdf.drawCentredString(0, 0, "SIN VALIDEZ TRIBUTARIA")
+        pdf.drawCentredString(0, 0, autorizacion.marca_de_agua)
         pdf.restoreState()
 
     # ─── Emisor, con el logo si está ───────────────────────────────
@@ -304,55 +346,81 @@ def generar(autorizacion: Autorizacion) -> bytes:
     x = margen + mitad + 8 * mm
     yd = arriba
     pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawString(x, yd, "FACTURA")
+    pdf.drawString(x, yd, autorizacion.titulo)
     yd -= 16
 
-    numero = (
-        f"{t(trib, 'estab')}-{t(trib, 'ptoEmi')}-{t(trib, 'secuencial')}"
+    # El comprobante interno no tiene establecimiento ni punto de
+    # emisión: lleva solo su número interno. Sin esto salía "--F-0001",
+    # con los guiones del formato del SRI y nada en medio.
+    numero = "-".join(
+        parte for parte in (t(trib, "estab", ""), t(trib, "ptoEmi", ""),
+                            t(trib, "secuencial", ""))
+        if parte
     )
     pdf.setFont("Helvetica-Bold", 9)
     pdf.drawString(x, yd, f"No. {numero}")
     yd -= 14
 
-    pdf.setFont("Helvetica-Bold", 7)
-    pdf.drawString(x, yd, "NÚMERO DE AUTORIZACIÓN")
-    yd -= 9
-    pdf.setFont("Helvetica", 6.5)
-    for linea in _partir(autorizacion.numero, 40):
-        pdf.drawString(x, yd, linea)
-        yd -= 8
+    if autorizacion.es_interno:
+        # Un documento interno NO lleva número de autorización ni
+        # clave de acceso: no los tiene. Poner los rótulos vacíos
+        # sería peor que no ponerlos, porque invita a confundirlo
+        # con una factura a la que simplemente le falta un dato.
+        pdf.setFont("Helvetica-Bold", 7)
+        pdf.drawString(x, yd, "EMITIDO")
+        pdf.setFont("Helvetica", 7)
+        pdf.drawString(x + 55, yd, t(info, "fechaEmision"))
+        yd -= 24
 
-    yd -= 2
-    pdf.setFont("Helvetica-Bold", 7)
-    pdf.drawString(x, yd, "FECHA Y HORA DE AUTORIZACIÓN")
-    yd -= 9
-    pdf.setFont("Helvetica", 7)
-    pdf.drawString(x, yd, _fecha_legible(autorizacion.fecha))
-    yd -= 11
+        pdf.saveState()
+        pdf.setFillColorRGB(0.42, 0.11, 0.11)
+        pdf.setFont("Helvetica-Bold", 8)
+        for linea in ("NO ES UN COMPROBANTE DE VENTA",
+                      "AUTORIZADO POR EL SRI"):
+            pdf.drawString(x, yd, linea)
+            yd -= 10
+        pdf.restoreState()
+        yd -= 6
+    else:
+        pdf.setFont("Helvetica-Bold", 7)
+        pdf.drawString(x, yd, "NÚMERO DE AUTORIZACIÓN")
+        yd -= 9
+        pdf.setFont("Helvetica", 6.5)
+        for linea in _partir(autorizacion.numero, 40):
+            pdf.drawString(x, yd, linea)
+            yd -= 8
 
-    pdf.setFont("Helvetica-Bold", 7)
-    pdf.drawString(x, yd, "AMBIENTE")
-    pdf.setFont("Helvetica", 7)
-    pdf.drawString(x + 55, yd, autorizacion.ambiente)
-    yd -= 10
-    pdf.setFont("Helvetica-Bold", 7)
-    pdf.drawString(x, yd, "EMISIÓN")
-    pdf.setFont("Helvetica", 7)
-    pdf.drawString(x + 55, yd, "NORMAL")
-    yd -= 12
+        yd -= 2
+        pdf.setFont("Helvetica-Bold", 7)
+        pdf.drawString(x, yd, "FECHA Y HORA DE AUTORIZACIÓN")
+        yd -= 9
+        pdf.setFont("Helvetica", 7)
+        pdf.drawString(x, yd, _fecha_legible(autorizacion.fecha))
+        yd -= 11
 
-    pdf.setFont("Helvetica-Bold", 7)
-    pdf.drawString(x, yd, "CLAVE DE ACCESO")
-    yd -= 22
+        pdf.setFont("Helvetica-Bold", 7)
+        pdf.drawString(x, yd, "AMBIENTE")
+        pdf.setFont("Helvetica", 7)
+        pdf.drawString(x + 55, yd, autorizacion.ambiente)
+        yd -= 10
+        pdf.setFont("Helvetica-Bold", 7)
+        pdf.drawString(x, yd, "EMISIÓN")
+        pdf.setFont("Helvetica", 7)
+        pdf.drawString(x + 55, yd, "NORMAL")
+        yd -= 12
 
-    clave = t(trib, "claveAcceso")
-    barras = code128.Code128(
-        clave, barHeight=12 * mm, barWidth=0.33, humanReadable=False
-    )
-    barras.drawOn(pdf, x, yd - 12 * mm + 10)
-    yd -= 12 * mm
-    pdf.setFont("Helvetica", 6)
-    pdf.drawString(x, yd - 2, clave)
+        pdf.setFont("Helvetica-Bold", 7)
+        pdf.drawString(x, yd, "CLAVE DE ACCESO")
+        yd -= 22
+
+        clave = t(trib, "claveAcceso")
+        barras = code128.Code128(
+            clave, barHeight=12 * mm, barWidth=0.33, humanReadable=False
+        )
+        barras.drawOn(pdf, x, yd - 12 * mm + 10)
+        yd -= 12 * mm
+        pdf.setFont("Helvetica", 6)
+        pdf.drawString(x, yd - 2, clave)
 
     y = min(y, yd) - 16
 
@@ -364,12 +432,19 @@ def generar(autorizacion: Autorizacion) -> bytes:
     pdf.setFont("Helvetica", 7.5)
     pdf.drawString(margen + 150, y - 11, t(info, "razonSocialComprador"))
 
-    tipo = t(info, "tipoIdentificacionComprador")
-    pdf.setFont("Helvetica-Bold", 7.5)
-    pdf.drawString(margen + 4, y - 22,
-                   f"{ETIQUETA_IDENTIFICACION.get(tipo, 'Identificación')}:")
-    pdf.setFont("Helvetica", 7.5)
-    pdf.drawString(margen + 150, y - 22, t(info, "identificacionComprador"))
+    # La identificación solo si la hay: en el comprobante interno no
+    # existe, y un rótulo con el espacio en blanco al lado parece un
+    # dato que falta.
+    identificacion = t(info, "identificacionComprador", "")
+    if identificacion:
+        tipo = t(info, "tipoIdentificacionComprador")
+        pdf.setFont("Helvetica-Bold", 7.5)
+        pdf.drawString(
+            margen + 4, y - 22,
+            f"{ETIQUETA_IDENTIFICACION.get(tipo, 'Identificación')}:",
+        )
+        pdf.setFont("Helvetica", 7.5)
+        pdf.drawString(margen + 150, y - 22, identificacion)
 
     pdf.setFont("Helvetica-Bold", 7.5)
     pdf.drawString(margen + 300, y - 22, "Fecha de emisión:")
@@ -486,22 +561,13 @@ def generar(autorizacion: Autorizacion) -> bytes:
     # ─── Pie ───────────────────────────────────────────────────────
     pdf.setFont("Helvetica", 6.5)
     pdf.setFillGray(0.35)
-    if autorizacion.es_prueba:
+    if autorizacion.sin_validez:
         pdf.setFillGray(0)
         pdf.setFont("Helvetica-Bold", 8)
-        pdf.drawCentredString(
-            ancho / 2, margen + 14,
-            "COMPROBANTE EMITIDO EN EL AMBIENTE DE PRUEBAS — "
-            "SIN VALIDEZ TRIBUTARIA"
-        )
+        pdf.drawCentredString(ancho / 2, margen + 14, autorizacion.aviso_pie)
         pdf.setFont("Helvetica", 6.5)
         pdf.setFillGray(0.35)
-    pdf.drawCentredString(
-        ancho / 2, margen,
-        "Este documento es la representación impresa de un comprobante "
-        "electrónico y tiene la misma validez. "
-        "Verifíquelo en www.sri.gob.ec con la clave de acceso."
-    )
+    pdf.drawCentredString(ancho / 2, margen, autorizacion.leyenda_pie)
 
     pdf.showPage()
     pdf.save()
@@ -512,3 +578,94 @@ def generar_desde_respuesta(respuesta_xml: str) -> tuple[bytes, Autorizacion]:
     """Atajo: del XML de respuesta del SRI al PDF."""
     autorizacion = leer_autorizacion(respuesta_xml)
     return generar(autorizacion), autorizacion
+
+
+def comprobante_interno(factura, emisor: dict, iva_porcentaje) -> Autorizacion:
+    """El comprobante de una venta que el SRI no autorizó (o todavía no).
+
+    Arma la MISMA estructura que trae una autorización del SRI, para
+    que la dibuje el mismo código. Es a propósito: si el documento
+    interno se dibujara aparte, con el tiempo dejaría de parecerse al
+    RIDE, y la idea es justamente que se lean igual.
+
+    Lo que no lleva, porque no existe, es el número de autorización y
+    la clave de acceso. En su lugar va el aviso de que no es un
+    comprobante de venta autorizado.
+    """
+    from decimal import ROUND_HALF_UP, Decimal
+    from xml.sax.saxutils import escape
+
+    centavo = Decimal("0.01")
+    total = Decimal(factura.total)
+    iva = Decimal(iva_porcentaje)
+    base = (total / (1 + iva / 100)).quantize(centavo, rounding=ROUND_HALF_UP)
+
+    def nodo(etiqueta, valor):
+        return f"<{etiqueta}>{escape(str(valor))}</{etiqueta}>"
+
+    detalles = []
+    for linea in factura.detalle or []:
+        cantidad = int(linea.get("cantidad") or 1)
+        unitario = Decimal(linea.get("precio_unitario") or 0)
+        subtotal = Decimal(linea.get("subtotal") or 0)
+        # Los importes del comprobante interno van CON IVA, que es lo
+        # que el cliente pagó. No se separa la base por línea: eso es
+        # cosa de la factura, y acá no hay factura.
+        detalles.append(
+            "<detalle>"
+            + nodo("codigoPrincipal", linea.get("codigo") or "—")
+            + nodo("descripcion", linea.get("nombre") or "")
+            + nodo("cantidad", f"{cantidad:.2f}")
+            + nodo("precioUnitario", f"{unitario:.2f}")
+            + nodo("descuento", "0.00")
+            + nodo("precioTotalSinImpuesto", f"{subtotal:.2f}")
+            + "<impuestos><impuesto>"
+            + nodo("codigo", "2") + nodo("codigoPorcentaje", "")
+            + nodo("tarifa", f"{iva:.2f}")
+            + nodo("baseImponible", f"{subtotal:.2f}")
+            + nodo("valor", "0.00")
+            + "</impuesto></impuestos></detalle>"
+        )
+
+    comprobante = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<factura id="comprobante" version="2.1.0"><infoTributaria>'
+        + nodo("ambiente", "")
+        + nodo("razonSocial", emisor.get("razon_social") or "TOTEM CLIMB GYM")
+        + nodo("nombreComercial", emisor.get("nombre_comercial") or "")
+        + nodo("ruc", emisor.get("ruc") or "")
+        + nodo("estab", "") + nodo("ptoEmi", "")
+        + nodo("secuencial", factura.numero_factura or "")
+        + nodo("dirMatriz", emisor.get("direccion") or "")
+        + "</infoTributaria><infoFactura>"
+        + nodo("fechaEmision", factura.fecha.strftime("%d/%m/%Y"))
+        + nodo("dirEstablecimiento", emisor.get("direccion") or "")
+        + nodo("obligadoContabilidad", "NO")
+        + nodo("tipoIdentificacionComprador", "")
+        + nodo("razonSocialComprador", factura.cliente_nombre or "")
+        + nodo("identificacionComprador", "")
+        + nodo("totalSinImpuestos", f"{base:.2f}")
+        + nodo("totalDescuento", "0.00")
+        + "<totalConImpuestos><totalImpuesto>"
+        + nodo("codigo", "2") + nodo("codigoPorcentaje", "")
+        + nodo("baseImponible", f"{base:.2f}")
+        + nodo("valor", f"{total - base:.2f}")
+        + "</totalImpuesto></totalConImpuestos>"
+        + nodo("propina", "0.00")
+        + nodo("importeTotal", f"{total:.2f}")
+        + nodo("moneda", "DOLAR")
+        + "<pagos><pago>"
+        + nodo("formaPago", "01") + nodo("total", f"{total:.2f}")
+        + "</pago></pagos></infoFactura><detalles>"
+        + "".join(detalles)
+        + "</detalles></factura>"
+    )
+
+    return Autorizacion(
+        estado="INTERNO",
+        numero="",
+        fecha="",
+        ambiente="",
+        comprobante=comprobante,
+        es_interno=True,
+    )

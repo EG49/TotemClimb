@@ -261,7 +261,7 @@ class ServicioSri:
             _envios[:] = [h for h in _envios if h.is_alive() or h is hilo]
         hilo.start()
 
-    def emitir(self, id_factura: int) -> str:
+    def emitir(self, id_factura: int, consumidor_final: bool = False) -> str:
         """Arma, firma, envía y consulta. Devuelve el estado final."""
         datos = self._datos_de_la_factura(id_factura)
         if datos is None:
@@ -276,7 +276,7 @@ class ServicioSri:
 
         xml_firmado = datos.get("sri_xml")
         if not xml_firmado:
-            xml = self._armar_xml(datos, clave)
+            xml = self._armar_xml(datos, clave, consumidor_final)
             try:
                 xml_firmado = firmar(
                     xml,
@@ -349,6 +349,116 @@ class ServicioSri:
         )
         return ENVIADA
 
+    # --- Volver a emitir una rechazada ---------------------------
+
+    TOPE_CONSUMIDOR_FINAL = Decimal("200.00")
+
+    def reemitir(self, id_factura: int,
+                 consumidor_final: bool = False,
+                 id_empleado: int | None = None) -> str:
+        """Emite de nuevo una factura que el SRI rechazó.
+
+        Hace falta porque una factura rechazada no se arregla
+        reintentando: el SRI devolvería el mismo error. Hay que
+        corregir el dato y emitir un comprobante NUEVO, con otro
+        número y otra clave de acceso.
+
+        El número anterior queda gastado. Es correcto: ese
+        comprobante existió y el SRI lo rechazó, así que el hueco en
+        la numeración tiene explicación.
+
+        `consumidor_final` emite sin identificar al comprador. Es la
+        salida para una cédula que el SRI no acepta y que no se puede
+        corregir, y solo vale hasta USD 200.
+        """
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT numero_factura, estado, total, sri_estado,
+                       sri_clave_acceso, sri_mensaje
+                  FROM facturas WHERE id_factura = %s
+                """,
+                (id_factura,),
+            )
+            factura = cursor.fetchone()
+
+        if factura is None:
+            raise ValueError(f"no existe la factura {id_factura}")
+        if factura["estado"] == "ANULADA":
+            raise ValueError("la factura está anulada: no se reemite")
+        if factura["sri_estado"] not in (NO_AUTORIZADA, DEVUELTA):
+            estado = factura["sri_estado"] or "sin comprobante"
+            raise ValueError(
+                f"la factura está en {estado} y solo se reemiten las "
+                "rechazadas. Para las que siguen en camino use el "
+                "reintento."
+            )
+        if consumidor_final and Decimal(factura["total"]) > self.TOPE_CONSUMIDOR_FINAL:
+            raise ValueError(
+                f"son ${factura['total']}, y una factura a consumidor "
+                f"final no puede pasar de ${self.TOPE_CONSUMIDOR_FINAL}. "
+                "Hay que corregir la identificación del cliente."
+            )
+
+        # El intento fallido queda en la BITACORA y no en el mensaje
+        # de la factura: al emitir de nuevo, el mensaje se pisa con el
+        # resultado nuevo y el rastro se perdería. La bitácora es el
+        # registro que no se pisa, y es donde hay que mirar si alguna
+        # vez hay que explicar un hueco en la numeración.
+        anterior = (factura["sri_mensaje"] or "").strip()
+        motivo = anterior.splitlines()[0] if anterior else "sin mensaje"
+        try:
+            from app.services.bitacora_service import BitacoraService
+
+            BitacoraService().registrar(
+                id_empleado or 0,
+                "COMPROBANTE_REEMITIDO",
+                "FACTURA",
+                id_factura,
+                {
+                    "numero": factura["numero_factura"],
+                    "clave_anterior": factura["sri_clave_acceso"],
+                    "estado_anterior": factura["sri_estado"],
+                    "motivo": motivo,
+                    "consumidor_final": consumidor_final,
+                },
+            )
+        except Exception as error:  # noqa: BLE001
+            # Que no se pueda anotar no puede impedir emitir: al
+            # cliente le falta su factura.
+            current_app.logger.warning(
+                "No se pudo anotar la reemisión de %s: %s",
+                factura["numero_factura"], error,
+            )
+        historia = (
+            f"[reemitida] el comprobante {factura['sri_clave_acceso']} "
+            f"quedó {factura['sri_estado']}: {motivo}"
+        )
+
+        with obtener_cursor(commit=True) as cursor:
+            # Se limpia el comprobante viejo para que el nuevo pueda
+            # tomar su lugar: la clave de acceso es única.
+            cursor.execute(
+                """
+                UPDATE facturas
+                   SET sri_clave_acceso = NULL, sri_secuencial = NULL,
+                       sri_establecimiento = NULL, sri_punto_emision = NULL,
+                       sri_xml = NULL, sri_autorizacion = NULL,
+                       sri_fecha_autorizacion = NULL,
+                       sri_estado = NULL, sri_mensaje = %s
+                 WHERE id_factura = %s
+                """,
+                (historia, id_factura),
+            )
+            clave = self.reservar(cursor, id_factura)
+
+        if clave is None:
+            raise ValueError(
+                "no se pudo reservar un comprobante nuevo. Revise con: "
+                "python -m scripts.sri_estado"
+            )
+        return self.emitir(id_factura, consumidor_final=consumidor_final)
+
     def reintentar_pendientes(self, limite: int = 25) -> dict:
         """Retoma lo que quedó sin resolver. Lo llama la tarea diaria."""
         if not self.configurado():
@@ -412,15 +522,24 @@ class ServicioSri:
             datos["detalle"] = [dict(f) for f in cursor.fetchall()]
         return datos
 
-    def _armar_xml(self, datos: dict, clave: str) -> str:
+    def _armar_xml(self, datos: dict, clave: str,
+                   consumidor_final: bool = False) -> str:
         emisor = self.emisor()
 
         nombre = f"{datos['nombre']} {datos['apellido']}".strip()
-        comprador = fx.Comprador(
-            identificacion=(datos.get("cedula") or "").strip() or None,
-            nombre=nombre,
-            correo=(datos.get("correo") or "").strip() or None,
-        )
+        if consumidor_final:
+            # Sin identificación: el comprador no se declara. Es la
+            # salida cuando el SRI rechaza la cédula del cliente y no
+            # hay forma de corregirla.
+            comprador = fx.Comprador(
+                correo=(datos.get("correo") or "").strip() or None
+            )
+        else:
+            comprador = fx.Comprador(
+                identificacion=(datos.get("cedula") or "").strip() or None,
+                nombre=nombre,
+                correo=(datos.get("correo") or "").strip() or None,
+            )
 
         # Solo membresías y pases. Los productos se facturan aparte y
         # en bloque, no uno por uno al cobrar. Ver la cabecera.
@@ -533,3 +652,182 @@ class ServicioSri:
             except ValueError:
                 fecha = None
         return estado, numero, fecha, self._mensajes(nodo)
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Facturas en bloque de productos
+# ─────────────────────────────────────────────────────────────────
+# Comparten casi todo con las facturas de venta: la misma numeración,
+# la misma firma, los mismos envíos. Lo único distinto es de dónde
+# salen las líneas y que siempre van a consumidor final.
+#
+# Se agregan como métodos de ServicioSri para no duplicar el camino
+# de firma y envío, que es el que costó hacer bien.
+
+def _reservar_bloque(self, cursor, id_bloque: int) -> str | None:
+    """Número y clave de acceso para una factura en bloque."""
+    if not self.configurado():
+        return None
+
+    emisor = self.emisor()
+    secuencial = self.repo.reservar_secuencial(
+        cursor, emisor.establecimiento, emisor.punto_emision, FACTURA
+    )
+    clave = ca.generar(
+        fecha_emision=date.today(),
+        tipo_comprobante=ca.FACTURA,
+        ruc=emisor.ruc,
+        ambiente=self.ambiente(),
+        establecimiento=emisor.establecimiento,
+        punto_emision=emisor.punto_emision,
+        secuencial=secuencial,
+        codigo_numerico=str(secuencial).zfill(8)[-8:],
+    )
+    cursor.execute(
+        """
+        UPDATE facturas_bloque
+           SET sri_establecimiento = %s, sri_punto_emision = %s,
+               sri_secuencial = %s, sri_clave_acceso = %s,
+               sri_estado = 'PENDIENTE'
+         WHERE id_bloque = %s
+        """,
+        (emisor.establecimiento, emisor.punto_emision, secuencial, clave,
+         id_bloque),
+    )
+    return clave
+
+
+def _emitir_bloque(self, id_bloque: int) -> str:
+    """Firma y manda al SRI una factura en bloque ya creada."""
+    from decimal import Decimal as _Decimal
+
+    with obtener_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id_bloque, desde, hasta, fecha_emision, iva_porcentaje,
+                   sri_clave_acceso, sri_secuencial, sri_xml
+              FROM facturas_bloque WHERE id_bloque = %s
+            """,
+            (id_bloque,),
+        )
+        bloque = cursor.fetchone()
+        if bloque is None:
+            raise ValueError(f"no existe la factura en bloque {id_bloque}")
+        bloque = dict(bloque)
+
+        cursor.execute(
+            """
+            SELECT d.cantidad, d.precio_unitario, p.nombre,
+                   p.id_producto::text AS codigo
+              FROM detalle_bloque d
+              JOIN productos p ON p.id_producto = d.id_producto
+             WHERE d.id_bloque = %s
+             ORDER BY d.id_detalle_bloque
+            """,
+            (id_bloque,),
+        )
+        detalle = [dict(f) for f in cursor.fetchall()]
+
+    clave = (bloque["sri_clave_acceso"] or "").strip()
+    if not clave:
+        raise ValueError(
+            f"la factura en bloque {id_bloque} no tiene clave de acceso"
+        )
+
+    xml_firmado = bloque.get("sri_xml")
+    if not xml_firmado:
+        xml = fx.generar(
+            emisor=self.emisor(),
+            # Siempre a consumidor final: son ventas de muchas
+            # personas distintas juntas en un comprobante.
+            comprador=fx.Comprador(),
+            lineas=[
+                fx.LineaXML(
+                    codigo=str(linea["codigo"]),
+                    descripcion=linea["nombre"],
+                    cantidad=int(linea["cantidad"]),
+                    precio_unitario_con_iva=_Decimal(linea["precio_unitario"]),
+                )
+                for linea in detalle
+            ],
+            clave_acceso=clave,
+            secuencial=bloque["sri_secuencial"],
+            fecha_emision=date.today(),
+            iva_porcentaje=_Decimal(bloque["iva_porcentaje"]),
+            ambiente=self.ambiente(),
+            metodo_pago="EFECTIVO",
+        )
+        try:
+            xml_firmado = firmar(
+                xml, self._opcion("SRI_P12_RUTA"), self._opcion("SRI_P12_CLAVE")
+            )
+        except ErrorFirma as error:
+            self._estado_bloque(id_bloque, PENDIENTE,
+                                f"No se pudo firmar: {error}")
+            raise
+        self._estado_bloque(id_bloque, FIRMADA, None, xml=xml_firmado)
+
+    ambiente = self.ambiente()
+    try:
+        respuesta = self._soap(
+            RECEPCION[ambiente],
+            '<ec:validarComprobante xmlns:ec="http://ec.gob.sri.ws.recepcion">'
+            f"<xml>{self._base64(xml_firmado)}</xml>"
+            "</ec:validarComprobante>",
+        )
+    except Exception as error:  # noqa: BLE001
+        self._estado_bloque(id_bloque, FIRMADA,
+                            f"No se pudo llegar al SRI: {error}")
+        raise
+
+    estado, mensajes = self._leer_recepcion(respuesta)
+    if estado == "DEVUELTA":
+        self._estado_bloque(id_bloque, DEVUELTA, mensajes)
+        return DEVUELTA
+
+    self._estado_bloque(id_bloque, ENVIADA, None)
+
+    respuesta = self._soap(
+        AUTORIZACION[ambiente],
+        '<ec:autorizacionComprobante '
+        'xmlns:ec="http://ec.gob.sri.ws.autorizacion">'
+        f"<claveAccesoComprobante>{clave}</claveAccesoComprobante>"
+        "</ec:autorizacionComprobante>",
+    )
+    estado, numero, fecha, mensajes = self._leer_autorizacion(respuesta)
+
+    if estado == "AUTORIZADO":
+        self._estado_bloque(id_bloque, AUTORIZADA, None, autorizacion=numero,
+                            fecha_autorizacion=fecha, xml=respuesta)
+        return AUTORIZADA
+    if estado in ("NO AUTORIZADO", "RECHAZADA"):
+        self._estado_bloque(id_bloque, NO_AUTORIZADA, mensajes)
+        return NO_AUTORIZADA
+
+    self._estado_bloque(id_bloque, ENVIADA,
+                        mensajes or "El SRI todavía no resolvió.")
+    return ENVIADA
+
+
+def _estado_bloque(self, id_bloque, estado, mensaje, autorizacion=None,
+                   fecha_autorizacion=None, xml=None) -> None:
+    with obtener_cursor(commit=True) as cursor:
+        cursor.execute(
+            """
+            UPDATE facturas_bloque
+               SET sri_estado = %s, sri_mensaje = %s,
+                   sri_autorizacion = COALESCE(%s, sri_autorizacion),
+                   sri_fecha_autorizacion =
+                       COALESCE(%s, sri_fecha_autorizacion),
+                   sri_xml = COALESCE(%s, sri_xml),
+                   sri_intentos = sri_intentos + 1
+             WHERE id_bloque = %s
+            """,
+            (estado, mensaje, autorizacion, fecha_autorizacion, xml,
+             id_bloque),
+        )
+
+
+ServicioSri.reservar_bloque = _reservar_bloque
+ServicioSri.emitir_bloque = _emitir_bloque
+ServicioSri._estado_bloque = _estado_bloque

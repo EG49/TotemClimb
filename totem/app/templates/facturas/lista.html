@@ -16,7 +16,15 @@
       {{ filtros.desde }} y {{ filtros.hasta }}
     </div>
   </div>
-  <div style="display:flex; gap:10px;">
+  {# Se envuelven: con tres botones, en el telefono la cabecera
+     obligaba a deslizar de lado. #}
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    {% if empleado and empleado.es_admin %}
+    <a class="btn-ghost" href="{{ url_for('facturas.bloques') }}">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 4v16"/></svg>
+      Facturar productos
+    </a>
+    {% endif %}
     <a class="btn-ghost" href="{{ url_for('facturas.exportar', **filtros) }}">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M12 15l-4-4M12 15l4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
       Exportar CSV
@@ -45,6 +53,16 @@
       {% for v, e in [('todas','Todas'), ('pagadas','Pagadas'),
                       ('pendientes','Pendientes'), ('anuladas','Anuladas')] %}
         <option value="{{ v }}" {{ 'selected' if filtros.estado == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo-filtro">
+    <label>SRI</label>
+    <select name="sri">
+      {% for v, e in [('', 'Todas'), ('AUTORIZADA','Autorizadas'),
+                      ('RECHAZADA','Rechazadas'), ('EN_CAMINO','En camino'),
+                      ('SIN','Sin comprobante')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.sri == v }}>{{ e }}</option>
       {% endfor %}
     </select>
   </div>
@@ -132,7 +150,7 @@
   <table>
     <thead>
       <tr><th>N° factura</th><th>Cliente</th><th>Fecha</th><th>Ítems</th>
-          <th>Método</th><th>Monto</th><th>Estado</th><th></th></tr>
+          <th>Método</th><th>Monto</th><th>Estado</th><th>SRI</th><th></th></tr>
     </thead>
     <tbody>
       {% for f in facturas %}

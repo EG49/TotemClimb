@@ -16,9 +16,10 @@ from flask import (
     url_for,
 )
 
-from app.security import login_requerido
+from app.security import admin_requerido, login_requerido
 from app.services.correo_service import ServicioCorreo
 from app.services.factura_service import FacturaService
+from app.services.rebote_service import ReboteService
 from app.services.validaciones import ErrorValidacion
 
 bp = Blueprint("facturas", __name__, url_prefix="/facturas")
@@ -40,6 +41,7 @@ def _leer_filtros() -> dict:
         "estado": request.args.get("estado", "todas"),
         "tipo": request.args.get("tipo", "todos"),
         "metodo": request.args.get("metodo", "todos"),
+        "sri": request.args.get("sri", ""),
     }
 
 
@@ -124,6 +126,219 @@ def detalle(id_factura):
         factura=factura,
         abonos=servicio.abonos_de(id_factura),
         correo_disponible=ServicioCorreo.configurado(),
+        comprobante=_estado_sri(id_factura),
+        # Que el correo haya salido no quiere decir que haya llegado.
+        # Si rebotó, acá es donde alguien lo va a ver.
+        envios=ReboteService.de_la_factura(id_factura),
+    )
+
+
+def _estado_sri(id_factura: int) -> dict | None:
+    """El comprobante electrónico de la factura, si lo tiene.
+
+    Va en la pantalla porque si no, una factura que el SRI rechazó es
+    invisible: la venta se ve bien y nadie se entera de que al cliente
+    le falta su factura.
+    """
+    from app.db import obtener_cursor
+
+    with obtener_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT sri_estado, sri_mensaje, sri_secuencial, sri_intentos,
+                   sri_establecimiento, sri_punto_emision,
+                   sri_autorizacion, sri_fecha_autorizacion
+              FROM facturas WHERE id_factura = %s
+            """,
+            (id_factura,),
+        )
+        fila = cursor.fetchone()
+    if fila is None or fila["sri_estado"] is None:
+        return None
+    datos = dict(fila)
+    datos["numero"] = (
+        f"{datos['sri_establecimiento']}-{datos['sri_punto_emision']}-"
+        f"{str(datos['sri_secuencial']).zfill(9)}"
+        if datos["sri_secuencial"] else None
+    )
+    datos["rechazada"] = datos["sri_estado"] in ("NO_AUTORIZADA", "DEVUELTA")
+    datos["en_camino"] = datos["sri_estado"] in (
+        "PENDIENTE", "FIRMADA", "ENVIADA"
+    )
+    return datos
+
+
+@bp.route("/<int:id_factura>/imprimir")
+@login_requerido
+def imprimir(id_factura):
+    """El PDF para entregarle al cliente.
+
+    Si el SRI autorizó la factura, sale el RIDE, que es el documento
+    que vale. Si no, sale el comprobante interno: el mismo formato,
+    sin número de autorización y diciendo en la cara que no es un
+    comprobante de venta autorizado.
+
+    Los dos los dibuja el mismo código a propósito. Si el interno se
+    dibujara aparte, con el tiempo dejaría de parecerse.
+    """
+    from flask import current_app
+
+    from app.db import obtener_cursor
+    from app.services.sri.ride import (
+        ErrorRide, comprobante_interno, generar, generar_desde_respuesta,
+    )
+
+    factura = FacturaService().obtener(id_factura)
+    if factura is None:
+        abort(404)
+
+    comprobante = _estado_sri(id_factura)
+    nombre = f"{factura.numero_factura}.pdf"
+
+    if comprobante and comprobante["sri_estado"] == "AUTORIZADA":
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                "SELECT sri_xml FROM facturas WHERE id_factura = %s",
+                (id_factura,),
+            )
+            guardado = cursor.fetchone()["sri_xml"]
+        try:
+            pdf, autorizacion = generar_desde_respuesta(guardado)
+            nombre = f"{autorizacion.numero}.pdf"
+        except ErrorRide as error:
+            current_app.logger.warning(
+                "No se pudo armar el RIDE de %s: %s",
+                factura.numero_factura, error,
+            )
+            pdf = None
+    else:
+        pdf = None
+
+    if pdf is None:
+        from app.services.configuracion_service import ConfiguracionService
+
+        configuracion = ConfiguracionService()
+        pdf = generar(comprobante_interno(
+            factura,
+            {
+                "razon_social": current_app.config.get("SRI_RAZON_SOCIAL"),
+                "nombre_comercial": current_app.config.get(
+                    "SRI_NOMBRE_COMERCIAL") or "Totem Climb Gym",
+                "ruc": current_app.config.get("SRI_RUC"),
+                "direccion": configuracion.datos_del_gym().get("direccion"),
+            },
+            configuracion.iva_vigente(),
+        ))
+
+    return Response(
+        pdf,
+        mimetype="application/pdf",
+        # inline: se abre en el visor del navegador, con su botón de
+        # imprimir, en lugar de bajarse un archivo que después hay que
+        # buscar.
+        headers={"Content-Disposition": f'inline; filename="{nombre}"'},
+    )
+
+
+@bp.route("/<int:id_factura>/reemitir", methods=["POST"])
+@admin_requerido
+def reemitir(id_factura):
+    """Vuelve a emitir una factura que el SRI rechazó.
+
+    Una rechazada no se arregla reintentando: el SRI devolvería el
+    mismo error. Hay que corregir el dato y emitir un comprobante
+    nuevo, con otro número.
+    """
+    from app.services.sri_service import ServicioSri
+
+    sin_identificar = request.form.get("consumidor_final") == "si"
+    try:
+        estado = ServicioSri().reemitir(
+            id_factura,
+            consumidor_final=sin_identificar,
+            id_empleado=g.empleado["id_empleado"],
+        )
+    except ValueError as error:
+        flash(str(error), "error")
+    except Exception as error:  # noqa: BLE001
+        flash(
+            f"No se pudo emitir: {error}. La factura quedó con su "
+            "comprobante nuevo reservado; reintente más tarde.", "error",
+        )
+    else:
+        if estado == "AUTORIZADA":
+            flash("El SRI autorizó la factura.", "ok")
+        elif estado in ("NO_AUTORIZADA", "DEVUELTA"):
+            flash(
+                "El SRI la volvió a rechazar. Revise el motivo abajo.",
+                "error",
+            )
+        else:
+            flash(
+                "La factura se envió y todavía no se resuelve. "
+                "Vuelva a mirar en un momento.", "aviso",
+            )
+    return redirect(url_for("facturas.detalle", id_factura=id_factura))
+
+
+@bp.route("/bloques", methods=["GET", "POST"])
+@admin_requerido
+def bloques():
+    """Facturar al SRI los productos sueltos de un periodo.
+
+    Las membresías y los pases se facturan solos al cobrar. Los
+    productos van acá, juntados por periodo. Es de administrador: no
+    es una operación de caja y se hace cada tanto, no todos los días.
+    """
+    from datetime import date, timedelta
+
+    from app.services.bloque_service import ErrorBloque, ServicioBloque
+
+    servicio = ServicioBloque()
+    hoy = date.today()
+
+    def leer_fecha(nombre, por_omision):
+        texto = (request.values.get(nombre) or "").strip()
+        try:
+            return date.fromisoformat(texto) if texto else por_omision
+        except ValueError:
+            return por_omision
+
+    desde = leer_fecha("desde", hoy.replace(day=1))
+    hasta = leer_fecha("hasta", hoy)
+    if desde > hasta:
+        desde, hasta = hasta, desde
+
+    emitidas = None
+    if request.method == "POST":
+        try:
+            emitidas = servicio.emitir(desde, hasta, g.empleado["id_empleado"])
+        except ErrorBloque as error:
+            flash(str(error), "error")
+        else:
+            autorizadas = [e for e in emitidas if e["estado"] == "AUTORIZADA"]
+            if len(autorizadas) == len(emitidas):
+                flash(
+                    f"Se emitieron {len(emitidas)} factura"
+                    f"{'s' if len(emitidas) != 1 else ''} y el SRI las "
+                    "autorizó.", "ok",
+                )
+            else:
+                flash(
+                    f"Se emitieron {len(emitidas)} factura"
+                    f"{'s' if len(emitidas) != 1 else ''}, "
+                    f"{len(autorizadas)} ya autorizada"
+                    f"{'s' if len(autorizadas) != 1 else ''}. Las demás "
+                    "quedaron en camino; revíselas más tarde.", "aviso",
+                )
+
+    return render_template(
+        "facturas/bloques.html",
+        desde=desde,
+        hasta=hasta,
+        resumen=servicio.resumen(desde, hasta),
+        emitidas=emitidas,
+        historial=servicio.historial(),
     )
 
 

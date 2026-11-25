@@ -19,8 +19,8 @@ SELECT 'TOTEM - verificacion de la base';
 SELECT '';
 
 -- ---------- 1. Estructura ----------
-SELECT CASE WHEN COUNT(*) = 15 THEN 'OK    15 tablas'
-            ELSE 'FALTA tablas: hay ' || COUNT(*) || ', deberian ser 15' END
+SELECT CASE WHEN COUNT(*) >= 20 THEN 'OK    ' || COUNT(*) || ' tablas'
+            ELSE 'FALTA tablas: hay ' || COUNT(*) || ', deberian ser 20 o mas' END
   FROM information_schema.tables
  WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 
@@ -143,5 +143,93 @@ SELECT CASE WHEN COUNT(*) = 0
  WHERE estado <> 'ANULADA' AND subtotal - (subtotal * descuento_porcentaje / 100) <> total;
 
 SELECT '';
+
+-- ---------- 5. Facturacion electronica ----------
+-- Las tres migraciones del SRI, en el orden en que hay que correrlas.
+
+SELECT CASE WHEN COUNT(*) = 1
+            THEN 'OK    la numeracion del SRI existe'
+            ELSE 'FALTA correr alter-sri-secuenciales.sql'
+                 || ' (sin esto no se puede emitir ninguna factura)' END
+  FROM information_schema.tables
+ WHERE table_name = 'sri_secuenciales';
+
+SELECT CASE WHEN COUNT(*) = 10
+            THEN 'OK    las facturas guardan su estado ante el SRI'
+            ELSE 'FALTA correr alter-sri-secuenciales.sql (campos sri_ en'
+                 || ' facturas: ' || COUNT(*) || ' de 10)' END
+  FROM information_schema.columns
+ WHERE table_name = 'facturas' AND column_name LIKE 'sri_%';
+
+SELECT CASE WHEN COUNT(*) = 2
+            THEN 'OK    las facturas en bloque de productos existen'
+            ELSE 'FALTA correr alter-sri-bloques.sql (tablas presentes: '
+                 || COUNT(*) || ' de 2)' END
+  FROM information_schema.tables
+ WHERE table_name IN ('facturas_bloque', 'detalle_bloque');
+
+SELECT CASE WHEN COUNT(*) = 1
+            THEN 'OK    se puede marcar lo ya facturado en bloque'
+            ELSE 'FALTA correr alter-sri-bloques.sql'
+                 || ' (detalle_factura.unidades_en_bloque)' END
+  FROM information_schema.columns
+ WHERE table_name = 'detalle_factura'
+   AND column_name = 'unidades_en_bloque';
+
+SELECT CASE WHEN pg_get_constraintdef(oid) LIKE '%COMPROBANTE_REEMITIDO%'
+            THEN 'OK    la bitacora acepta las acciones del SRI'
+            ELSE 'FALTA correr alter-bitacora-sri.sql (sin esto, reemitir'
+                 || ' una factura rechazada no queda registrado)' END
+  FROM pg_constraint
+ WHERE conname = 'chk_bitacora_accion';
+
+-- Rebotes de correo: saber cuales comprobantes NO llegaron.
+SELECT CASE WHEN COUNT(*) = 2
+            THEN 'OK    los correos enviados quedan registrados'
+            ELSE 'FALTA correr alter-envios-correo.sql (sin esto, un'
+                 || ' comprobante que rebota se da por entregado)' END
+  FROM information_schema.tables
+ WHERE table_name IN ('envios_correo', 'rebotes_revision');
+
+SELECT CASE WHEN COUNT(*) = 2
+            THEN 'OK    la ficha del cliente avisa si su correo rebota'
+            ELSE 'FALTA correr alter-envios-correo.sql' END
+  FROM information_schema.columns
+ WHERE table_name = 'clientes'
+   AND column_name IN ('correo_rebotado_en', 'correo_rebote_motivo');
+
+-- Y el punto de emision cargado, que es lo unico de esta seccion que
+-- no arregla una migracion sino una decision: cual usa el gimnasio.
+--
+-- Se consulta solo si la tabla existe. Postgres analiza la consulta
+-- entera antes de ejecutarla, asi que una consulta a una tabla que
+-- no existe falla aunque este dentro de un CASE que no se cumple, y
+-- cortaria la verificacion justo donde mas falta hace.
+SELECT to_regclass('public.sri_secuenciales') IS NOT NULL AS hay_numeracion
+\gset
+
+\if :hay_numeracion
+SELECT CASE WHEN COUNT(*) > 0
+            THEN 'OK    punto de emision ' || MIN(establecimiento) || '-'
+                 || MIN(punto_emision) || ', ultimo numero emitido: '
+                 || MAX(ultimo_secuencial)
+            ELSE 'PENDIENTE no hay ningun punto de emision cargado.'
+                 || ' Revisa alter-sri-secuenciales.sql' END
+  FROM sri_secuenciales
+ WHERE tipo_comprobante = '01';
+\else
+SELECT 'PENDIENTE el punto de emision se revisa despues de correr'
+       || ' alter-sri-secuenciales.sql';
+\endif
+
+SELECT '';
 SELECT 'Si algo dice FALTA, corre la migracion que indica.';
 SELECT 'PENDIENTE no es un error: es algo que cargas desde la app.';
+SELECT '';
+SELECT 'Las migraciones del SRI van en este orden:';
+SELECT '  1. alter-sri-secuenciales.sql';
+SELECT '  2. alter-sri-bloques.sql';
+SELECT '  3. alter-bitacora-sri.sql';
+SELECT '';
+SELECT 'Y despues:';
+SELECT '  4. alter-envios-correo.sql';

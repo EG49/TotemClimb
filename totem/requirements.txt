@@ -24,3 +24,8 @@ reportlab>=4.0
 # mentira para no mandar correos de verdad. Si falta, esa prueba
 # avisa y se omite.
 aiosmtpd>=1.4
+
+# Revisar que el dominio de un correo exista antes de guardarlo. Puro
+# Python, con rueda para Windows. Si falta, el sistema funciona igual:
+# simplemente no revisa el dominio (ver correo_dominio.py).
+dnspython>=2.6

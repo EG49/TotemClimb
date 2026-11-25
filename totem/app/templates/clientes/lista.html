@@ -63,6 +63,9 @@
                   · Representado por {{ c.representante_nombre }}
                 {% elif c.correo %}
                   · {{ c.correo }}
+                  {% if c.correo_rebotado_en %}
+                    <span class="etiqueta-aviso" title="El último correo a esta dirección no se pudo entregar">correo rebotado</span>
+                  {% endif %}
                 {% endif %}
               </div>
               {% if c.menores_a_cargo %}
