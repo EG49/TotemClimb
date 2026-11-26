@@ -269,14 +269,55 @@ SELECT 'PENDIENTE el punto de emision se revisa despues de correr'
        || ' alter-sri-secuenciales.sql';
 \endif
 
+-- ============================================================
+-- El cierre
+--
+-- Antes este final imprimia siempre la lista de migraciones en
+-- orden, incluso despues de una corrida donde todo estaba OK. Un
+-- "haga esto en este orden" impreso al pie de un reporte limpio se
+-- lee como una instruccion pendiente, y hace dudar a quien lo corre.
+-- Ahora el archivo dice que falta solo cuando falta algo.
+-- ============================================================
+
 SELECT '';
-SELECT 'Si algo dice FALTA, corre la migracion que indica.';
-SELECT 'PENDIENTE no es un error: es algo que cargas desde la app.';
+
+-- Falta alguna migracion?
+SELECT (
+    to_regclass('public.sri_secuenciales') IS NULL
+ OR to_regclass('public.facturas_bloque')  IS NULL
+ OR to_regclass('public.detalle_bloque')   IS NULL
+ OR to_regclass('public.envios_correo')    IS NULL
+ OR to_regclass('public.rebotes_revision') IS NULL
+ OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'detalle_factura'
+                   AND column_name = 'unidades_en_bloque')
+ OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'clientes'
+                   AND column_name = 'correo_rebotado_en')
+) AS falta_migracion
+\gset
+
+-- Y hay algo que cargar desde la aplicacion?
+SELECT COALESCE((SELECT NULLIF(btrim(valor), '') FROM configuracion
+                  WHERE clave = 'gym_direccion'), '') = '' AS hay_pendiente
+\gset
+
+\if :falta_migracion
+SELECT 'Donde dice FALTA, corre esa migracion. Van en este orden:';
 SELECT '';
-SELECT 'Las migraciones del SRI van en este orden:';
 SELECT '  1. alter-sri-secuenciales.sql';
 SELECT '  2. alter-sri-bloques.sql';
 SELECT '  3. alter-bitacora-sri.sql';
-SELECT '';
-SELECT 'Y despues:';
 SELECT '  4. alter-envios-correo.sql';
+SELECT '';
+SELECT 'El orden importa: la de bitacora modifica una restriccion que';
+SELECT 'usan las otras.';
+\else
+SELECT 'Todas las migraciones estan aplicadas.';
+\endif
+
+\if :hay_pendiente
+SELECT '';
+SELECT 'PENDIENTE no es un error ni una migracion: es un dato que se';
+SELECT 'carga desde la aplicacion, en Configuracion.';
+\endif
