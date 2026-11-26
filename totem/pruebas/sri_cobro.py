@@ -66,6 +66,10 @@ def limpiar(ids):
     with obtener_cursor(commit=True) as cursor:
         for id_factura in ids:
             cursor.execute(
+                "DELETE FROM envios_correo WHERE id_factura = %s",
+                (id_factura,),
+            )
+            cursor.execute(
                 "DELETE FROM detalle_factura WHERE id_factura = %s",
                 (id_factura,),
             )
@@ -95,6 +99,8 @@ def limpiar_corridas_anteriores():
         )
         viejas = [f["id_factura"] for f in cursor.fetchall()]
         for id_factura in viejas:
+            cursor.execute("DELETE FROM envios_correo WHERE id_factura = %s",
+                           (id_factura,))
             cursor.execute("DELETE FROM detalle_factura WHERE id_factura = %s",
                            (id_factura,))
             cursor.execute("DELETE FROM membresias WHERE id_factura = %s",

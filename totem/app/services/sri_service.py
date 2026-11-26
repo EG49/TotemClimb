@@ -61,6 +61,7 @@ comprobante electrónico. Es el estado del gimnasio hasta que termine
 de habilitarse, y no puede impedir vender.
 """
 
+import re
 import threading
 from datetime import date, datetime
 from decimal import Decimal
@@ -332,6 +333,27 @@ class ServicioSri:
 
         estado_recepcion, mensajes = self._leer_recepcion(respuesta)
         if estado_recepcion == "DEVUELTA":
+            # El error 45 no es un rechazo: es el SRI diciendo que ese
+            # comprobante YA LO TIENE, recibido en un intento
+            # anterior. Pasa cuando el primer envio llego pero la
+            # respuesta no volvio, y se reintenta con la misma clave
+            # -- que es justo lo que este sistema hace a proposito,
+            # para no duplicar comprobantes.
+            #
+            # Tomarlo como rechazo es peligroso, no solo incomodo: la
+            # factura aparece rechazada, alguien pulsa Reemitir, y se
+            # emite un SEGUNDO comprobante para una venta que ya
+            # podria tener el suyo autorizado en el SRI. Dos
+            # comprobantes validos para una sola venta es un problema
+            # tributario de verdad.
+            #
+            # Lo correcto es preguntar por el que ya esta alla.
+            if self._ya_lo_tiene_el_sri(mensajes):
+                self.repo.guardar_estado(
+                    id_factura, ENVIADA, mensajes, sumar_intento=True
+                )
+                return self.consultar(id_factura, clave)
+
             self.repo.guardar_estado(
                 id_factura, DEVUELTA, mensajes, sumar_intento=True
             )
@@ -339,6 +361,25 @@ class ServicioSri:
 
         self.repo.guardar_estado(id_factura, ENVIADA, None, sumar_intento=True)
         return self.consultar(id_factura, clave)
+
+    # El SRI lo devuelve como un rechazo mas, con este identificador.
+    ERROR_YA_REGISTRADO = "45"
+
+    @classmethod
+    def _ya_lo_tiene_el_sri(cls, mensajes: str) -> bool:
+        """¿La recepción falló porque ese comprobante ya está allá?
+
+        Se mira el identificador y tambien el texto: el identificador
+        es lo formal, pero si algun dia el SRI lo cambia, el texto
+        sigue diciendo lo mismo.
+        """
+        texto = (mensajes or "").upper()
+        # Con limite de palabra: "identificador: 450", si alguna vez
+        # existiera, no es el 45.
+        return bool(
+            re.search(rf"IDENTIFICADOR:\s*{cls.ERROR_YA_REGISTRADO}\b", texto)
+            or "SECUENCIAL REGISTRADO" in texto
+        )
 
     def consultar(self, id_factura: int, clave: str) -> str:
         """Le pregunta al SRI en qué quedó un comprobante ya enviado."""

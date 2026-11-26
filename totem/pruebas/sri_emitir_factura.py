@@ -96,6 +96,7 @@ with TemporaryDirectory() as carpeta, app.app_context():
         salida.getvalue()[-100:])
 
     with obtener_cursor(commit=True) as c:
+        c.execute("DELETE FROM envios_correo WHERE id_factura=%s",(idf,))
         c.execute("DELETE FROM detalle_factura WHERE id_factura=%s",(idf,))
         c.execute("DELETE FROM membresias WHERE id_factura=%s",(idf,))
         c.execute("DELETE FROM facturas WHERE id_factura=%s",(idf,))
