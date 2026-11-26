@@ -16,7 +16,7 @@
 
 {% block contenido %}
 <div class="migas">
-  <a href="{{ url_for('clientes.lista') }}">Clientes</a> / Menor a cargo
+  <a href="{{ url_for('clientes.lista') }}" class="volver"><span aria-hidden="true">&#8592;</span> Clientes</a> / Menor a cargo
 </div>
 <div class="page-title">
   {{ cliente.nombre_completo }}

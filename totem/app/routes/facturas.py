@@ -42,6 +42,7 @@ def _leer_filtros() -> dict:
         "tipo": request.args.get("tipo", "todos"),
         "metodo": request.args.get("metodo", "todos"),
         "sri": request.args.get("sri", ""),
+        "ident": request.args.get("ident", ""),
     }
 
 
