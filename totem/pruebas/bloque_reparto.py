@@ -3,7 +3,7 @@
 Lo que se comprueba es lo unico que no puede fallar:
 
   - ni una unidad se pierde ni se duplica
-  - ninguna factura pasa del tope de USD 200
+  - ninguna factura pasa del tope de USD 50
 
 Se prueba con miles de combinaciones al azar, porque el reparto
 falla en los bordes: cuando una linea cae justo en el tope, cuando un
@@ -15,6 +15,7 @@ No toca la base: el reparto es una cuenta, y se prueba como tal.
 
 import random
 import sys
+import math
 from decimal import Decimal
 from pathlib import Path
 
@@ -64,19 +65,22 @@ revisar("sin lineas no hay facturas", servicio.repartir([]) == [])
 revisar("con todo en cero tampoco", servicio.repartir(lineas((0, 0))) == [])
 
 print("\nJUSTO EN EL TOPE")
-# 400 aguas de $0.50 son exactamente $200.
-bloques = servicio.repartir(lineas((0, 400)))
-revisar("400 aguas entran en una sola factura", len(bloques) == 1,
+# El tope sale del servicio y no de un numero escrito aca: cuando el
+# SRI lo bajo de 200 a 50, esta prueba habria seguido en verde
+# midiendo el tope viejo.
+justas = int(TOPE_CONSUMIDOR_FINAL / Decimal("0.50"))
+bloques = servicio.repartir(lineas((0, justas)))
+revisar(f"{justas} aguas entran en una sola factura", len(bloques) == 1,
         f"{len(bloques)} facturas")
-revisar("y dan exactamente $200.00", bloques[0].total == Decimal("200.00"),
-        str(bloques[0].total))
+revisar(f"y dan exactamente ${TOPE_CONSUMIDOR_FINAL}",
+        bloques[0].total == TOPE_CONSUMIDOR_FINAL, str(bloques[0].total))
 
 # Una mas y ya no.
-bloques = servicio.repartir(lineas((0, 401)))
-revisar("401 aguas necesitan dos facturas", len(bloques) == 2,
+bloques = servicio.repartir(lineas((0, justas + 1)))
+revisar(f"{justas + 1} aguas necesitan dos facturas", len(bloques) == 2,
         f"{len(bloques)} facturas")
 revisar("sin perder ninguna",
-        sum(b.unidades for b in bloques) == 401,
+        sum(b.unidades for b in bloques) == justas + 1,
         str(sum(b.unidades for b in bloques)))
 revisar("y ninguna pasa del tope",
         all(b.total <= TOPE_CONSUMIDOR_FINAL for b in bloques),
@@ -84,7 +88,10 @@ revisar("y ninguna pasa del tope",
 
 print("\nUNA LINEA SOLA QUE PASA EL TOPE SE PARTE")
 bloques = servicio.repartir(lineas((5, 100)))  # 100 magnesios a $5
-revisar("100 magnesios ($500) dan tres facturas", len(bloques) == 3,
+# Cuantas hacen falta sale del tope y no de un numero escrito aca.
+esperadas = math.ceil(Decimal("500") / TOPE_CONSUMIDOR_FINAL)
+revisar(f"100 magnesios ($500) dan {esperadas} facturas",
+        len(bloques) == esperadas,
         f"{len(bloques)}: {[str(b.total) for b in bloques]}")
 revisar("y suman los 100", sum(b.unidades for b in bloques) == 100,
         str(sum(b.unidades for b in bloques)))
@@ -169,8 +176,9 @@ print("\nLAS FACTURAS SE LLENAN, NO QUEDAN A MEDIAS")
 # muchas mas de las necesarias: cada una cuesta un secuencial.
 bloques = servicio.repartir(lineas((0, 1000)))
 minimo = min(b.total for b in bloques)
+esperadas = math.ceil(Decimal("500") / TOPE_CONSUMIDOR_FINAL)
 revisar(f"1000 aguas dan {len(bloques)} facturas, no mas",
-        len(bloques) == 3, str(len(bloques)))
+        len(bloques) == esperadas, str(len(bloques)))
 revisar("y todas salvo la ultima van llenas",
         all(b.total == TOPE_CONSUMIDOR_FINAL for b in bloques[:-1]),
         str([str(b.total) for b in bloques]))

@@ -64,13 +64,14 @@
     </div>
 
     {% if resumen.facturas_necesarias > 1 %}
-      {# Una factura a consumidor final no puede pasar de USD 200, y
-         acá se vende a decenas de personas distintas: no hay a quién
+      {# Una factura a consumidor final no puede pasar del tope, y acá
+         se vende a decenas de personas distintas: no hay a quién
          identificar. Por eso se parte. #}
       <div class="flash aviso" style="margin-top:16px;">
         Se van a emitir <b>{{ resumen.facturas_necesarias }} facturas</b>.
-        Una factura a consumidor final no puede pasar de $200, así que el
-        periodo se reparte en varias.
+        Una factura a consumidor final no puede pasar de
+        ${{ '%.0f'|format(tope_consumidor_final) }}, así que el periodo se
+        reparte en varias.
       </div>
     {% endif %}
 
