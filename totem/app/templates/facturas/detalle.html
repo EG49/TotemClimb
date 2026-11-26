@@ -201,15 +201,41 @@
     </div>
 
     <p class="pista" style="margin-top:14px;">
-      Reintentar sin cambiar nada da el mismo error. Si el motivo es la
-      identificación del cliente, corríjala en su ficha y reemita; el
-      comprobante sale con un número nuevo.
+      Reintentar sin cambiar nada da el mismo error: hay que corregir
+      el dato que el SRI rechazó. El comprobante sale con un número
+      nuevo, y el anterior queda explicado en la bitácora.
     </p>
 
     {% if empleado and empleado.es_admin %}
+    {# Corregir la cedula aca mismo. Antes la pantalla decia "hay que
+       corregir la cedula" y no daba con que: habia que irse a
+       Clientes, buscar a la persona, editarla, volver a encontrar la
+       factura y acordarse de reemitir. #}
+    {% if factura.id_cliente %}
+    <form method="post"
+          action="{{ url_for('facturas.corregir_cedula', id_factura=factura.id_factura) }}"
+          class="corregir-cedula">
+      <label for="cedula-rapida">
+        Cédula o RUC de {{ factura.cliente_nombre }}
+      </label>
+      <div class="corregir-cedula-fila">
+        <input type="text" id="cedula-rapida" name="cedula"
+               value="{{ factura.cliente_cedula or '' }}"
+               inputmode="numeric" maxlength="13" autocomplete="off"
+               placeholder="10 dígitos">
+        <button type="submit" class="btn-primary">Corregir y reemitir</button>
+      </div>
+      <div class="meta" style="margin-top:7px;">
+        Se guarda en la ficha del cliente y el comprobante sale de
+        nuevo, con un número nuevo. Para cambiar algo más,
+        <a href="{{ url_for('clientes.editar', id_cliente=factura.id_cliente) }}">abra su ficha</a>.
+      </div>
+    </form>
+    {% endif %}
+
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
       <form method="post" action="{{ url_for('facturas.reemitir', id_factura=factura.id_factura) }}">
-        <button type="submit" class="btn-primary">Reemitir</button>
+        <button type="submit" class="btn-ghost">Reemitir sin cambiar nada</button>
       </form>
 
       {% if factura.total <= tope_consumidor_final %}
