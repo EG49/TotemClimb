@@ -101,10 +101,20 @@ SELECT CASE WHEN (SELECT COUNT(*) FROM planes_membresia
                  || (SELECT string_agg(nombre, ', ') FROM planes_membresia
                       WHERE activo AND permite_descuento) END;
 
+-- Por contenido y no por nombre exacto. Buscaba 'cubo de magnesio' y
+-- en el gimnasio esta cargado como 'Magnesio Cubo', asi que daba
+-- FALTA sobre un producto que existia. Una verificacion que se
+-- equivoca asi es peor que no tenerla: manda a cargar algo que ya
+-- esta, o peor, a renombrarlo para que la verificacion quede
+-- contenta. Lo que importa es que haya magnesio, no como se llame.
 SELECT CASE WHEN EXISTS (SELECT 1 FROM productos
-                          WHERE lower(nombre) = 'cubo de magnesio' AND activo)
-            THEN 'OK    cubo de magnesio como producto'
-            ELSE 'FALTA el cubo de magnesio no esta cargado' END;
+                          WHERE lower(nombre) LIKE '%magnesio%' AND activo)
+            THEN 'OK    magnesio como producto ('
+                 || (SELECT string_agg(nombre, ', ' ORDER BY nombre)
+                       FROM productos
+                      WHERE lower(nombre) LIKE '%magnesio%' AND activo)
+                 || ')'
+            ELSE 'FALTA no hay ningun producto de magnesio cargado' END;
 
 SELECT '';
 
