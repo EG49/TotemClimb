@@ -189,7 +189,28 @@ class ServicioSri:
 
         emisor = self.emisor()
         ambiente = self.ambiente()
-        hoy = date.today()
+
+        # La fecha sale de la factura y NO de date.today(). El SRI
+        # exige que los primeros ocho dígitos de la clave de acceso
+        # sean la misma fecha que declara el XML, y el XML lleva la
+        # fecha de la venta.
+        #
+        # El día del cobro las dos coinciden, así que esto nunca se
+        # notó. Pero al reemitir una factura de otro día -- que es
+        # cuando mas falta hace -- la clave salia con la fecha de hoy
+        # y el XML con la de la venta, y el SRI devolvia el error 58:
+        # "La fecha de emision no consta como parte de la clave de
+        # acceso". Tomando las dos del mismo lugar no pueden
+        # discrepar.
+        cursor.execute(
+            "SELECT fecha FROM facturas WHERE id_factura = %s", (id_factura,)
+        )
+        fila = cursor.fetchone()
+        fecha_factura = fila["fecha"] if fila else None
+        if hasattr(fecha_factura, "date"):
+            fecha_factura = fecha_factura.date()
+        if fecha_factura is None:
+            fecha_factura = date.today()
 
         secuencial = self.repo.reservar_secuencial(
             cursor, emisor.establecimiento, emisor.punto_emision, FACTURA
@@ -202,7 +223,7 @@ class ServicioSri:
         codigo = str(secuencial).zfill(8)[-8:]
 
         clave = ca.generar(
-            fecha_emision=hoy,
+            fecha_emision=fecha_factura,
             tipo_comprobante=ca.FACTURA,
             ruc=emisor.ruc,
             ambiente=ambiente,

@@ -20,6 +20,7 @@ Todo lo que escribe queda deshecho al terminar.
 """
 
 import os
+import re
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -158,6 +159,56 @@ with app.app_context():
             f"{secuencial_viejo} -> {f['sri_secuencial']}")
     revisar("y una clave de acceso nueva",
             f["sri_clave_acceso"] != clave_vieja)
+
+    print("\nREEMITIR UNA FACTURA DE OTRO DIA")
+    # El caso que faltaba. La clave de acceso lleva la fecha en sus
+    # primeros ocho digitos y el SRI exige que sea la MISMA que
+    # declara el XML. El dia del cobro las dos salen iguales aunque
+    # vengan de lugares distintos, asi que un reemitir el mismo dia
+    # -- lo que probaba esta suite -- nunca lo nota. Al reemitir dias
+    # despues, la clave salia con la fecha de hoy y el XML con la de
+    # la venta, y el SRI respondia error 58.
+    falso.rechaza_cedula = True
+    id_vieja, _ = CobroService().cobrar(
+        {"id_cliente": str(id_cliente), "metodo_pago": "EFECTIVO"},
+        [{"tipo": "plan", "id_item": id_plan, "cantidad": 1}],
+        id_empleado,
+    )
+    creadas.append(id_vieja)
+    sri_service.esperar_envios(30)
+
+    # Se la manda al pasado, como si la venta hubiera sido hace una
+    # semana y recien hoy se corrigiera el dato y se reemitiera.
+    with obtener_cursor(commit=True) as cursor:
+        cursor.execute(
+            "UPDATE facturas SET fecha = fecha - INTERVAL '7 days' "
+            " WHERE id_factura = %s RETURNING fecha",
+            (id_vieja,),
+        )
+        fecha_venta = cursor.fetchone()["fecha"]
+    if hasattr(fecha_venta, "date"):
+        fecha_venta = fecha_venta.date()
+
+    falso.rechaza_cedula = False
+    servicio.reemitir(id_vieja, id_empleado=id_empleado)
+    f = estado(id_vieja)
+
+    esperada = fecha_venta.strftime("%d%m%Y")
+    en_la_clave = (f["sri_clave_acceso"] or "")[:8]
+    revisar("la clave lleva la fecha de la venta, no la de hoy",
+            en_la_clave == esperada,
+            f"clave dice {en_la_clave}, la venta fue {esperada}")
+
+    # Y que el XML diga lo mismo, que es lo que el SRI compara.
+    crudo = f["sri_xml"] or ""
+    hallado = re.search(r"<fechaEmision>([^<]*)</fechaEmision>", crudo) or \
+        re.search(r"&lt;fechaEmision&gt;([^&]*)&lt;", crudo)
+    en_el_xml = hallado.group(1).replace("/", "") if hallado else ""
+    revisar("y el XML declara esa misma fecha",
+            en_el_xml == esperada, f"el XML dice {en_el_xml!r}")
+    revisar("las dos coinciden, que es lo que el SRI exige",
+            bool(en_la_clave) and en_la_clave == en_el_xml,
+            f"clave {en_la_clave} vs xml {en_el_xml}")
 
     print("\nA CONSUMIDOR FINAL, CUANDO LA CEDULA NO SE PUEDE CORREGIR")
     falso.rechaza_cedula = True
