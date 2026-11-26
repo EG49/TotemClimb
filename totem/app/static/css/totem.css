@@ -556,7 +556,22 @@ tr.inactiva .nombre{ text-decoration:line-through; }
 
 /* ===== FACTURAS ===== */
 
-.filtros-amplios{ flex-wrap:wrap; }
+/* Con muchos filtros, el buscador quedaba espachurrado entre ellos y
+   no se leia lo que uno escribia. Ahora ocupa su propia linea y los
+   filtros van debajo: la barra de arriba es para buscar, la de abajo
+   para acotar. Basta con que el buscador pida el ancho completo; el
+   resto fluye solo. */
+.filtros-amplios{ flex-wrap:wrap; align-items:flex-end; gap:8px 10px; }
+.filtros-amplios > .buscador{ flex:1 0 100%; }
+/* Los filtros se reparten lo que queda y se encogen antes que
+   partirse en dos lineas. Los de fecha no bajan de 124px porque el
+   navegador dibuja dd/mm/aaaa y su calendario, y ninguno pasa de
+   210px: en una pantalla con dos filtros se estiraban hasta ocupar
+   media fila cada uno. */
+.filtros-amplios > .campo-filtro{ flex:1 1 96px; min-width:88px; max-width:210px; }
+.filtros-amplios > .campo-filtro:has(input[type="date"]){ min-width:124px; }
+.filtros-amplios > .campo-filtro select,
+.filtros-amplios > .campo-filtro input{ width:100%; }
 .campo-filtro{ display:flex; flex-direction:column; gap:5px; }
 .campo-filtro label{
   font-size:11px; font-weight:600; color:var(--ink-soft);
