@@ -199,6 +199,54 @@ class ClienteService:
         )
         return id_cliente
 
+    def corregir_identificacion(
+        self, id_cliente: int, cedula: str, id_empleado: int
+    ) -> None:
+        """Cambia solo la cédula o RUC del cliente.
+
+        Existe para la pantalla de una factura que el SRI rechazó por
+        la identificación del comprador. Ahí hace falta corregir ese
+        dato y nada más, y mandar al formulario completo del cliente
+        obliga a salir de la factura, buscarlo, volver y acordarse de
+        reemitir.
+
+        No usa actualizar(): aquel espera el formulario entero y lo
+        normaliza, así que pasarle solo la cédula borraría el resto de
+        la ficha. Las validaciones sí son las mismas.
+        """
+        actual = self.repositorio.obtener(id_cliente)
+        if actual is None:
+            raise ValueError("El cliente no existe.")
+
+        cedula = solo_digitos(cedula or "") or None
+        if not cedula:
+            raise ErrorValidacion(
+                {"cedula": "Escriba la cédula o el RUC del cliente."}
+            )
+        if not validar_cedula(cedula):
+            raise ErrorValidacion({
+                "cedula": "La cédula no es válida. Revise que tenga 10 "
+                          "dígitos y esté bien escrita.",
+            })
+        if self.repositorio.cedula_ocupada(cedula, id_cliente):
+            raise ErrorValidacion(
+                {"cedula": "Ya existe otro cliente con esa cédula."}
+            )
+
+        if cedula == (actual.cedula or ""):
+            return  # no hay nada que cambiar
+
+        with obtener_cursor(commit=True) as cursor:
+            cursor.execute(
+                "UPDATE clientes SET cedula = %s WHERE id_cliente = %s",
+                (cedula, id_cliente),
+            )
+
+        self.bitacora.registrar(
+            id_empleado, bit.CLIENTE_EDITADO, bit.CLIENTE, id_cliente,
+            {"cedula": {"antes": actual.cedula or "", "ahora": cedula}},
+        )
+
     def actualizar(
         self, id_cliente: int, datos_formulario: dict, id_empleado: int
     ) -> None:

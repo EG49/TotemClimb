@@ -17,6 +17,7 @@ from flask import (
 )
 
 from app.security import admin_requerido, login_requerido
+from app.services.cliente_service import ClienteService
 from app.services.correo_service import ServicioCorreo
 from app.services.factura_service import FacturaService
 from app.services.rebote_service import ReboteService
@@ -395,3 +396,35 @@ def exportar():
         content_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
     )
+
+
+@bp.route("/<int:id_factura>/corregir-cedula", methods=["POST"])
+@login_requerido
+def corregir_cedula(id_factura):
+    """Corrige la cédula del cliente y reemite, sin salir de la factura.
+
+    El SRI rechaza una factura por la identificación del comprador y
+    la pantalla decía "hay que corregir la cédula" sin dar con qué:
+    había que irse a Clientes, buscar a la persona, editarla, volver a
+    encontrar la factura y acordarse de reemitir. Cuatro pantallas
+    para cambiar diez dígitos.
+    """
+    factura = FacturaService().obtener(id_factura)
+    if factura is None or factura.id_cliente is None:
+        abort(404)
+
+    try:
+        ClienteService().corregir_identificacion(
+            factura.id_cliente,
+            request.form.get("cedula", ""),
+            g.empleado["id_empleado"],
+        )
+    except ErrorValidacion as error:
+        flash(list(error.errores.values())[0], "error")
+        return redirect(url_for("facturas.detalle", id_factura=id_factura))
+    except ValueError as error:
+        flash(str(error), "error")
+        return redirect(url_for("facturas.detalle", id_factura=id_factura))
+
+    flash("Cédula corregida. Emitiendo de nuevo...", "ok")
+    return reemitir(id_factura)

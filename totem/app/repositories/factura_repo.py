@@ -107,6 +107,7 @@ class FacturaRepositorio:
                 """
                 SELECT f.*,
                        c.nombre || ' ' || c.apellido AS cliente_nombre,
+                       c.cedula AS cliente_cedula,
                        c.correo AS cliente_correo,
                        e.nombre || ' ' || e.apellido AS empleado_nombre
                   FROM facturas f
