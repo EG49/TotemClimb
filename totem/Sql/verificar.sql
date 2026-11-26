@@ -263,6 +263,23 @@ SELECT CASE WHEN COUNT(*) = 2
  WHERE table_name = 'clientes'
    AND column_name IN ('correo_rebotado_en', 'correo_rebote_motivo');
 
+-- La factura de un menor va a nombre de su representante, asi que
+-- el que necesita cedula es el adulto. Si no la tiene, esa factura
+-- sale a consumidor final y el SRI la rechaza en cuanto pasa de USD
+-- 50, que es el caso de la Membresia Junior.
+SELECT CASE WHEN COUNT(*) = 0
+            THEN 'OK    los representantes de los menores tienen cedula'
+            ELSE 'REVISAR ' || COUNT(*) || ' menor(es) cuyo representante no'
+                 || ' tiene cedula: ' || string_agg(nombres, ', ')
+                 || '. Sus facturas de mas de USD 50 van a ser rechazadas.'
+            END
+  FROM (SELECT r.nombre || ' ' || r.apellido AS nombres
+          FROM clientes m
+          JOIN clientes r ON r.id_cliente = m.id_representante
+         WHERE m.id_representante IS NOT NULL
+           AND COALESCE(btrim(r.cedula), '') = ''
+         LIMIT 10) AS sin_cedula;
+
 -- Con que identificacion salio cada factura al SRI.
 SELECT CASE WHEN COUNT(*) = 2
             THEN 'OK    las facturas recuerdan con que identificacion salieron'
