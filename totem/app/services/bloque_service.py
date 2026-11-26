@@ -11,10 +11,10 @@ Las tres reglas que ordenan este archivo
    anotado sobre la línea de venta, y el reparto nunca toma lo ya
    anotado.
 
-2. NINGUNA FACTURA PASA DE USD 200, que es el tope de una factura a
+2. NINGUNA FACTURA PASA DE USD 50, que es el tope de una factura a
    consumidor final. Por eso un periodo puede dar varias facturas, y
-   por eso el reparto trabaja por unidades y no por líneas: 400 aguas
-   de $0.50 son exactamente el tope y 401 ya no entran juntas.
+   por eso el reparto trabaja por unidades y no por líneas: 100 aguas
+   de $0.50 son exactamente el tope y 101 ya no entran juntas.
 
 3. ESTO NO ES UNA VENTA. La plata ya se contó cuando se cobró. Vive
    en su propia tabla justamente para que ninguna consulta de
@@ -29,10 +29,17 @@ from app.db import obtener_cursor
 
 CENTAVO = Decimal("0.01")
 
-# El tope de una factura a consumidor final. Arriba de esto el SRI
-# exige identificar al comprador, imposible cuando son decenas de
-# clientes distintos.
-TOPE_CONSUMIDOR_FINAL = Decimal("200.00")
+# El tope de una factura a consumidor final, con IVA incluido. Arriba
+# de esto el SRI exige identificar al comprador, imposible cuando son
+# decenas de clientes distintos que compraron un agua cada uno.
+#
+# Son 50 y no 200. Los 200 son el tope del regimen Negocio Popular
+# (RIMPE); para el regimen general son 50 desde el Decreto Ejecutivo
+# 586 de noviembre de 2022. Estuvo en 200 hasta que el SRI rechazo
+# una factura con el error 69: "La factura supera los 50 USD de
+# importe total por cuanto no puede ser emitida a nombre del
+# CONSUMIDOR FINAL".
+TOPE_CONSUMIDOR_FINAL = Decimal("50.00")
 
 
 class ErrorBloque(ValueError):

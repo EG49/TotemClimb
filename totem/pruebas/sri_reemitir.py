@@ -11,7 +11,7 @@ Se comprueba que:
   - una rechazada se puede reemitir, con numero y clave NUEVOS
   - se puede emitir a consumidor final, que es la salida cuando la
     cedula no se puede corregir
-  - eso solo vale hasta USD 200
+  - eso solo vale hasta el tope de consumidor final
   - una AUTORIZADA no se reemite por accidente
   - queda anotado que hubo un intento fallido, para poder explicar
     el hueco en la numeracion
@@ -326,12 +326,13 @@ with app.app_context():
     )
     creadas.append(id_cara)
     sri_service.esperar_envios(30)
-    if Decimal(estado(id_cara)["total"]) > Decimal("200"):
-        rechaza("emitir mas de $200 a consumidor final",
+    tope = ServicioSri.TOPE_CONSUMIDOR_FINAL
+    if Decimal(estado(id_cara)["total"]) > tope:
+        rechaza(f"emitir mas de ${tope} a consumidor final",
                 lambda: servicio.reemitir(id_cara, consumidor_final=True),
                 "consumidor final")
     else:
-        print("  (el plan mas barato por 4 no pasa de $200; se omite)")
+        print(f"  (el plan mas barato por 4 no pasa de ${tope}; se omite)")
 
     rechaza("reemitir una que no existe",
             lambda: servicio.reemitir(999999999))

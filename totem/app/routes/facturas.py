@@ -20,6 +20,7 @@ from app.security import admin_requerido, login_requerido
 from app.services.correo_service import ServicioCorreo
 from app.services.factura_service import FacturaService
 from app.services.rebote_service import ReboteService
+from app.services.sri_service import ServicioSri
 from app.services.validaciones import ErrorValidacion
 
 bp = Blueprint("facturas", __name__, url_prefix="/facturas")
@@ -131,6 +132,10 @@ def detalle(id_factura):
         # Que el correo haya salido no quiere decir que haya llegado.
         # Si rebotó, acá es donde alguien lo va a ver.
         envios=ReboteService.de_la_factura(id_factura),
+        # De una sola fuente: tenerlo escrito en la plantilla fue lo
+        # que dejo el tope viejo de $200 en pantalla mucho despues de
+        # que el SRI lo bajara a $50.
+        tope_consumidor_final=ServicioSri.TOPE_CONSUMIDOR_FINAL,
     )
 
 
@@ -340,6 +345,7 @@ def bloques():
         resumen=servicio.resumen(desde, hasta),
         emitidas=emitidas,
         historial=servicio.historial(),
+        tope_consumidor_final=ServicioSri.TOPE_CONSUMIDOR_FINAL,
     )
 
 

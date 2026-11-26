@@ -413,7 +413,11 @@ class ServicioSri:
 
     # --- Volver a emitir una rechazada ---------------------------
 
-    TOPE_CONSUMIDOR_FINAL = Decimal("200.00")
+    # Con IVA incluido. Son 50 y no 200: los 200 son el tope del
+    # regimen Negocio Popular (RIMPE), y para el regimen general son
+    # 50 desde el Decreto Ejecutivo 586 de noviembre de 2022. El SRI
+    # lo devuelve con el error 69.
+    TOPE_CONSUMIDOR_FINAL = Decimal("50.00")
 
     def reemitir(self, id_factura: int,
                  consumidor_final: bool = False,
@@ -431,7 +435,7 @@ class ServicioSri:
 
         `consumidor_final` emite sin identificar al comprador. Es la
         salida para una cédula que el SRI no acepta y que no se puede
-        corregir, y solo vale hasta USD 200.
+        corregir, y solo vale hasta USD 50.
         """
         with obtener_cursor() as cursor:
             cursor.execute(

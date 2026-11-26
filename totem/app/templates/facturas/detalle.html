@@ -212,7 +212,7 @@
         <button type="submit" class="btn-primary">Reemitir</button>
       </form>
 
-      {% if factura.total <= 200 %}
+      {% if factura.total <= tope_consumidor_final %}
       <form method="post" action="{{ url_for('facturas.reemitir', id_factura=factura.id_factura) }}">
         <input type="hidden" name="consumidor_final" value="si">
         <button type="submit" class="btn-ghost">Emitir a consumidor final</button>
@@ -220,12 +220,17 @@
       {% endif %}
     </div>
     <p class="pista" style="margin-top:10px;">
-      {% if factura.total <= 200 %}
+      {% if factura.total <= tope_consumidor_final %}
         A consumidor final sale sin identificar al cliente. Sirve cuando
-        la cédula no se puede corregir, y vale hasta $200.
+        la cédula no se puede corregir, y vale hasta
+        ${{ '%.0f'|format(tope_consumidor_final) }}.
+        <b>Una vez emitida así no se puede anular ni corregir</b>, ni con
+        nota de crédito, así que conviene agotar antes la opción de
+        corregirle la cédula al cliente.
       {% else %}
-        Son más de $200, así que no se puede emitir sin identificar al
-        cliente: hay que corregir la cédula.
+        Son más de ${{ '%.0f'|format(tope_consumidor_final) }}, así que no
+        se puede emitir sin identificar al cliente: hay que corregir la
+        cédula.
       {% endif %}
     </p>
     {% endif %}
