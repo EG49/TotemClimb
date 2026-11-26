@@ -5,7 +5,7 @@
 
 {% block contenido %}
 <div class="migas">
-  <a href="{{ url_for('gastos.lista') }}">Gastos</a> /
+  <a href="{{ url_for('gastos.lista') }}" class="volver"><span aria-hidden="true">&#8592;</span> Gastos</a> /
   {{ 'Corregir' if editando else 'Registrar' }}
 </div>
 <div class="page-title">{{ 'Corregir gasto' if editando else 'Registrar gasto' }}</div>

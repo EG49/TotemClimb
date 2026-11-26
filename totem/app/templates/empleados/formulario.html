@@ -17,7 +17,7 @@
 
 {% block contenido %}
 <div class="migas">
-  <a href="{{ url_for('empleados.lista') }}">Empleados</a> /
+  <a href="{{ url_for('empleados.lista') }}" class="volver"><span aria-hidden="true">&#8592;</span> Empleados</a> /
   {{ 'Editar' if editando else 'Nuevo empleado' }}
 </div>
 <div class="page-title">{{ ficha.nombre_completo if editando else 'Nuevo empleado' }}</div>

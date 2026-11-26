@@ -201,12 +201,30 @@ SELECT CASE WHEN COUNT(*) = 1
   FROM information_schema.tables
  WHERE table_name = 'sri_secuenciales';
 
+-- Por nombre y no por cantidad. Contaba los campos sri_ y esperaba
+-- exactamente 10, asi que al agregar dos columnas nuevas empezo a
+-- decir que faltaba una migracion que estaba aplicada. Una
+-- verificacion que se rompe cuando el sistema crece termina
+-- ignorandose, igual que la que buscaba el magnesio por nombre
+-- exacto.
 SELECT CASE WHEN COUNT(*) = 10
             THEN 'OK    las facturas guardan su estado ante el SRI'
-            ELSE 'FALTA correr alter-sri-secuenciales.sql (campos sri_ en'
-                 || ' facturas: ' || COUNT(*) || ' de 10)' END
+            ELSE 'FALTA correr alter-sri-secuenciales.sql (faltan campos: '
+                 || (SELECT string_agg(c, ', ')
+                       FROM unnest(ARRAY['sri_estado','sri_clave_acceso',
+                            'sri_secuencial','sri_establecimiento',
+                            'sri_punto_emision','sri_autorizacion',
+                            'sri_fecha_autorizacion','sri_mensaje',
+                            'sri_intentos','sri_xml']) AS c
+                      WHERE c NOT IN (SELECT column_name
+                                        FROM information_schema.columns
+                                       WHERE table_name = 'facturas'))
+                 || ')' END
   FROM information_schema.columns
- WHERE table_name = 'facturas' AND column_name LIKE 'sri_%';
+ WHERE table_name = 'facturas'
+   AND column_name IN ('sri_estado','sri_clave_acceso','sri_secuencial',
+       'sri_establecimiento','sri_punto_emision','sri_autorizacion',
+       'sri_fecha_autorizacion','sri_mensaje','sri_intentos','sri_xml');
 
 SELECT CASE WHEN COUNT(*) = 2
             THEN 'OK    las facturas en bloque de productos existen'
@@ -244,6 +262,15 @@ SELECT CASE WHEN COUNT(*) = 2
   FROM information_schema.columns
  WHERE table_name = 'clientes'
    AND column_name IN ('correo_rebotado_en', 'correo_rebote_motivo');
+
+-- Con que identificacion salio cada factura al SRI.
+SELECT CASE WHEN COUNT(*) = 2
+            THEN 'OK    las facturas recuerdan con que identificacion salieron'
+            ELSE 'FALTA correr alter-identificacion-factura.sql (sin esto la'
+                 || ' lista muestra la cedula de hoy, no la que se envio)' END
+  FROM information_schema.columns
+ WHERE table_name = 'facturas'
+   AND column_name IN ('sri_tipo_identificacion', 'sri_identificacion');
 
 -- Y el punto de emision cargado, que es lo unico de esta seccion que
 -- no arregla una migracion sino una decision: cual usa el gimnasio.
@@ -294,6 +321,9 @@ SELECT (
  OR NOT EXISTS (SELECT 1 FROM information_schema.columns
                  WHERE table_name = 'clientes'
                    AND column_name = 'correo_rebotado_en')
+ OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'facturas'
+                   AND column_name = 'sri_tipo_identificacion')
 ) AS falta_migracion
 \gset
 
@@ -309,6 +339,7 @@ SELECT '  1. alter-sri-secuenciales.sql';
 SELECT '  2. alter-sri-bloques.sql';
 SELECT '  3. alter-bitacora-sri.sql';
 SELECT '  4. alter-envios-correo.sql';
+SELECT '  5. alter-identificacion-factura.sql';
 SELECT '';
 SELECT 'El orden importa: la de bitacora modifica una restriccion que';
 SELECT 'usan las otras.';

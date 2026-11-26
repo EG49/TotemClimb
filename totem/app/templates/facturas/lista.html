@@ -67,6 +67,17 @@
     </select>
   </div>
   <div class="campo-filtro">
+    <label>Identificación</label>
+    <select name="ident">
+      {% for v, e in [('', 'Todas'), ('CEDULA','Con cédula'), ('RUC','Con RUC'),
+                      ('PASAPORTE','Con pasaporte'),
+                      ('FINAL','Consumidor final'),
+                      ('SIN','Sin enviar al SRI')] %}
+        <option value="{{ v }}" {{ 'selected' if filtros.ident == v }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo-filtro">
     <label>Tipo</label>
     <select name="tipo">
       {% for v, e in [('todos','Todos'), ('membresias','Membresías'), ('productos','Productos')] %}
@@ -187,6 +198,32 @@
             <div class="meta" title="{{ f.motivo_anulacion }}">{{ f.motivo_anulacion|truncate(28) }}</div>
           {% endif %}
         </td>
+
+        {# El comprobante electrónico: en qué quedó ante el SRI y con
+           qué identificación salió. La identificación sale del XML
+           que se envió, no de la cédula que el cliente tiene hoy: si
+           se le corrige la cédula después, la factura tiene que
+           seguir diciendo lo que realmente se mandó. #}
+        <td>
+          {% if f.sri_estado == 'AUTORIZADA' %}
+            <span class="pill vigente">Autorizada</span>
+          {% elif f.sri_estado in ('NO_AUTORIZADA', 'DEVUELTA') %}
+            <span class="pill vencido">Rechazada</span>
+          {% elif f.sri_estado %}
+            <span class="pill por_vencer">En camino</span>
+          {% else %}
+            <span class="meta">—</span>
+          {% endif %}
+          {% if f.sri_tipo_identificacion %}
+            <div class="meta">
+              {{ {'04':'RUC','05':'CI','06':'Pasaporte',
+                  '07':'Consumidor final'}.get(f.sri_tipo_identificacion,
+                                               f.sri_tipo_identificacion) }}
+              {% if f.sri_tipo_identificacion != '07' %}{{ f.sri_identificacion }}{% endif %}
+            </div>
+          {% endif %}
+        </td>
+
         <td>
           <div class="acciones">
             {% if f.n_abonos %}

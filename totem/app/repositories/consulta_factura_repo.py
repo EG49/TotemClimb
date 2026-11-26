@@ -24,6 +24,19 @@ _SRI = {
     "SIN": "f.sri_estado IS NULL",
 }
 
+# Con qué identificación salió la factura al SRI. Sale de columnas
+# generadas a partir del XML enviado, no de la cédula que el cliente
+# tiene hoy: si se le corrige la cédula después de emitir, la factura
+# tiene que seguir mostrando lo que realmente se envió.
+_IDENT = {
+    "CEDULA": "f.sri_tipo_identificacion = '05'",
+    "RUC": "f.sri_tipo_identificacion = '04'",
+    "PASAPORTE": "f.sri_tipo_identificacion = '06'",
+    "FINAL": "f.sri_tipo_identificacion = '07'",
+    # Nunca se envió: no hay identificación que mostrar.
+    "SIN": "f.sri_tipo_identificacion IS NULL",
+}
+
 _TIPOS = {
     "todos": None,
     "membresias": (
@@ -86,6 +99,10 @@ class ConsultaFacturaRepositorio:
         if sri:
             condiciones.append(_SRI.get(sri, "TRUE"))
 
+        ident = (filtros.get("ident") or "").upper()
+        if ident:
+            condiciones.append(_IDENT.get(ident, "TRUE"))
+
         where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
         return where, parametros
 
@@ -98,6 +115,7 @@ class ConsultaFacturaRepositorio:
                 f"""
                 SELECT f.id_factura, f.numero_factura, f.fecha, f.metodo_pago,
                        f.sri_estado,
+                       f.sri_tipo_identificacion, f.sri_identificacion,
                        f.descuento_porcentaje, f.iva_porcentaje, f.subtotal,
                        f.iva, f.total, f.estado, f.motivo_anulacion,
                        f.saldo_pendiente,

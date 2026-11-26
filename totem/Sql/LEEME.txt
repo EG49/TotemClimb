@@ -71,6 +71,7 @@ idempotentes: repetir uno que ya corriste no rompe nada.
     psql -U postgres -d totem -f alter-sri-bloques.sql
     psql -U postgres -d totem -f alter-bitacora-sri.sql
     psql -U postgres -d totem -f alter-envios-correo.sql
+    psql -U postgres -d totem -f alter-identificacion-factura.sql
     psql -U postgres -d totem -f verificar.sql
 
 EL ORDEN IMPORTA. Cada uno asume lo que hizo el anterior.
