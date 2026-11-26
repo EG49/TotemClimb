@@ -118,3 +118,46 @@ class SriDeMentira:
         return autorizado(clave, self.ultimo_comprobante)
 
 
+
+
+# El SRI responde el "ya lo tengo" como una devolucion mas, con el
+# identificador 45. No es un rechazo: significa que el comprobante
+# llego en un intento anterior.
+YA_REGISTRADO = (
+    '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/'
+    'soap/envelope/"><s:Body><RespuestaRecepcionComprobante>'
+    "<estado>DEVUELTA</estado><comprobantes><comprobante>"
+    "<claveAcceso>x</claveAcceso><mensajes><mensaje>"
+    "<identificador>45</identificador>"
+    "<mensaje>ERROR SECUENCIAL REGISTRADO</mensaje>"
+    "<tipo>ERROR</tipo></mensaje></mensajes>"
+    "</comprobante></comprobantes>"
+    "</RespuestaRecepcionComprobante></s:Body></s:Envelope>"
+)
+
+
+class SriQueYaLoTiene(SriDeMentira):
+    """Recibio el comprobante antes, pero la respuesta no volvio.
+
+    En recepcion contesta "secuencial registrado"; en autorizacion lo
+    da por autorizado, porque efectivamente lo tiene. Es el caso real
+    de un envio que llego y una respuesta que se perdio.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.recepciones = 0
+        self.consultas = 0
+
+    def __call__(self, url, cuerpo):
+        if "recepcion" in url.lower():
+            self.recepciones += 1
+            self.llamadas += 1
+            import base64
+            codificado = cuerpo.split("<xml>")[1].split("</xml>")[0]
+            self.ultimo_comprobante = base64.b64decode(codificado).decode(
+                "utf-8", "replace"
+            )
+            return YA_REGISTRADO
+        self.consultas += 1
+        return super().__call__(url, cuerpo)

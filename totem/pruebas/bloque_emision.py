@@ -218,6 +218,10 @@ with app.app_context():
             cursor.execute("DELETE FROM facturas_bloque WHERE id_bloque = %s",
                            (id_bloque,))
         for id_factura in creadas:
+            # envios_correo referencia a la factura desde que
+            # se leen los rebotes: va primero.
+            cursor.execute("DELETE FROM envios_correo WHERE id_factura = %s",
+                           (id_factura,))
             cursor.execute("DELETE FROM detalle_factura WHERE id_factura = %s",
                            (id_factura,))
             cursor.execute("DELETE FROM membresias WHERE id_factura = %s",

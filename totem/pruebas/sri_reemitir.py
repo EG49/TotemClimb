@@ -30,7 +30,7 @@ P12 = Path("/tmp/reemitir_prueba.p12")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from pruebas.ayudas_sri import (  # noqa: E402
-    CLAVE_P12, SriDeMentira, certificado_de_prueba,
+    CLAVE_P12, SriDeMentira, SriQueYaLoTiene, certificado_de_prueba,
 )
 
 certificado_de_prueba(P12)
@@ -92,7 +92,8 @@ def estado(id_factura):
     with obtener_cursor() as cursor:
         cursor.execute(
             "SELECT sri_estado, sri_secuencial, sri_clave_acceso, "
-            "sri_mensaje, sri_xml, total FROM facturas WHERE id_factura = %s",
+            "sri_mensaje, sri_xml, sri_autorizacion, total "
+            "FROM facturas WHERE id_factura = %s",
             (id_factura,),
         )
         return dict(cursor.fetchone())
@@ -210,6 +211,45 @@ with app.app_context():
             bool(en_la_clave) and en_la_clave == en_el_xml,
             f"clave {en_la_clave} vs xml {en_el_xml}")
 
+    print("\nEL SRI DICE QUE YA LO TIENE (error 45)")
+    # Cuando el primer envio llega pero la respuesta no vuelve, el
+    # reintento manda la misma clave y el SRI contesta "SECUENCIAL
+    # REGISTRADO". Eso NO es un rechazo: es que el comprobante ya
+    # esta alla.
+    #
+    # Darlo por rechazado es peligroso, no solo incomodo: la factura
+    # aparece rechazada, alguien pulsa Reemitir, y se emite un SEGUNDO
+    # comprobante para una venta que ya tiene el suyo autorizado. Dos
+    # comprobantes validos para una sola venta.
+    ya_lo_tiene = SriQueYaLoTiene()
+    sri_service.ServicioSri._soap = staticmethod(ya_lo_tiene)
+    servicio_2 = ServicioSri()
+
+    id_perdida, _ = CobroService().cobrar(
+        {"id_cliente": str(id_cliente), "metodo_pago": "EFECTIVO"},
+        [{"tipo": "plan", "id_item": id_plan, "cantidad": 1}],
+        id_empleado,
+    )
+    creadas.append(id_perdida)
+    sri_service.esperar_envios(30)
+
+    f = estado(id_perdida)
+    revisar("NO queda como rechazada", f["sri_estado"] != "DEVUELTA",
+            str(f["sri_estado"]))
+    revisar("se consulta y queda AUTORIZADA",
+            f["sri_estado"] == "AUTORIZADA", str(f["sri_estado"]))
+    revisar("con su numero de autorizacion",
+            bool(f["sri_autorizacion"]), str(f["sri_autorizacion"]))
+    revisar("y no se gasto un numero nuevo",
+            ya_lo_tiene.consultas >= 1,
+            f"consultas={ya_lo_tiene.consultas}")
+
+    secuencial_antes = f["sri_secuencial"]
+    revisar("el comprobante sigue siendo el mismo",
+            secuencial_antes is not None)
+
+    sri_service.ServicioSri._soap = staticmethod(falso)
+
     print("\nA CONSUMIDOR FINAL, CUANDO LA CEDULA NO SE PUEDE CORREGIR")
     falso.rechaza_cedula = True
     id_segunda, _ = CobroService().cobrar(
@@ -298,6 +338,10 @@ with app.app_context():
 
     with obtener_cursor(commit=True) as cursor:
         for id_f in creadas:
+            # envios_correo referencia a la factura desde que
+            # se leen los rebotes: va primero.
+            cursor.execute("DELETE FROM envios_correo WHERE id_factura = %s",
+                           (id_f,))
             cursor.execute("DELETE FROM detalle_factura WHERE id_factura = %s",
                            (id_f,))
             cursor.execute("DELETE FROM membresias WHERE id_factura = %s",
