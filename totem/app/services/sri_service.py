@@ -558,9 +558,15 @@ class ServicioSri:
                 SELECT f.id_factura, f.fecha, f.metodo_pago, f.total,
                        f.iva_porcentaje, f.sri_clave_acceso, f.sri_secuencial,
                        f.sri_xml, f.sri_estado,
-                       c.nombre, c.apellido, c.cedula, c.correo
+                       c.nombre, c.apellido, c.cedula, c.correo,
+                       c.id_representante,
+                       r.nombre   AS rep_nombre,
+                       r.apellido AS rep_apellido,
+                       r.cedula   AS rep_cedula,
+                       r.correo   AS rep_correo
                   FROM facturas f
                   JOIN clientes c ON c.id_cliente = f.id_cliente
+                  LEFT JOIN clientes r ON r.id_cliente = c.id_representante
                  WHERE f.id_factura = %s
                 """,
                 (id_factura,),
@@ -588,23 +594,52 @@ class ServicioSri:
             datos["detalle"] = [dict(f) for f in cursor.fetchall()]
         return datos
 
+    @staticmethod
+    def _comprador_de(datos: dict) -> tuple[str, str | None, str | None]:
+        """A quién se le factura: nombre, identificación y correo.
+
+        Si el cliente es un menor a cargo, la factura va a nombre de
+        su representante. Es quien paga, quien firmó el deslinde, y
+        quien tiene cédula: los menores se registran con los datos del
+        adulto y casi nunca tienen la suya cargada.
+
+        Sin esto, la membresía de un menor salía a consumidor final
+        -- por no tener cédula -- y el SRI la rechazaba con el error
+        69 en cuanto pasaba de USD 50, que es el caso de la Junior.
+
+        La membresía sigue siendo del menor en el sistema; lo único
+        que cambia es a nombre de quién sale el comprobante.
+        """
+        if datos.get("id_representante") and (datos.get("rep_cedula") or "").strip():
+            nombre = f"{datos.get('rep_nombre') or ''} " \
+                     f"{datos.get('rep_apellido') or ''}".strip()
+            return (
+                nombre,
+                (datos.get("rep_cedula") or "").strip() or None,
+                (datos.get("rep_correo") or datos.get("correo") or "").strip()
+                or None,
+            )
+
+        nombre = f"{datos.get('nombre') or ''} {datos.get('apellido') or ''}".strip()
+        return (
+            nombre,
+            (datos.get("cedula") or "").strip() or None,
+            (datos.get("correo") or "").strip() or None,
+        )
+
     def _armar_xml(self, datos: dict, clave: str,
                    consumidor_final: bool = False) -> str:
         emisor = self.emisor()
 
-        nombre = f"{datos['nombre']} {datos['apellido']}".strip()
+        nombre, cedula, correo = self._comprador_de(datos)
         if consumidor_final:
             # Sin identificación: el comprador no se declara. Es la
             # salida cuando el SRI rechaza la cédula del cliente y no
             # hay forma de corregirla.
-            comprador = fx.Comprador(
-                correo=(datos.get("correo") or "").strip() or None
-            )
+            comprador = fx.Comprador(correo=correo)
         else:
             comprador = fx.Comprador(
-                identificacion=(datos.get("cedula") or "").strip() or None,
-                nombre=nombre,
-                correo=(datos.get("correo") or "").strip() or None,
+                identificacion=cedula, nombre=nombre, correo=correo,
             )
 
         # Solo membresías y pases. Los productos se facturan aparte y
