@@ -6,11 +6,69 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+# Claves que alguna vez estuvieron escritas acá o en .env.example, y
+# cualquiera que las haya visto puede usarlas. Si el sistema arranca
+# con una de éstas, quien conozca el repositorio puede fabricarse una
+# cookie que diga "empleado 1, rol ADMIN", firmarla correctamente, y
+# entrar como administrador sin contraseña.
+CLAVES_QUEMADAS = {
+    "clave-solo-para-desarrollo",
+    "cambia-esto-por-una-clave-larga-y-aleatoria",
+    "clave-secreta",
+    "secret",
+    "changeme",
+}
+
+# Una clave de 32 caracteres al azar es imposible de adivinar; una
+# corta, o escrita por una persona, no lo es. token_hex(32) da 64.
+LARGO_MINIMO = 32
+
+
+def revisar_secret_key(valor):
+    """Devuelve qué tiene de malo la SECRET_KEY, o None si está bien.
+
+    Aparte para poder probarla sin levantar la aplicación; la llama
+    crear_app() al arrancar.
+    """
+    if not valor or not valor.strip():
+        return "no está definida"
+    valor = valor.strip()
+    if valor.lower() in CLAVES_QUEMADAS:
+        return ("es una clave de ejemplo, que está escrita en el "
+                "repositorio y cualquiera que lo haya visto conoce")
+    if len(valor) < LARGO_MINIMO:
+        return (f"tiene {len(valor)} caracteres y necesita al menos "
+                f"{LARGO_MINIMO}")
+    return None
+
+
+EXPLICACION_SECRET_KEY = """
+La SECRET_KEY firma las cookies de sesión. Quien la conoce puede
+fabricar una cookie que diga "empleado 1, rol ADMIN" y entrar sin
+contraseña, así que el sistema no arranca sin una propia.
+
+Genere una, en ESTA máquina:
+
+    python -c "import secrets; print(secrets.token_hex(32))"
+
+y póngala en el archivo .env, junto a DATABASE_URL:
+
+    SECRET_KEY=el-valor-que-salio
+
+Una por cada lugar donde corre el sistema: una acá y otra distinta en
+la computadora del gimnasio, generada allá. No la escriba a mano, no
+la copie de otro lado y no la suba al repositorio.
+
+Si alguna vez la cambia, todos tienen que volver a iniciar sesión.
+No se pierde ningún dato.
+"""
+
+
 class Config:
-    # Clave para firmar las cookies de sesión. En producción SIEMPRE
-    # debe venir del entorno; el valor por defecto es solo para
-    # desarrollo local.
-    SECRET_KEY = os.getenv("SECRET_KEY", "clave-solo-para-desarrollo")
+    # Firma las cookies de sesión. Sin valor por defecto a propósito:
+    # un defecto que funciona es un defecto que termina en producción
+    # sin que nadie lo note. Ver revisar_secret_key().
+    SECRET_KEY = os.getenv("SECRET_KEY")
 
     # Conexión a PostgreSQL
     DATABASE_URL = os.getenv(

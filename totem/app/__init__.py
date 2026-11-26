@@ -13,12 +13,27 @@ from flask import Flask
 from app import errores, registro
 from app.db import cerrar_pool, init_pool
 from app.security import registrar_contexto
-from config import Config
+from config import EXPLICACION_SECRET_KEY, Config, revisar_secret_key
+
+
+class SecretKeyInvalida(RuntimeError):
+    """La SECRET_KEY falta o no sirve, y el sistema no debe arrancar."""
 
 
 def crear_app(config_clase=Config) -> Flask:
     app = Flask(__name__)
     app.config.from_object(config_clase)
+
+    # Antes que nada: sin una SECRET_KEY propia, las sesiones son
+    # falsificables. Se corta acá y no más adelante porque un sistema
+    # que arranca y funciona con una clave conocida no da ninguna
+    # señal de que algo ande mal -- se ve exactamente igual que uno
+    # seguro. Mejor un error al arrancar, que se ve de inmediato.
+    problema = revisar_secret_key(app.config.get("SECRET_KEY"))
+    if problema:
+        raise SecretKeyInvalida(
+            f"\n\nLa SECRET_KEY {problema}.\n{EXPLICACION_SECRET_KEY}"
+        )
     app.permanent_session_lifetime = timedelta(
         seconds=app.config["PERMANENT_SESSION_LIFETIME"]
     )
