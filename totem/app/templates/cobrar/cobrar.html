@@ -7,7 +7,8 @@
 <div class="page-sub">Registra una venta y genera el comprobante.</div>
 
 <form method="post" id="form-cobro" class="cobro">
-  <input type="hidden" name="items_json" id="items_json" value="[]">
+  <input type="hidden" name="items_json" id="items_json"
+         value='{{ items_previos or "[]" }}'>
   <input type="hidden" name="id_cliente" id="id_cliente" value="{{ cliente.id_cliente if cliente else '' }}">
   <input type="hidden" name="id_cliente_pareja" id="id_cliente_pareja" value="">
 
@@ -159,6 +160,14 @@
         {% if errores.get('metodo_pago') %}<div class="error">{{ errores['metodo_pago'] }}</div>{% endif %}
       </div>
 
+      {# Un plan atado a un dia que se esta cobrando otro dia. No se
+         bloquea: el gimnasio puede querer honrar la promo igual. Lo
+         que no puede es pasar por descuido, asi que hay que
+         confirmar y el boton cambia de texto para que se note. #}
+      {% if errores.get('dia_semana') %}
+      <input type="hidden" name="confirmar_dia" value="si">
+      {% endif %}
+
       <button type="submit" class="btn-primary ancho" id="btn-cobrar" disabled>
         Generar factura
       </button>
@@ -168,7 +177,31 @@
 
 <script>
   const IVA = {{ iva }};
+  const CONFIRMA_DIA = {{ 'true' if errores.get('dia_semana') else 'false' }};
   let items = [];
+
+  // Si el cobro volvio con un error de validacion, lo que ya estaba
+  // agregado viene en el campo oculto. Sin esto el carrito se vaciaba
+  // con cualquier error -- "elige la segunda persona", por ejemplo --
+  // y habia que volver a agregarlo todo. El nombre y el precio no
+  // viajan: se sacan del selector, que ya los trae.
+  function restaurarItems(){
+    let guardados = [];
+    try { guardados = JSON.parse(document.getElementById('items_json').value || '[]'); }
+    catch (e) { return; }
+    const sel = document.getElementById('sel-item');
+    for (const g of guardados) {
+      const opcion = sel.querySelector(`option[value="${g.tipo}|${g.id_item}"]`);
+      if (!opcion) continue;     // dejo de estar activo entre medias
+      items.push({
+        tipo: g.tipo, id_item: parseInt(g.id_item), cantidad: g.cantidad,
+        nombre: opcion.dataset.nombre,
+        precio: parseFloat(opcion.dataset.precio),
+        descuento: opcion.dataset.descuento === '1',
+        pareja: opcion.dataset.pareja === '1'
+      });
+    }
+  }
 
   // Punto decimal, igual que el comprobante que arma el servidor.
   const dinero = n => '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -285,8 +318,12 @@
     }
 
     document.getElementById('btn-cobrar').disabled = items.length === 0;
+    // Cuando se esta cobrando un plan fuera de su dia, el boton lo
+    // dice: el aviso de arriba se puede pasar por alto, el boton que
+    // se va a pulsar no.
     document.getElementById('btn-cobrar').textContent =
-      fiar ? 'Generar factura (por cobrar)' : 'Generar factura';
+      CONFIRMA_DIA ? 'Cobrar de todos modos'
+      : (fiar ? 'Generar factura (por cobrar)' : 'Generar factura');
   }
 
   function elegirCobro(modo){
@@ -372,6 +409,18 @@
     }
   });
 
+  restaurarItems();
   pintar();
+
+  {% if pareja %}
+  // La segunda persona también vuelve, por el mismo motivo.
+  document.getElementById('id_cliente_pareja').value = '{{ pareja.id_cliente }}';
+  pintarTarjeta('tarjeta-pareja', {
+    nombre: {{ pareja.nombre_completo|tojson }},
+    cedula: {{ (pareja.cedula or '—')|tojson }},
+    estado: {{ pareja.estado_etiqueta|tojson }}
+  });
+  document.getElementById('picker-pareja').style.display = 'none';
+  {% endif %}
 </script>
 {% endblock %}

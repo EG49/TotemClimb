@@ -142,6 +142,7 @@ def editar_plan(id_plan):
             "dias_incluidos": plan.dias_incluidos,
             "permite_pareja": "on" if plan.permite_pareja else "",
             "permite_descuento": "on" if plan.permite_descuento else "",
+            "dia_semana": plan.dia_semana,
         },
         errores={},
     )

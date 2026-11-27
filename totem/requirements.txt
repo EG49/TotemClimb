@@ -5,6 +5,11 @@ bcrypt==5.0.0
 python-dotenv==1.0.1
 gunicorn==23.0.0
 
+# Los Excel que se cargan en Contifico y las exportaciones. Lo usa la
+# aplicacion, no solo las pruebas: sin esto, "Cargar en Contifico" no
+# abre. Puro Python, con rueda para Windows.
+openpyxl>=3.1
+
 # ─── Facturación electrónica (SRI) ─────────────────────────────────
 # La firma XAdES-BES está escrita en app/services/sri/firma.py y solo
 # necesita estas dos. Las dos vienen de PyPI con rueda precompilada
@@ -29,3 +34,17 @@ aiosmtpd>=1.4
 # Python, con rueda para Windows. Si falta, el sistema funciona igual:
 # simplemente no revisa el dominio (ver correo_dominio.py).
 dnspython>=2.6
+
+
+# ─── Solo para las pruebas ─────────────────────────────────────────
+# La aplicacion no lo necesita para funcionar. Hace falta para
+# pruebas/e2e.py, que abre las pantallas en un navegador de verdad:
+# las cosas que no se ven en el codigo (un boton que no esta, texto
+# que se sale de su caja) solo aparecen mirando la pantalla.
+#
+# Despues de instalarlo hay que bajar el navegador, una sola vez:
+#
+#   python -m playwright install chromium
+#
+# Si falta, la aplicacion arranca igual y esas pruebas avisan.
+playwright>=1.49

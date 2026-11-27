@@ -61,7 +61,11 @@ def balance_del_dia(fecha):
         return Decimal(cursor.fetchone()["v"])
 
 
+# Estas pruebas son del emisor del SRI, asi que lo encienden ellas
+# mismas. Depender de como este el .env de la maquina donde se corren
+# hace que pasen o fallen por algo que no tiene que ver con el codigo.
 app = crear_app()
+app.config["FACTURACION_ELECTRONICA"] = "sri"
 creadas = []
 bloques = []
 

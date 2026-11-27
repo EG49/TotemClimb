@@ -48,6 +48,30 @@
   </aside>
 </div>
 
+{# Quien emite los comprobantes. No se cambia desde acá: vive en el
+   .env porque es una decisión de instalación, no del día a día. Pero
+   tiene que VERSE: si alguien borra esa línea del .env, el sistema
+   cambia de modo y nadie se entera hasta que aparece un botón que
+   manda comprobantes al SRI. #}
+<div class="card" style="margin-top:18px;max-width:640px;">
+  <div class="seccion">Comprobantes electrónicos</div>
+  <div class="seccion-nota">
+    {% if sri_activo %}
+      Los emite <b>este sistema</b>, firmando y enviando al SRI.
+    {% else %}
+      Los emite <b>Contífico</b>, a partir del Excel diario. Este
+      sistema cobra y entrega el comprobante interno; no manda nada
+      al SRI.
+    {% endif %}
+  </div>
+  <div class="aviso-bloqueo" style="margin-top:12px;">
+    Se cambia en el archivo <code>.env</code>, en la línea
+    <code>FACTURACION_ELECTRONICA</code>, y hace falta reiniciar el
+    sistema. Un solo emisor a la vez: si los dos emiten, el gimnasio
+    termina con dos comprobantes autorizados por la misma venta.
+  </div>
+</div>
+
 {# Cuántas unidades del mismo producto hacen que la venta se facture a
    nombre del cliente en vez de sumarse al bloque anónimo. #}
 <form method="post" class="card" style="margin-top:18px;max-width:640px;">

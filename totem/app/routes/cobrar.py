@@ -65,13 +65,23 @@ def cobrar():
                 g.empleado["id_empleado"],
             )
         except ErrorValidacion as e:
-            flash(list(e.errores.values())[0], "error")
+            # El aviso de que un plan es de otro día no es un error:
+            # se puede continuar confirmando. Sale en amarillo para
+            # que no se lea como "esto no se puede hacer".
+            solo_el_dia = set(e.errores) == {"dia_semana"}
+            flash(list(e.errores.values())[0],
+                  "aviso" if solo_el_dia else "error")
             seleccionado = request.form.get("id_cliente", type=int)
+            id_pareja = request.form.get("id_cliente_pareja", type=int)
+            # Lo que ya estaba agregado vuelve a la pantalla. Antes se
+            # perdía con cualquier error y había que armarlo de nuevo.
             return render_template(
                 "cobrar/cobrar.html",
                 catalogo=servicio.catalogo_para_cobrar(),
                 iva=servicio.iva_vigente(),
                 cliente=clientes.obtener(seleccionado) if seleccionado else None,
+                pareja=clientes.obtener(id_pareja) if id_pareja else None,
+                items_previos=request.form.get("items_json") or "[]",
                 errores=e.errores,
             )
 

@@ -118,6 +118,40 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM productos
 
 SELECT '';
 
+-- La fecha de vigencia que se guarda en el cliente es una copia de
+-- lo que dicen sus membresias, para no recalcularla en cada pantalla.
+-- Una copia puede quedar vieja, y si queda vieja por encima de la
+-- realidad el sistema deja entrar a quien ya no esta al dia. Al reves
+-- es igual de malo: le cobra de nuevo a quien ya pago.
+--
+-- Los flujos de cobro y anulacion la mantienen al dia; esto existe
+-- por si alguna vez se toco la base a mano.
+-- El conteo va sobre todos y la lista solo sobre los diez primeros.
+-- Contar sobre la lista recortada diria "10" habiendo cuarenta y
+-- siete, que es peor que no avisar: suena manejable.
+SELECT CASE WHEN COUNT(*) = 0
+            THEN 'OK    la vigencia de cada cliente cuadra con sus membresias'
+            ELSE 'REVISAR ' || COUNT(*) || ' cliente(s) con la vigencia '
+                 || 'desincronizada. Los primeros: '
+                 || (SELECT string_agg(nombre, ', ' ORDER BY nombre)
+                       FROM (SELECT c2.nombre || ' ' || c2.apellido AS nombre
+                               FROM clientes c2
+                              WHERE COALESCE(c2.vigente_hasta, DATE '1900-01-01')
+                                    <> COALESCE((SELECT MAX(m2.fecha_fin)::date
+                                                   FROM membresias m2
+                                                  WHERE m2.id_cliente = c2.id_cliente
+                                                    AND m2.estado = 'ACTIVA'),
+                                                DATE '1900-01-01')
+                              ORDER BY 1 LIMIT 10) AS primeros)
+            END
+  FROM clientes c
+ WHERE COALESCE(c.vigente_hasta, DATE '1900-01-01') <> COALESCE(
+         (SELECT MAX(m.fecha_fin)::date FROM membresias m
+           WHERE m.id_cliente = c.id_cliente
+             AND m.estado = 'ACTIVA'), DATE '1900-01-01');
+
+SELECT '';
+
 -- ---------- 3. Configuracion ----------
 SELECT CASE WHEN (SELECT valor FROM configuracion WHERE clave = 'iva_porcentaje') = '15'
             THEN 'OK    IVA en 15%'

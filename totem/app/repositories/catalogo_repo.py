@@ -86,6 +86,7 @@ CAMPOS_PLAN = (
     "dias_incluidos",
     "permite_pareja",
     "permite_descuento",
+    "dia_semana",
 )
 
 
@@ -97,7 +98,8 @@ class PlanRepositorio:
             cursor.execute(
                 f"""
                 SELECT id_plan, nombre, tipo, precio, duracion, unidad_duracion,
-                       dias_incluidos, permite_pareja, permite_descuento, activo
+                       dias_incluidos, permite_pareja, permite_descuento,
+                       activo, dia_semana
                   FROM planes_membresia
                   {where}
                  ORDER BY activo DESC, precio
@@ -110,7 +112,8 @@ class PlanRepositorio:
             cursor.execute(
                 """
                 SELECT id_plan, nombre, tipo, precio, duracion, unidad_duracion,
-                       dias_incluidos, permite_pareja, permite_descuento, activo
+                       dias_incluidos, permite_pareja, permite_descuento,
+                       activo, dia_semana
                   FROM planes_membresia WHERE id_plan = %s
                 """,
                 (id_plan,),

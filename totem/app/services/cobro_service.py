@@ -25,7 +25,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from flask import current_app
 
 from app.db import obtener_cursor
-from app.models.catalogo import MES
+from app.models.catalogo import DIAS_SEMANA, MES
 from app.models.factura import (
     CENTAVO,
     EMITIDA,
@@ -163,6 +163,7 @@ class CobroService:
                         cantidad=1,
                         permite_descuento=plan.permite_descuento,
                         permite_pareja=plan.permite_pareja,
+                        dia_semana=plan.dia_semana,
                     )
                 )
             else:
@@ -250,6 +251,23 @@ class CobroService:
             elif cliente is not None and cliente_pareja.id_cliente == cliente.id_cliente:
                 errores["id_cliente_pareja"] = (
                     "La segunda persona debe ser distinta del titular."
+                )
+
+        # Planes atados a un día: la promo del jueves se podía cobrar
+        # un lunes y nada se quejaba. No se bloquea, se avisa: el
+        # gimnasio puede querer honrarla otro día, pero no por
+        # descuido. El aviso se salta cuando ya se confirmó.
+        if formulario.get("confirmar_dia") != "si":
+            hoy = date.today().weekday()
+            fuera = [l for l in lineas
+                     if l.dia_semana is not None and l.dia_semana != hoy]
+            if fuera:
+                linea = fuera[0]
+                errores["dia_semana"] = (
+                    f"'{linea.nombre}' es solo para los "
+                    f"{DIAS_SEMANA[linea.dia_semana]} y hoy es "
+                    f"{DIAS_SEMANA[hoy]}. Si de todos modos se la quiere "
+                    "dar, confirme para continuar."
                 )
 
         # Descuento

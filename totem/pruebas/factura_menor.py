@@ -35,6 +35,10 @@ from pruebas.ayudas_sri import CLAVE_P12, certificado_de_prueba  # noqa: E402
 P12 = Path("/tmp/menor-prueba.p12")
 certificado_de_prueba(P12)
 os.environ.update({
+    # Esta prueba arma el XML que se le manda al SRI, asi que
+    # enciende el emisor ella misma en vez de depender del .env de la
+    # maquina donde se corra.
+    "FACTURACION_ELECTRONICA": "sri",
     "SRI_AMBIENTE": "1", "SRI_RUC": "1790012345001",
     "SRI_RAZON_SOCIAL": "TOTEM CLIMB GYM", "SRI_DIR_MATRIZ": "Av 123",
     "SRI_DIR_ESTABLECIMIENTO": "Av 123", "SRI_ESTABLECIMIENTO": "001",

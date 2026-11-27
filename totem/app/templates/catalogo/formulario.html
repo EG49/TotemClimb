@@ -113,6 +113,27 @@
       </span>
     </label>
 
+    {# El dia va en el plan y no en su nombre: buscar "jueves" dentro
+       del nombre se rompe el dia que alguien lo renombre, y no sirve
+       para la promo del martes que venga despues. #}
+    <div class="campo" style="max-width:260px; margin-top:14px;">
+      <label for="dia_semana">Solo se vende los</label>
+      <select id="dia_semana" name="dia_semana">
+        <option value="">Cualquier día</option>
+        {% for n, dia in [(0,'lunes'), (1,'martes'), (2,'miércoles'),
+                          (3,'jueves'), (4,'viernes'), (5,'sábado'),
+                          (6,'domingo')] %}
+          <option value="{{ n }}"
+            {{ 'selected' if datos.get('dia_semana') is not none
+               and datos.get('dia_semana')|string == n|string }}>{{ dia }}</option>
+        {% endfor %}
+      </select>
+      <div class="meta" style="margin-top:6px;">
+        Si se cobra otro día, el sistema avisa y pide confirmar. No lo
+        impide: el gimnasio decide.
+      </div>
+    </div>
+
     <label class="fila-check" style="margin-top:10px;">
       <input type="checkbox" name="permite_descuento" {{ 'checked' if datos.get('permite_descuento') }}>
       <span>
