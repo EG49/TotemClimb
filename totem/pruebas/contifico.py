@@ -214,7 +214,7 @@ with app.app_context():
         # el vacio en una y el texto en la otra, el desglose del
         # resumen daba cero mientras el total general si las contaba.
         pagos_hoja = {
-            hoja.cell(row=n, column=8).value for n in range(2, hoja.max_row + 1)
+            hoja.cell(row=n, column=9).value for n in range(2, hoja.max_row + 1)
         }
         revisar("ninguna forma de pago queda vacia",
                 "" not in pagos_hoja and None not in pagos_hoja,
@@ -237,6 +237,19 @@ with app.app_context():
         }
         revisar("la identificacion va como texto", formatos == {"@"},
                 str(formatos))
+
+        # Lo que compro, en la misma fila: quien carga no deberia
+        # tener que saltar a la otra hoja para saber que vendio.
+        compras = [
+            hoja.cell(row=n, column=8).value
+            for n in range(2, min(hoja.max_row, 30) + 1)
+        ]
+        revisar("cada venta dice que se compro",
+                all(c for c in compras), "alguna fila quedo sin items")
+        con_varios = [c for c in compras if c and ";" in c]
+        revisar("y con varios items van juntos en la celda",
+                bool(con_varios) or len(compras) < 5,
+                "no se vio ninguna venta de mas de un item")
 
     finally:
         limpiar()

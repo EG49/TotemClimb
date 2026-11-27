@@ -115,6 +115,14 @@ class ContificoService:
 
         for factura in facturas:
             factura["lineas"] = lineas.get(factura["id_factura"], [])
+            # Los ítems en la misma fila de la venta: quien carga ve
+            # qué compró esa persona sin saltar a la otra hoja. El
+            # desglose con precios sigue estando en «Detalle».
+            factura["items"] = "; ".join(
+                f"{l['item']} x{l['cantidad']}" if l["cantidad"] != 1
+                else l["item"]
+                for l in factura["lineas"]
+            )
             nombre, cedula, correo = ServicioSri._comprador_de(factura)
             factura["comprador"] = nombre
             factura["identificacion"] = cedula or CONSUMIDOR_FINAL
@@ -274,14 +282,14 @@ class ContificoService:
             # Python: si alguien corrige una fila, el total la sigue.
             celda = resumen.cell(
                 row=fila, column=2,
-                value=f'=SUMIF(Facturas!H:H,A{fila},Facturas!L:L)',
+                value=f'=SUMIF(Facturas!I:I,A{fila},Facturas!M:M)',
             )
             celda.font = normal
             celda.number_format = money
 
         fila += 1
         resumen.cell(row=fila, column=1, value="TOTAL").font = fuerte
-        celda = resumen.cell(row=fila, column=2, value="=SUM(Facturas!L:L)")
+        celda = resumen.cell(row=fila, column=2, value="=SUM(Facturas!M:M)")
         celda.font = fuerte
         celda.number_format = money
 
@@ -299,8 +307,9 @@ class ContificoService:
         encabezar(hoja, [
             ("N° venta", 13), ("Fecha", 11), ("Tipo ident.", 16),
             ("Identificación", 16), ("Comprador", 30), ("Correo", 28),
-            ("Teléfono", 13), ("Forma de pago", 15), ("Subtotal", 12),
-            ("Descuento %", 12), ("IVA", 11), ("Total", 12),
+            ("Teléfono", 13), ("Qué compró", 40), ("Forma de pago", 15),
+            ("Subtotal", 12), ("Descuento %", 12), ("IVA", 11),
+            ("Total", 12),
         ])
         for n, f in enumerate(facturas, start=2):
             valores = [
@@ -311,6 +320,7 @@ class ContificoService:
                 f["comprador"],
                 f["correo_comprador"] or "",
                 f["telefono"] or "",
+                f["items"],
                 f["metodo_pago"] or SIN_FORMA_DE_PAGO,
                 f["subtotal"], f["descuento_porcentaje"], f["iva"], f["total"],
             ]
@@ -324,9 +334,9 @@ class ContificoService:
                     # Como texto: una cédula que empieza en 0 pierde
                     # el cero si Excel la toma por número.
                     celda.number_format = "@"
-                elif col in (9, 11, 12):
+                elif col in (10, 12, 13):
                     celda.number_format = money
-                elif col == 10:
+                elif col == 11:
                     celda.number_format = "0.00"
 
         # ── Detalle ────────────────────────────────────────────────
