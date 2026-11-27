@@ -263,6 +263,16 @@ SELECT CASE WHEN COUNT(*) = 2
  WHERE table_name = 'clientes'
    AND column_name IN ('correo_rebotado_en', 'correo_rebote_motivo');
 
+-- Marca de lo ya cargado en Contifico.
+SELECT CASE WHEN COUNT(*) = 2
+            THEN 'OK    se puede marcar lo ya cargado en Contifico'
+            ELSE 'FALTA correr alter-contifico.sql (sin esto no hay como'
+                 || ' saber que ventas ya se registraron, y se cargan dos'
+                 || ' veces o ninguna)' END
+  FROM information_schema.columns
+ WHERE table_name = 'facturas'
+   AND column_name IN ('contifico_cargada_en', 'contifico_cargada_por');
+
 -- La factura de un menor va a nombre de su representante, asi que
 -- el que necesita cedula es el adulto. Si no la tiene, esa factura
 -- sale a consumidor final y el SRI la rechaza en cuanto pasa de USD
@@ -341,6 +351,9 @@ SELECT (
  OR NOT EXISTS (SELECT 1 FROM information_schema.columns
                  WHERE table_name = 'facturas'
                    AND column_name = 'sri_tipo_identificacion')
+ OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'facturas'
+                   AND column_name = 'contifico_cargada_en')
 ) AS falta_migracion
 \gset
 
@@ -357,6 +370,7 @@ SELECT '  2. alter-sri-bloques.sql';
 SELECT '  3. alter-bitacora-sri.sql';
 SELECT '  4. alter-envios-correo.sql';
 SELECT '  5. alter-identificacion-factura.sql';
+SELECT '  6. alter-contifico.sql';
 SELECT '';
 SELECT 'El orden importa: la de bitacora modifica una restriccion que';
 SELECT 'usan las otras.';

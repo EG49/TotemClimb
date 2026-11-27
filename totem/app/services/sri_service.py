@@ -132,8 +132,20 @@ class ServicioSri:
         valor = self._opcion("SRI_AMBIENTE", AMBIENTE_PRUEBAS)
         return valor if valor in (AMBIENTE_PRUEBAS, AMBIENTE_PRODUCCION) else AMBIENTE_PRUEBAS
 
+    def emite_este_sistema(self) -> bool:
+        """¿Le toca a este sistema emitir, o lo hace otro?
+
+        Cuando los comprobantes los emite Contífico a partir del Excel
+        diario, este sistema no debe mandar nada al SRI. No es que no
+        pueda: es que no debe. Dos emisores sobre la misma venta dejan
+        dos comprobantes autorizados.
+        """
+        return (self._opcion("FACTURACION_ELECTRONICA", "sri") or "sri").lower() == "sri"
+
     def configurado(self) -> bool:
         """Si hay con qué emitir. Sin esto, el cobro sigue igual."""
+        if not self.emite_este_sistema():
+            return False
         return all(
             self._opcion(nombre)
             for nombre in ("SRI_RUC", "SRI_RAZON_SOCIAL", "SRI_DIR_MATRIZ",

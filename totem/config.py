@@ -104,6 +104,22 @@ class Config:
     MAIL_REMITENTE = os.getenv("MAIL_REMITENTE")
     MAIL_NOMBRE_REMITENTE = os.getenv("MAIL_NOMBRE_REMITENTE", "Totem Climb Gym")
 
+    # ─── Quién emite los comprobantes electrónicos ────────────────
+    #   "sri"     este sistema firma y manda al SRI, como veníamos
+    #   "externa" los emite otro sistema (hoy Contífico, a partir del
+    #             Excel diario). Este sistema NO manda nada al SRI:
+    #             cobra, guarda la venta y entrega el comprobante
+    #             interno; la factura con validez la emite el otro.
+    #
+    # Hay un solo emisor a la vez, y eso no es un detalle: si los dos
+    # emiten, el gimnasio termina con dos comprobantes autorizados
+    # por la misma venta, que es un problema tributario y no un error
+    # de pantalla.
+    #
+    # El código del SRI queda en su lugar, solo apagado: si algún día
+    # se vuelve a emisión directa, es cambiar esta línea.
+    FACTURACION_ELECTRONICA = os.getenv("FACTURACION_ELECTRONICA", "sri")
+
     # ─── Rebotes ──────────────────────────────────────────────────
     # Que el correo salga no quiere decir que haya llegado. Cuando la
     # dirección no existe, el aviso vuelve al buzón del remitente

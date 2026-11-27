@@ -428,3 +428,81 @@ def corregir_cedula(id_factura):
 
     flash("Cédula corregida. Emitiendo de nuevo...", "ok")
     return reemitir(id_factura)
+
+
+@bp.route("/contifico", methods=["GET", "POST"])
+@admin_requerido
+def contifico():
+    """El Excel del día para registrar las ventas en Contífico.
+
+    Los comprobantes electrónicos los emite Contífico; este sistema
+    cobra y entrega el comprobante interno. Acá se exporta lo vendido
+    y se confirma la carga.
+
+    La confirmación no es un trámite: mientras no se confirme, esas
+    ventas vuelven a salir en la próxima exportación, que es lo que
+    evita que una se quede sin facturar. Y una vez confirmadas no
+    vuelven a salir, que es lo que evita cargarlas dos veces.
+    """
+    from datetime import date, timedelta
+
+    from app.services.contifico_service import ContificoService
+
+    servicio = ContificoService()
+    hoy = date.today()
+
+    def leer_fecha(nombre, por_omision):
+        texto = (request.values.get(nombre) or "").strip()
+        try:
+            return date.fromisoformat(texto) if texto else por_omision
+        except ValueError:
+            return por_omision
+
+    desde = leer_fecha("desde", hoy)
+    hasta = leer_fecha("hasta", hoy)
+    if desde > hasta:
+        desde, hasta = hasta, desde
+
+    if request.method == "POST":
+        accion = request.form.get("accion")
+        facturas = servicio.pendientes(desde, hasta)
+
+        if accion == "confirmar":
+            # Se marcan exactamente las que se exportaron. Si alguien
+            # cobró mientras el otro cargaba, esa venta queda
+            # pendiente para la próxima, que es lo correcto.
+            ids = [int(x) for x in request.form.getlist("id_factura")]
+            marcadas = servicio.marcar_cargadas(
+                ids, g.empleado["id_empleado"], desde, hasta
+            )
+            flash(
+                f"{marcadas} venta{'s' if marcadas != 1 else ''} "
+                f"marcada{'s' if marcadas != 1 else ''} como cargada"
+                f"{'s' if marcadas != 1 else ''} en Contífico.", "ok",
+            )
+            return redirect(url_for("facturas.contifico",
+                                    desde=desde, hasta=hasta))
+
+        if not facturas:
+            flash("No hay ventas pendientes en ese período.", "aviso")
+            return redirect(url_for("facturas.contifico",
+                                    desde=desde, hasta=hasta))
+
+        libro = servicio.construir_excel(facturas, desde, hasta)
+        nombre = f"ventas-{desde:%Y%m%d}-{hasta:%Y%m%d}.xlsx"
+        return Response(
+            libro,
+            mimetype="application/vnd.openxmlformats-officedocument."
+                     "spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+        )
+
+    facturas = servicio.pendientes(desde, hasta)
+    return render_template(
+        "facturas/contifico.html",
+        desde=desde,
+        hasta=hasta,
+        facturas=facturas,
+        resumen=servicio.resumen(facturas),
+        historial=servicio.historial(),
+    )
