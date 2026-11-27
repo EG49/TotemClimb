@@ -32,6 +32,7 @@
 </div>
 
 <form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
   <div class="seccion">Datos del cliente</div>
   <div class="seccion-nota">Información básica de contacto e identificación.</div>

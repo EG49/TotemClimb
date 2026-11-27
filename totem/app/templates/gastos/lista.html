@@ -186,6 +186,7 @@
 <!-- Anular -->
 <div class="overlay" id="modal-anular" onclick="if(event.target===this) cerrar('modal-anular')">
   <form class="modal" method="post" id="form-anular">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <h2>Anular gasto</h2>
     <p class="hint" id="texto-anular"></p>
     <div class="aviso-bloqueo">
