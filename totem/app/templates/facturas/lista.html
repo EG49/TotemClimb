@@ -20,10 +20,20 @@
      obligaba a deslizar de lado. #}
   <div style="display:flex; gap:10px; flex-wrap:wrap;">
     {% if empleado and empleado.es_admin %}
+    <a class="btn-ghost" href="{{ url_for('facturas.contifico') }}">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Cargar en Contífico
+    </a>
+    {# Facturar productos al SRI solo existe si este sistema emite. Con
+       Contifico los productos van en el Excel, y dos botones que
+       hacen lo mismo de dos formas distintas es como se factura dos
+       veces la misma venta. #}
+    {% if sri_activo %}
     <a class="btn-ghost" href="{{ url_for('facturas.bloques') }}">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 4v16"/></svg>
       Facturar productos
     </a>
+    {% endif %}
     {% endif %}
     <a class="btn-ghost" href="{{ url_for('facturas.exportar', **filtros) }}">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M12 15l-4-4M12 15l4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>

@@ -377,7 +377,15 @@ class CobroService:
             # queda sin comprobante y se resuelve después.
             try:
                 clave = self.sri.reservar(cursor, id_factura)
-                if clave is None:
+                if clave is None and not self.sri.emite_este_sistema():
+                    # Apagado a propósito: los comprobantes los emite
+                    # otro sistema desde el Excel diario. Se anota,
+                    # pero no es un problema que haya que revisar.
+                    current_app.logger.info(
+                        "La factura %s no se manda al SRI: los "
+                        "comprobantes los emite el otro sistema.", numero,
+                    )
+                elif clave is None:
                     # No emitir tiene que DECIRSE. Antes se pasaba por
                     # acá en silencio y la factura salía sin
                     # comprobante sin que nada lo mencionara: desde

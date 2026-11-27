@@ -227,6 +227,12 @@ class ServicioBloque:
         from app.services.sri_service import ServicioSri
 
         sri = ServicioSri()
+        if not sri.emite_este_sistema():
+            raise ErrorBloque(
+                "Este sistema ya no emite al SRI: las facturas las hace "
+                "Contifico. Los productos sueltos van en el Excel de "
+                "«Cargar en Contífico», agrupados igual que acá."
+            )
         if not sri.configurado():
             raise ErrorBloque(
                 "El sistema todavía no está configurado para emitir al SRI. "

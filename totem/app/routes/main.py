@@ -188,6 +188,7 @@ def configuracion():
                 return render_template(
                     "configuracion.html",
                     iva=servicio.iva_vigente(),
+                    minimo_por_cliente=servicio.minimo_por_cliente(),
                     historial=servicio.historial_iva(),
                     gym=request.form,
                     errores=e.errores,
@@ -197,6 +198,16 @@ def configuracion():
                 else "No cambiaste nada.",
                 "ok" if cambiados else "info",
             )
+        elif request.form.get("seccion") == "productos":
+            try:
+                servicio.cambiar_minimo_por_cliente(
+                    request.form.get("minimo_por_cliente"),
+                    g.empleado["id_empleado"],
+                )
+            except ErrorValidacion as e:
+                flash(list(e.errores.values())[0], "error")
+            else:
+                flash("Mínimo actualizado.", "ok")
         else:
             try:
                 servicio.cambiar_iva(
@@ -212,6 +223,7 @@ def configuracion():
     return render_template(
         "configuracion.html",
         iva=servicio.iva_vigente(),
+        minimo_por_cliente=servicio.minimo_por_cliente(),
         historial=servicio.historial_iva(),
         gym={f"gym_{k}": v for k, v in datos.items()},
         errores={},

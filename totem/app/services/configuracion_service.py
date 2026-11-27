@@ -61,6 +61,17 @@ def interpretar_iva(valor) -> Decimal:
     return porcentaje
 
 
+# Desde cuántas unidades del mismo producto se le factura a nombre
+# del cliente en vez de sumarlo al bloque anónimo. Quien compra cinco
+# aguas probablemente quiera su factura; quien compra una, no.
+#
+# Es un número de negocio y no una constante del código: el gimnasio
+# lo ajusta según cómo venda, así que vive en Configuración junto al
+# IVA y no en el .env.
+CLAVE_MINIMO_POR_CLIENTE = "productos_minimo_por_cliente"
+MINIMO_POR_CLIENTE_POR_DEFECTO = 5
+
+
 class ConfiguracionService:
 
     def __init__(self):
@@ -69,6 +80,40 @@ class ConfiguracionService:
 
     def iva_vigente(self) -> Decimal:
         return interpretar_iva(self.repositorio.obtener(CLAVE_IVA))
+
+    def minimo_por_cliente(self) -> int:
+        """Desde cuántas unidades el producto se factura al cliente.
+
+        Cero o menos significa que nunca se separa por cliente: todo
+        va al bloque, que es como funcionaba antes de esto.
+        """
+        crudo = self.repositorio.obtener(CLAVE_MINIMO_POR_CLIENTE)
+        try:
+            return int(str(crudo).strip())
+        except (TypeError, ValueError):
+            return MINIMO_POR_CLIENTE_POR_DEFECTO
+
+    def cambiar_minimo_por_cliente(self, valor, id_empleado: int) -> None:
+        anterior = self.minimo_por_cliente()
+        try:
+            nuevo = int(str(valor).strip())
+        except (TypeError, ValueError):
+            raise ErrorValidacion({
+                "minimo": "Escriba un número entero de unidades.",
+            }) from None
+        if nuevo < 0:
+            raise ErrorValidacion({
+                "minimo": "No puede ser negativo. Use 0 para no separar "
+                          "por cliente.",
+            })
+        if nuevo == anterior:
+            return
+
+        self.repositorio.guardar(CLAVE_MINIMO_POR_CLIENTE, str(nuevo))
+        self.bitacora.registrar(
+            id_empleado, bit.DATOS_GYM_CAMBIADOS, bit.CONFIGURACION, None,
+            {"minimo_por_cliente": {"antes": anterior, "despues": nuevo}},
+        )
 
     def cambiar_iva(self, valor, id_empleado: int) -> None:
         anterior = self.iva_vigente()

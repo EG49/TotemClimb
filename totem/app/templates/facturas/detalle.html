@@ -165,6 +165,12 @@
 {% if comprobante %}
 <div class="tarjeta" style="margin-top:22px;">
   <div class="seccion">Factura electrónica</div>
+  {% if not sri_activo %}
+  <div class="seccion-nota">
+    Historial de cuando este sistema emitía al SRI. Las facturas
+    nuevas las emite Contifico.
+  </div>
+  {% endif %}
 
   <div class="totales" style="margin-top:4px;">
     <div class="linea">
@@ -199,6 +205,42 @@
         {{ comprobante.sri_mensaje }}
       </div>
     </div>
+
+    {% if not sri_activo %}
+    {# Este sistema ya no emite: la factura la hace Contifico. Los
+       botones no se esconden, se traducen: la necesidad es la misma
+       -- esta venta no tiene factura y la cedula esta mal -- y lo que
+       cambia es por donde sale la factura. #}
+    <p class="pista" style="margin-top:14px;">
+      Esta venta se quedó sin factura cuando el sistema emitía al SRI,
+      así que todavía la debe. Corrija la cédula acá y sale en el
+      próximo Excel de Contífico, que es por donde se factura ahora.
+    </p>
+
+    {% if empleado and empleado.es_admin and factura.id_cliente %}
+    <form method="post"
+          action="{{ url_for('facturas.corregir_cedula', id_factura=factura.id_factura) }}"
+          class="corregir-cedula">
+      <label for="cedula-rapida">
+        Cédula o RUC de {{ factura.cliente_nombre }}
+      </label>
+      <div class="corregir-cedula-fila">
+        <input type="text" id="cedula-rapida" name="cedula"
+               value="{{ factura.cliente_cedula or '' }}"
+               inputmode="numeric" maxlength="13" autocomplete="off"
+               placeholder="10 dígitos">
+        <button type="submit" class="btn-primary">
+          Corregir y dejar pendiente
+        </button>
+      </div>
+      <div class="meta" style="margin-top:7px;">
+        Se guarda en la ficha del cliente y la venta queda pendiente de
+        cargar. Para cambiar algo más,
+        <a href="{{ url_for('clientes.editar', id_cliente=factura.id_cliente) }}">abra su ficha</a>.
+      </div>
+    </form>
+    {% endif %}
+    {% else %}
 
     <p class="pista" style="margin-top:14px;">
       Reintentar sin cambiar nada da el mismo error: hay que corregir
@@ -260,6 +302,64 @@
       {% endif %}
     </p>
     {% endif %}
+    {% endif %}
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Contífico ────────────────────────────────────────────────
+   Donde antes decia si el SRI la autorizo, ahora dice si la venta ya
+   se cargo. Sin esto, una venta marcada como cargada que en Contifico
+   nunca quedo no vuelve a salir en ningun Excel y se queda sin
+   factura sin que nadie se entere. #}
+{% if not sri_activo and contifico %}
+<div class="tarjeta" style="margin-top:22px;">
+  <div class="seccion">Contífico</div>
+
+  <div class="totales" style="margin-top:4px;">
+    {% if contifico.tiene_planes %}
+    <div class="linea">
+      <span>Membresías y pases</span>
+      <b>
+        {% if contifico.planes_en %}
+          <span class="pill vigente">Cargado</span>
+          {{ contifico.planes_en.strftime('%d/%m/%Y') }}
+        {% else %}
+          <span class="pill por_vencer">Pendiente</span>
+        {% endif %}
+      </b>
+    </div>
+    {% endif %}
+    {% if contifico.tiene_productos %}
+    <div class="linea">
+      <span>Productos sueltos</span>
+      <b>
+        {% if contifico.productos_en %}
+          <span class="pill vigente">Cargado</span>
+          {{ contifico.productos_en.strftime('%d/%m/%Y') }}
+        {% else %}
+          <span class="pill por_vencer">Pendiente</span>
+        {% endif %}
+      </b>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if contifico.pendiente %}
+    <p class="pista" style="margin-top:12px;">
+      Sale en el próximo Excel de
+      <a href="{{ url_for('facturas.contifico') }}">Cargar en Contífico</a>.
+    </p>
+  {% elif empleado and empleado.es_admin %}
+    <p class="pista" style="margin-top:12px;">
+      Si en Contífico no quedó registrada, devuélvala a pendiente y
+      vuelve a salir en el próximo Excel.
+    </p>
+    <form method="post"
+          action="{{ url_for('facturas.volver_a_pendiente', id_factura=factura.id_factura) }}"
+          style="margin-top:10px;">
+      <button type="submit" class="btn-ghost">Volver a dejarla pendiente</button>
+    </form>
   {% endif %}
 </div>
 {% endif %}

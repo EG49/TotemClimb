@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block titulo %}Cargar en Contífico — Totem Climb Gym{% endblock %}
+{% block nav_facturas %}active{% endblock %}
+
+{% macro bloque_carga(tipo, titulo, descripcion, facturas, resumen, sep=None) %}
+<div class="tarjeta" style="margin-bottom:18px;">
+  <h2 class="titulo-seccion">{{ titulo }}</h2>
+  <div class="meta" style="margin:6px 0 12px;">{{ descripcion }}</div>
+
+  {% if not facturas %}
+    <p class="pista">Nada pendiente entre esas fechas.</p>
+  {% else %}
+    <div class="meta" style="margin-bottom:12px;">
+      {{ resumen.facturas }} venta{{ 's' if resumen.facturas != 1 }}
+      por <b>${{ '%.2f'|format(resumen.total) }}</b>
+      {% if resumen.por_pago %}
+        ·
+        {% for pago, monto in resumen.por_pago.items() %}
+          {{ pago|capitalize }} ${{ '%.2f'|format(monto) }}{{ ', ' if not loop.last }}
+        {% endfor %}
+      {% endif %}
+    </div>
+    {# Cuántas facturas salen de aquí. En productos son dos clases:
+       las que van a nombre del cliente porque compró varias unidades
+       del mismo producto, y el resto en bloque a consumidor final. #}
+    {% if sep %}
+      <div class="meta" style="margin-bottom:12px;">
+        {% if sep.por_cliente %}
+          <b>{{ sep.por_cliente|length }}</b>
+          a nombre del cliente (compraron {{ sep.minimo }} o más del
+          mismo producto) y
+        {% endif %}
+        <b>{{ sep.bloques|length }}</b>
+        factura{{ 's' if sep.bloques|length != 1 }} de consumidor final.
+      </div>
+    {% endif %}
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+      <form method="post">
+        <input type="hidden" name="desde" value="{{ desde }}">
+        <input type="hidden" name="hasta" value="{{ hasta }}">
+        <input type="hidden" name="accion" value="excel_{{ tipo }}">
+        <button type="submit" class="btn-primary">Descargar Excel</button>
+      </form>
+      <form method="post"
+            onsubmit="return confirm('¿Ya registró en Contífico estas {{ resumen.facturas }} ventas de {{ titulo|lower }}?\n\nAl confirmar dejan de aparecer. Si todavía no las cargó, cancele.');">
+        <input type="hidden" name="desde" value="{{ desde }}">
+        <input type="hidden" name="hasta" value="{{ hasta }}">
+        <input type="hidden" name="accion" value="confirmar_{{ tipo }}">
+        {% for f in facturas %}
+          <input type="hidden" name="id_factura" value="{{ f.id_factura }}">
+        {% endfor %}
+        <button type="submit" class="btn-ghost">Confirmar carga</button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="page-title">Cargar en Contífico</div>
+    <div class="page-sub">
+      Los comprobantes los emite Contífico. Acá se exporta lo vendido
+      y se confirma la carga.
+    </div>
+  </div>
+  <a class="btn-ghost" href="{{ url_for('facturas.lista') }}">Volver</a>
+</div>
+
+<div class="tarjeta" style="margin-bottom:18px;">
+  <form method="get" style="display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;">
+    <div class="campo" style="margin:0;">
+      <label for="desde">Desde</label>
+      <input type="date" id="desde" name="desde" value="{{ desde }}">
+    </div>
+    <div class="campo" style="margin:0;">
+      <label for="hasta">Hasta</label>
+      <input type="date" id="hasta" name="hasta" value="{{ hasta }}">
+    </div>
+    <button type="submit" class="btn-ghost">Ver qué hay pendiente</button>
+  </form>
+</div>
+
+{# Dos archivos y dos confirmaciones, porque son dos facturaciones
+   distintas: el plan va a nombre del cliente y la bebida en bloque a
+   consumidor final. Una venta puede llevar las dos cosas, y entonces
+   se parte entre los dos archivos. #}
+{{ bloque_carga(
+     'planes', 'Membresías y pases',
+     'Una factura por venta, a nombre del cliente con su cédula.',
+     planes, resumen_planes) }}
+
+{{ bloque_carga(
+     'productos', 'Productos sueltos',
+     'Van a consumidor final, agrupados en facturas que no pasen del tope.',
+     productos, resumen_productos, separacion) }}
+
+{% if planes and productos %}
+  {% set mezcladas = planes|map(attribute='numero_factura')|list|select('in', productos|map(attribute='numero_factura')|list)|list %}
+  {% if mezcladas %}
+    <div class="tarjeta" style="margin-bottom:18px;">
+      <div class="meta nota">
+        <b>{{ mezcladas|length }}</b> venta{{ 's' if mezcladas|length != 1 }}
+        llevan plan y producto a la vez, así que están en los dos
+        archivos con montos distintos: en cada uno solo lo que le
+        corresponde. Los dos juntos suman lo que se vendió.
+      </div>
+    </div>
+  {% endif %}
+{% endif %}
+
+<div class="tarjeta" style="margin-bottom:18px;">
+  <h2 class="titulo-seccion">Por cobrar</h2>
+  <div class="meta" style="margin:6px 0 12px;">
+    Quién debe plata. Esto no se carga en Contífico: es para cobrar.
+  </div>
+  {% if not por_cobrar %}
+    <p class="pista">No hay saldos pendientes.</p>
+  {% else %}
+    <div class="meta" style="margin-bottom:12px;">
+      {{ por_cobrar|length }} factura{{ 's' if por_cobrar|length != 1 }}
+      por <b>${{ '%.2f'|format(por_cobrar|sum(attribute='saldo_pendiente')) }}</b>
+    </div>
+    <form method="post">
+      <input type="hidden" name="accion" value="por_cobrar">
+      <button type="submit" class="btn-ghost">Descargar Excel</button>
+    </form>
+  {% endif %}
+</div>
+
+{% if historial %}
+  <div class="tarjeta">
+    <h2 class="titulo-seccion">Cargas confirmadas</h2>
+    <table class="tabla-items" style="display:table; margin-top:12px;">
+      <thead>
+        <tr><th>Día</th><th>Qué</th><th>Ventas</th><th>Quién</th></tr>
+      </thead>
+      <tbody>
+        {% for h in historial %}
+          <tr>
+            <td>{{ h.dia.strftime('%d/%m/%Y') }}</td>
+            <td>{{ h.tipo }}</td>
+            <td>{{ h.facturas }}</td>
+            <td class="meta">{{ h.quien or '—' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

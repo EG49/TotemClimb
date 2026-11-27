@@ -18,6 +18,7 @@ from flask import (
 
 from app.security import admin_requerido, login_requerido
 from app.services.cliente_service import ClienteService
+from app.services.contifico_service import ContificoService
 from app.services.correo_service import ServicioCorreo
 from app.services.factura_service import FacturaService
 from app.services.rebote_service import ReboteService
@@ -130,6 +131,7 @@ def detalle(id_factura):
         abonos=servicio.abonos_de(id_factura),
         correo_disponible=ServicioCorreo.configurado(),
         comprobante=_estado_sri(id_factura),
+        contifico=ContificoService().estado_de(id_factura),
         # Que el correo haya salido no quiere decir que haya llegado.
         # Si rebotó, acá es donde alguien lo va a ver.
         envios=ReboteService.de_la_factura(id_factura),
@@ -258,6 +260,16 @@ def reemitir(id_factura):
     """
     from app.services.sri_service import ServicioSri
 
+    # Esconder el boton no basta: una pestaña abierta de antes todavia
+    # apunta acá, y esto manda un comprobante de verdad al SRI.
+    if not ServicioSri().emite_este_sistema():
+        flash(
+            "Este sistema ya no emite al SRI: las facturas las hace "
+            "Contifico. Cargue la venta desde «Cargar en Contífico».",
+            "error",
+        )
+        return redirect(url_for("facturas.detalle", id_factura=id_factura))
+
     sin_identificar = request.form.get("consumidor_final") == "si"
     try:
         estado = ServicioSri().reemitir(
@@ -300,6 +312,15 @@ def bloques():
     from datetime import date, timedelta
 
     from app.services.bloque_service import ErrorBloque, ServicioBloque
+    # La pantalla entera sobra cuando emite Contifico: lo que hacía
+    # acá ahora sale en el Excel, y tener las dos a la vez es como se
+    # factura dos veces la misma venta.
+    if not ServicioSri().emite_este_sistema():
+        flash(
+            "Los productos sueltos ahora van en el Excel de Contífico, "
+            "agrupados igual que acá.", "aviso",
+        )
+        return redirect(url_for("facturas.contifico"))
 
     servicio = ServicioBloque()
     hoy = date.today()
@@ -426,5 +447,136 @@ def corregir_cedula(id_factura):
         flash(str(error), "error")
         return redirect(url_for("facturas.detalle", id_factura=id_factura))
 
-    flash("Cédula corregida. Emitiendo de nuevo...", "ok")
-    return reemitir(id_factura)
+    if ServicioSri().emite_este_sistema():
+        flash("Cédula corregida. Emitiendo de nuevo...", "ok")
+        return reemitir(id_factura)
+
+    # Con Contífico no hay nada que reemitir desde acá: la factura la
+    # hace Contífico con el Excel. Lo que sí hace falta es que esta
+    # venta vuelva a salir en el Excel, ahora con la cédula buena. Si
+    # ya se había marcado como cargada, se desmarca: si no, la venta
+    # se queda sin factura y nadie se entera.
+    volvio = ContificoService().volver_a_pendiente(
+        id_factura, g.empleado["id_empleado"]
+    )
+    flash(
+        "Cédula corregida. "
+        + ("Esta venta vuelve a quedar pendiente y sale en el próximo "
+           "Excel de Contífico, ya con la cédula buena."
+           if volvio else
+           "Sale en el próximo Excel de Contífico con la cédula buena."),
+        "ok",
+    )
+    return redirect(url_for("facturas.detalle", id_factura=id_factura))
+
+
+@bp.route("/<int:id_factura>/volver-a-pendiente", methods=["POST"])
+@admin_requerido
+def volver_a_pendiente(id_factura):
+    """Desmarca la venta para que vuelva a salir en el Excel.
+
+    Reemplaza al antiguo «Reemitir sin cambiar nada»: la necesidad es
+    la misma -- esta venta no tiene factura y hay que volver a
+    intentarlo -- pero ahora el intento es cargarla en Contífico.
+    """
+    if ContificoService().volver_a_pendiente(
+        id_factura, g.empleado["id_empleado"]
+    ):
+        flash("Lista: vuelve a salir en el próximo Excel de Contífico.", "ok")
+    else:
+        flash("Esta venta ya estaba pendiente de cargar.", "info")
+    return redirect(url_for("facturas.detalle", id_factura=id_factura))
+
+
+@bp.route("/contifico", methods=["GET", "POST"])
+@admin_requerido
+def contifico():
+    """Los Excel del día para registrar las ventas en Contífico.
+
+    Tres archivos: planes y pases a nombre del cliente, productos
+    sueltos agrupados a consumidor final, y por cobrar.
+
+    Planes y productos se confirman por separado porque una venta
+    puede llevar las dos cosas. Con una sola confirmación, cargar los
+    planes del día daría por cargadas también las bebidas de esas
+    ventas, que nadie registró.
+    """
+    from datetime import date
+
+    servicio = ContificoService()
+    hoy = date.today()
+
+    def leer_fecha(nombre, por_omision):
+        texto = (request.values.get(nombre) or "").strip()
+        try:
+            return date.fromisoformat(texto) if texto else por_omision
+        except ValueError:
+            return por_omision
+
+    desde = leer_fecha("desde", hoy)
+    hasta = leer_fecha("hasta", hoy)
+    if desde > hasta:
+        desde, hasta = hasta, desde
+
+    def archivo(datos, nombre):
+        return Response(
+            datos,
+            mimetype="application/vnd.openxmlformats-officedocument."
+                     "spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+        )
+
+    if request.method == "POST":
+        accion = request.form.get("accion", "")
+        periodo = f"{desde:%Y%m%d}-{hasta:%Y%m%d}"
+
+        if accion == "por_cobrar":
+            deudas = servicio.por_cobrar()
+            if not deudas:
+                flash("No hay nada por cobrar.", "aviso")
+                return redirect(url_for("facturas.contifico",
+                                        desde=desde, hasta=hasta))
+            return archivo(servicio.excel_por_cobrar(deudas),
+                           f"por-cobrar-{hoy:%Y%m%d}.xlsx")
+
+        tipo = "productos" if "productos" in accion else "planes"
+        facturas = servicio.pendientes(tipo, desde, hasta)
+
+        if accion.startswith("confirmar"):
+            ids = [int(x) for x in request.form.getlist("id_factura")]
+            marcadas = servicio.marcar_cargadas(
+                tipo, ids, g.empleado["id_empleado"], desde, hasta
+            )
+            flash(
+                f"{marcadas} venta{'s' if marcadas != 1 else ''} de "
+                f"{tipo} marcada{'s' if marcadas != 1 else ''} como "
+                "cargada" + ("s" if marcadas != 1 else "") + ".", "ok",
+            )
+            return redirect(url_for("facturas.contifico",
+                                    desde=desde, hasta=hasta))
+
+        if not facturas:
+            flash(f"No hay {tipo} pendientes en ese período.", "aviso")
+            return redirect(url_for("facturas.contifico",
+                                    desde=desde, hasta=hasta))
+
+        if tipo == "productos":
+            datos = servicio.excel_productos(
+                facturas, servicio.separar_productos(facturas), desde, hasta
+            )
+        else:
+            datos = servicio.excel_planes(facturas, desde, hasta)
+        return archivo(datos, f"{tipo}-{periodo}.xlsx")
+
+    planes = servicio.pendientes("planes", desde, hasta)
+    productos = servicio.pendientes("productos", desde, hasta)
+    return render_template(
+        "facturas/contifico.html",
+        desde=desde, hasta=hasta,
+        planes=planes, productos=productos,
+        resumen_planes=servicio.resumen(planes),
+        resumen_productos=servicio.resumen(productos),
+        separacion=servicio.separar_productos(productos),
+        por_cobrar=servicio.por_cobrar(),
+        historial=servicio.historial(),
+    )
