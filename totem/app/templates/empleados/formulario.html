@@ -32,6 +32,7 @@
 
 <div class="disposicion-evento">
   <form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="seccion">Datos del empleado</div>
     <div class="seccion-nota">
       La fecha de nacimiento es opcional y solo sirve para que su
@@ -210,6 +211,7 @@
         {% endif %}
       </div>
       <form method="post" action="{{ url_for('empleados.cambiar_password', id_empleado=ficha.id_empleado) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="campo">
           <label for="pwd1">Contraseña nueva</label>
           <input id="pwd1" name="password" type="password" autocomplete="new-password">
@@ -247,6 +249,7 @@
         {% endif %}
       </div>
       <form method="post" action="{{ url_for('empleados.estado', id_empleado=ficha.id_empleado) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="activo" value="{{ '1' if not ficha.activo else '0' }}">
         <button type="submit" class="btn-quieto">
           {{ 'Reactivar empleado' if not ficha.activo else 'Desactivar empleado' }}

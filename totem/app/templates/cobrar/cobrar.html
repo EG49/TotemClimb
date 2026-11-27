@@ -7,6 +7,7 @@
 <div class="page-sub">Registra una venta y genera el comprobante.</div>
 
 <form method="post" id="form-cobro" class="cobro">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="items_json" id="items_json"
          value='{{ items_previos or "[]" }}'>
   <input type="hidden" name="id_cliente" id="id_cliente" value="{{ cliente.id_cliente if cliente else '' }}">

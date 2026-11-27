@@ -8,6 +8,7 @@
 
 <div class="disposicion-evento">
   <form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="seccion">IVA</div>
     <div class="seccion-nota">
       Se aplica a las facturas nuevas. Cada factura guarda la tasa con la
@@ -75,6 +76,7 @@
 {# Cuántas unidades del mismo producto hacen que la venta se facture a
    nombre del cliente en vez de sumarse al bloque anónimo. #}
 <form method="post" class="card" style="margin-top:18px;max-width:640px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="seccion" value="productos">
   <div class="seccion">Productos por cliente</div>
   <div class="seccion-nota">
@@ -103,6 +105,7 @@
 {# Datos del gimnasio. Salen en los correos de clases y eventos, por
    eso viven aquí y no escritos en el código. #}
 <form method="post" class="card" style="margin-top:18px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="seccion" value="gym">
   <div class="seccion">Datos del gimnasio</div>
   <div class="seccion-nota">

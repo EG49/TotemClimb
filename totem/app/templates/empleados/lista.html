@@ -76,6 +76,7 @@
                     action="{{ url_for('empleados.estado', id_empleado=e.id_empleado) }}"
                     onsubmit="return confirm({{ (('¿Reactivar a ' ~ e.nombre_completo ~ '?') if not e.activo
                                                  else ('¿Desactivar a ' ~ e.nombre_completo ~ '? Dejará de poder entrar, pero su historial se conserva.'))|tojson }});">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="activo" value="{{ '1' if not e.activo else '0' }}">
                 <button type="submit" class="btn-quieto chico">
                   {{ 'Reactivar' if not e.activo else 'Desactivar' }}

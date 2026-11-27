@@ -114,6 +114,7 @@
           <form method="post"
                 action="{{ url_for('calendario.quitar_inscrito', id_evento=e.id_evento, id_cliente=c.id_cliente) }}"
                 onsubmit="return confirm('¿Quitar a {{ c.nombre }} de «{{ e.titulo }}»?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn-quieto chico">Quitar</button>
           </form>
           {% endif %}
