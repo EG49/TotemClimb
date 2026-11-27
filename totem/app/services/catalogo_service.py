@@ -189,6 +189,8 @@ class CatalogoService:
             ),
             "permite_pareja": formulario.get("permite_pareja") == "on",
             "permite_descuento": formulario.get("permite_descuento") == "on",
+            # Vacío quiere decir cualquier día, que es lo normal.
+            "dia_semana": _a_entero(formulario.get("dia_semana")),
         }
         errores = self._validar_plan(datos, excluir_id=id_plan)
         if errores:
@@ -199,7 +201,8 @@ class CatalogoService:
             self.planes.actualizar(id_plan, datos)
             cambios = {}
             for campo in ("nombre", "precio", "duracion", "dias_incluidos",
-                          "permite_pareja", "permite_descuento"):
+                          "permite_pareja", "permite_descuento",
+                          "dia_semana"):
                 antes, despues = getattr(anterior, campo), datos[campo]
                 if antes != despues:
                     cambios[campo] = {"antes": str(antes), "despues": str(despues)}

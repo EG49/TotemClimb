@@ -33,6 +33,8 @@ class LineaCobro:
     cantidad: int = 1
     permite_descuento: bool = True
     permite_pareja: bool = False
+    # El día al que está atado el plan, si lo está. 0 lunes ... 6 domingo.
+    dia_semana: int | None = None
 
     @property
     def subtotal(self) -> Decimal:

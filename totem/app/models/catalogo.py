@@ -37,6 +37,13 @@ class Producto:
     activo: bool = True
 
     @property
+    def dia_texto(self) -> str:
+        """'jueves', o cadena vacía si sirve cualquier día."""
+        if self.dia_semana is None:
+            return ""
+        return DIAS_SEMANA[self.dia_semana]
+
+    @property
     def precio_texto(self) -> str:
         return f"${self.precio:,.2f}"
 
@@ -44,6 +51,10 @@ class Producto:
     def desde_fila(cls, fila: dict) -> "Producto":
         conocidos = set(cls.__dataclass_fields__)
         return cls(**{k: v for k, v in fila.items() if k in conocidos})
+
+
+DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes",
+               "sábado", "domingo")
 
 
 @dataclass
@@ -58,6 +69,15 @@ class PlanMembresia:
     permite_pareja: bool = False
     permite_descuento: bool = True
     activo: bool = True
+    # 0 lunes ... 6 domingo, igual que Python. None: cualquier día.
+    dia_semana: int | None = None
+
+    @property
+    def dia_texto(self) -> str:
+        """'jueves', o cadena vacía si sirve cualquier día."""
+        if self.dia_semana is None:
+            return ""
+        return DIAS_SEMANA[self.dia_semana]
 
     @property
     def precio_texto(self) -> str:
