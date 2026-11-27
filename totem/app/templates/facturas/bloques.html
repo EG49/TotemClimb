@@ -76,6 +76,7 @@
     {% endif %}
 
     <form method="post" style="margin-top:18px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="desde" value="{{ desde }}">
       <input type="hidden" name="hasta" value="{{ hasta }}">
       <button type="submit" class="btn-primary">

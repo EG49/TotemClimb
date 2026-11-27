@@ -107,11 +107,13 @@
             {% if p.asistio is none and not p.convertido %}
               <form method="post" style="display:inline"
                     action="{{ url_for('posibles.asistencia', id_posible=p.id_posible) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="asistio" value="si">
                 <button type="submit" class="btn-quieto chico">Vino</button>
               </form>
               <form method="post" style="display:inline"
                     action="{{ url_for('posibles.asistencia', id_posible=p.id_posible) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="asistio" value="no">
                 <button type="submit" class="btn-quieto chico">No vino</button>
               </form>

@@ -37,6 +37,7 @@
 
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
       <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="desde" value="{{ desde }}">
         <input type="hidden" name="hasta" value="{{ hasta }}">
         <input type="hidden" name="accion" value="excel_{{ tipo }}">
@@ -44,6 +45,7 @@
       </form>
       <form method="post"
             onsubmit="return confirm('¿Ya registró en Contífico estas {{ resumen.facturas }} ventas de {{ titulo|lower }}?\n\nAl confirmar dejan de aparecer. Si todavía no las cargó, cancele.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="desde" value="{{ desde }}">
         <input type="hidden" name="hasta" value="{{ hasta }}">
         <input type="hidden" name="accion" value="confirmar_{{ tipo }}">
@@ -124,6 +126,7 @@
       por <b>${{ '%.2f'|format(por_cobrar|sum(attribute='saldo_pendiente')) }}</b>
     </div>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="accion" value="por_cobrar">
       <button type="submit" class="btn-ghost">Descargar Excel</button>
     </form>

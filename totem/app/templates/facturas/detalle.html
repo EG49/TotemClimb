@@ -24,6 +24,7 @@
             action="{{ url_for('cobrar.enviar_comprobante', id_factura=factura.id_factura) }}"
             style="display:inline"
             onsubmit="return confirm({{ ('¿Enviar el comprobante a ' ~ factura.cliente_correo ~ '?')|tojson }});">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-ghost">Enviar por correo</button>
       </form>
     {% elif correo_disponible and factura.estado != 'ANULADA' %}
@@ -221,6 +222,7 @@
     <form method="post"
           action="{{ url_for('facturas.corregir_cedula', id_factura=factura.id_factura) }}"
           class="corregir-cedula">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label for="cedula-rapida">
         Cédula o RUC de {{ factura.cliente_nombre }}
       </label>
@@ -257,6 +259,7 @@
     <form method="post"
           action="{{ url_for('facturas.corregir_cedula', id_factura=factura.id_factura) }}"
           class="corregir-cedula">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label for="cedula-rapida">
         Cédula o RUC de {{ factura.cliente_nombre }}
       </label>
@@ -277,11 +280,13 @@
 
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
       <form method="post" action="{{ url_for('facturas.reemitir', id_factura=factura.id_factura) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-ghost">Reemitir sin cambiar nada</button>
       </form>
 
       {% if factura.total <= tope_consumidor_final %}
       <form method="post" action="{{ url_for('facturas.reemitir', id_factura=factura.id_factura) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="consumidor_final" value="si">
         <button type="submit" class="btn-ghost">Emitir a consumidor final</button>
       </form>
@@ -358,6 +363,7 @@
     <form method="post"
           action="{{ url_for('facturas.volver_a_pendiente', id_factura=factura.id_factura) }}"
           style="margin-top:10px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-ghost">Volver a dejarla pendiente</button>
     </form>
   {% endif %}

@@ -16,6 +16,7 @@
             action="{{ url_for('cobrar.enviar_comprobante', id_factura=factura.id_factura) }}"
             style="display:inline"
             onsubmit="return confirm({{ ('¿Enviar el comprobante a ' ~ factura.cliente_correo ~ '?')|tojson }});">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-ghost">Enviar por correo</button>
       </form>
     {% elif correo_disponible %}
