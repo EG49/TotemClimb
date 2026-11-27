@@ -90,7 +90,11 @@ def adjuntos_de(crudo):
     return mensaje, archivos
 
 
+# Estas pruebas son del emisor del SRI, asi que lo encienden ellas
+# mismas. Depender de como este el .env de la maquina donde se corren
+# hace que pasen o fallen por algo que no tiene que ver con el codigo.
 app = crear_app()
+app.config["FACTURACION_ELECTRONICA"] = "sri"
 creadas = []
 
 with TemporaryDirectory() as carpeta, app.app_context():

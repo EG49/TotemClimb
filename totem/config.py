@@ -118,7 +118,13 @@ class Config:
     #
     # El código del SRI queda en su lugar, solo apagado: si algún día
     # se vuelve a emisión directa, es cambiar esta línea.
-    FACTURACION_ELECTRONICA = os.getenv("FACTURACION_ELECTRONICA", "sri")
+    #
+    # Por omisión, "externa": el gimnasio factura por Contífico. Si
+    # faltara esta línea en el .env y el valor por omisión fuera "sri",
+    # el sistema volvería solo a emisión directa sin que nadie lo
+    # decidiera, y reaparecerían los botones que mandan comprobantes.
+    # Un .env incompleto tiene que equivocarse hacia no emitir.
+    FACTURACION_ELECTRONICA = os.getenv("FACTURACION_ELECTRONICA", "externa")
 
     # ─── Rebotes ──────────────────────────────────────────────────
     # Que el correo salga no quiere decir que haya llegado. Cuando la

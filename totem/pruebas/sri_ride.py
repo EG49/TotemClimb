@@ -174,6 +174,7 @@ if Controller is not None:
         from app.services.correo_service import ServicioCorreo
 
         app = crear_app()
+        app.config["FACTURACION_ELECTRONICA"] = "sri"
         with app.app_context():
             servicio = ServicioCorreo()
             servicio.enviar_con_adjuntos(
