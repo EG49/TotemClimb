@@ -337,6 +337,71 @@ class ContificoService:
 
     # --- Por cobrar ---------------------------------------------------
 
+    def estado_de(self, id_factura: int) -> dict:
+        """Si esta venta ya se cargó en Contífico, y qué parte.
+
+        Una venta puede llevar plan y producto, y cada parte se carga
+        por su lado: el estado no es uno solo.
+        """
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT contifico_planes_en, contifico_productos_en,
+                       EXISTS (SELECT 1 FROM detalle_factura d
+                                WHERE d.id_factura = f.id_factura
+                                  AND d.id_plan IS NOT NULL) AS tiene_planes,
+                       EXISTS (SELECT 1 FROM detalle_factura d
+                                WHERE d.id_factura = f.id_factura
+                                  AND d.id_producto IS NOT NULL) AS tiene_productos
+                  FROM facturas f WHERE f.id_factura = %s
+                """,
+                (id_factura,),
+            )
+            fila = cursor.fetchone()
+        if fila is None:
+            return {}
+        return {
+            "tiene_planes": fila["tiene_planes"],
+            "tiene_productos": fila["tiene_productos"],
+            "planes_en": fila["contifico_planes_en"],
+            "productos_en": fila["contifico_productos_en"],
+            "pendiente": (
+                (fila["tiene_planes"] and not fila["contifico_planes_en"])
+                or (fila["tiene_productos"]
+                    and not fila["contifico_productos_en"])
+            ),
+        }
+
+    def volver_a_pendiente(self, id_factura: int, id_empleado: int) -> bool:
+        """Deshace el marcado: la venta vuelve a salir en el Excel.
+
+        Hace falta cuando se marcó como cargada y en Contífico no
+        quedó: con la marca puesta, esa venta no vuelve a aparecer
+        nunca y se queda sin factura sin que nadie se entere.
+        """
+        with obtener_cursor(commit=True) as cursor:
+            cursor.execute(
+                """
+                UPDATE facturas
+                   SET contifico_planes_en = NULL,
+                       contifico_planes_por = NULL,
+                       contifico_productos_en = NULL,
+                       contifico_productos_por = NULL
+                 WHERE id_factura = %s
+                   AND (contifico_planes_en IS NOT NULL
+                        OR contifico_productos_en IS NOT NULL)
+                """,
+                (id_factura,),
+            )
+            cambiada = cursor.rowcount > 0
+
+        if cambiada:
+            self.bitacora.registrar(
+                id_empleado, bit.CONTIFICO_CARGADO, bit.FACTURA, id_factura,
+                {"accion": "vuelve a quedar pendiente de cargar"},
+            )
+        return cambiada
+
     def por_cobrar(self) -> list[dict]:
         """Quién debe plata, de más viejo a más nuevo.
 

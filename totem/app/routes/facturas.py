@@ -18,6 +18,7 @@ from flask import (
 
 from app.security import admin_requerido, login_requerido
 from app.services.cliente_service import ClienteService
+from app.services.contifico_service import ContificoService
 from app.services.correo_service import ServicioCorreo
 from app.services.factura_service import FacturaService
 from app.services.rebote_service import ReboteService
@@ -130,6 +131,7 @@ def detalle(id_factura):
         abonos=servicio.abonos_de(id_factura),
         correo_disponible=ServicioCorreo.configurado(),
         comprobante=_estado_sri(id_factura),
+        contifico=ContificoService().estado_de(id_factura),
         # Que el correo haya salido no quiere decir que haya llegado.
         # Si rebotó, acá es donde alguien lo va a ver.
         envios=ReboteService.de_la_factura(id_factura),
@@ -258,6 +260,16 @@ def reemitir(id_factura):
     """
     from app.services.sri_service import ServicioSri
 
+    # Esconder el boton no basta: una pestaña abierta de antes todavia
+    # apunta acá, y esto manda un comprobante de verdad al SRI.
+    if not ServicioSri().emite_este_sistema():
+        flash(
+            "Este sistema ya no emite al SRI: las facturas las hace "
+            "Contifico. Cargue la venta desde «Cargar en Contífico».",
+            "error",
+        )
+        return redirect(url_for("facturas.detalle", id_factura=id_factura))
+
     sin_identificar = request.form.get("consumidor_final") == "si"
     try:
         estado = ServicioSri().reemitir(
@@ -300,6 +312,15 @@ def bloques():
     from datetime import date, timedelta
 
     from app.services.bloque_service import ErrorBloque, ServicioBloque
+    # La pantalla entera sobra cuando emite Contifico: lo que hacía
+    # acá ahora sale en el Excel, y tener las dos a la vez es como se
+    # factura dos veces la misma venta.
+    if not ServicioSri().emite_este_sistema():
+        flash(
+            "Los productos sueltos ahora van en el Excel de Contífico, "
+            "agrupados igual que acá.", "aviso",
+        )
+        return redirect(url_for("facturas.contifico"))
 
     servicio = ServicioBloque()
     hoy = date.today()
@@ -426,8 +447,45 @@ def corregir_cedula(id_factura):
         flash(str(error), "error")
         return redirect(url_for("facturas.detalle", id_factura=id_factura))
 
-    flash("Cédula corregida. Emitiendo de nuevo...", "ok")
-    return reemitir(id_factura)
+    if ServicioSri().emite_este_sistema():
+        flash("Cédula corregida. Emitiendo de nuevo...", "ok")
+        return reemitir(id_factura)
+
+    # Con Contífico no hay nada que reemitir desde acá: la factura la
+    # hace Contífico con el Excel. Lo que sí hace falta es que esta
+    # venta vuelva a salir en el Excel, ahora con la cédula buena. Si
+    # ya se había marcado como cargada, se desmarca: si no, la venta
+    # se queda sin factura y nadie se entera.
+    volvio = ContificoService().volver_a_pendiente(
+        id_factura, g.empleado["id_empleado"]
+    )
+    flash(
+        "Cédula corregida. "
+        + ("Esta venta vuelve a quedar pendiente y sale en el próximo "
+           "Excel de Contífico, ya con la cédula buena."
+           if volvio else
+           "Sale en el próximo Excel de Contífico con la cédula buena."),
+        "ok",
+    )
+    return redirect(url_for("facturas.detalle", id_factura=id_factura))
+
+
+@bp.route("/<int:id_factura>/volver-a-pendiente", methods=["POST"])
+@admin_requerido
+def volver_a_pendiente(id_factura):
+    """Desmarca la venta para que vuelva a salir en el Excel.
+
+    Reemplaza al antiguo «Reemitir sin cambiar nada»: la necesidad es
+    la misma -- esta venta no tiene factura y hay que volver a
+    intentarlo -- pero ahora el intento es cargarla en Contífico.
+    """
+    if ContificoService().volver_a_pendiente(
+        id_factura, g.empleado["id_empleado"]
+    ):
+        flash("Lista: vuelve a salir en el próximo Excel de Contífico.", "ok")
+    else:
+        flash("Esta venta ya estaba pendiente de cargar.", "info")
+    return redirect(url_for("facturas.detalle", id_factura=id_factura))
 
 
 @bp.route("/contifico", methods=["GET", "POST"])
@@ -444,8 +502,6 @@ def contifico():
     ventas, que nadie registró.
     """
     from datetime import date
-
-    from app.services.contifico_service import ContificoService
 
     servicio = ContificoService()
     hoy = date.today()

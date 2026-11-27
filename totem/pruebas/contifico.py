@@ -380,5 +380,100 @@ with app.app_context():
         revisar("solo con saldo pendiente",
                 all(d["saldo_pendiente"] > 0 for d in deudas))
 
+        print("\nCON CONTIFICO NO SALE NADA AL SRI")
+        # El interruptor se pone acá y no se hereda del .env: la
+        # prueba tiene que medir el codigo, no como quedo configurada
+        # la maquina donde se corre.
+        antes = app.config.get("FACTURACION_ELECTRONICA")
+        app.config["FACTURACION_ELECTRONICA"] = "contifico"
+        # Lo importante no es que el interruptor este en su sitio, sino
+        # que no quede ninguna puerta abierta: un boton escondido en una
+        # plantilla y una ruta que igual responde es como se manda un
+        # comprobante que nadie queria mandar.
+        from app.services.sri_service import ServicioSri
+
+        revisar("el sistema no emite", not ServicioSri().emite_este_sistema())
+
+        from app.services.bloque_service import ErrorBloque, ServicioBloque
+        try:
+            ServicioBloque().emitir(desde, hasta, id_empleado)
+            revisar("facturar productos al SRI se niega", False,
+                    "emitio igual")
+        except ErrorBloque as error:
+            revisar("facturar productos al SRI se niega",
+                    "Contífico" in str(error), str(error))
+        except Exception as error:  # noqa: BLE001
+            revisar("facturar productos al SRI se niega", False, repr(error))
+
+        # Y en la pantalla: los botones que reemiten no pueden estar,
+        # aunque la factura este rechazada. Se mira el HTML porque el
+        # boton vive en la plantilla, no en el servicio.
+        from flask import render_template
+
+        from app.services.factura_service import FacturaService
+
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                "SELECT id_factura FROM facturas WHERE id_cliente IS NOT NULL"
+                " ORDER BY id_factura DESC LIMIT 1"
+            )
+            id_cualquiera = cursor.fetchone()["id_factura"]
+        # Una factura de verdad y no un objeto armado a mano: lo que se
+        # quiere probar es la plantilla, y con un doble a medias falla
+        # por campos que faltan en vez de por lo que se mide.
+        cualquiera = FacturaService().obtener(id_cualquiera)
+
+        # Hace falta una peticion de mentira: la plantilla hereda de
+        # base.html, que arma URLs.
+        with app.test_request_context(f"/facturas/{id_cualquiera}"):
+            html = render_template(
+                "facturas/detalle.html",
+                factura=cualquiera,
+                comprobante={"sri_estado": "NO_AUTORIZADA",
+                             "rechazada": True,
+                             "sri_mensaje": "identificador: 69",
+                             "sri_intentos": 1, "sri_secuencial": 1,
+                             "sri_establecimiento": "001",
+                             "sri_punto_emision": "004",
+                             "sri_autorizacion": None,
+                             "sri_fecha_autorizacion": None},
+                contifico=servicio.estado_de(id_cualquiera),
+                correo_disponible=False,
+                tope_consumidor_final=TOPE_CONSUMIDOR_FINAL,
+                sri_activo=False, empleado={"es_admin": True},
+            )
+        revisar("la pantalla no ofrece reemitir",
+                "facturas.reemitir" not in html
+                and "/reemitir" not in html,
+                "hay un boton que manda al SRI")
+        revisar("y sigue ofreciendo corregir la cedula",
+                "corregir_cedula" in html or "/corregir-cedula" in html,
+                "la cedula mal sigue siendo un problema con Contifico")
+
+        # Y con el interruptor del otro lado todo vuelve a estar: si
+        # esto no cambiara, la prueba de arriba estaria midiendo nada.
+        app.config["FACTURACION_ELECTRONICA"] = "sri"
+        revisar("con el interruptor en sri, el sistema vuelve a emitir",
+                ServicioSri().emite_este_sistema())
+        with app.test_request_context(f"/facturas/{id_cualquiera}"):
+            html_sri = render_template(
+                "facturas/detalle.html", factura=cualquiera,
+                comprobante={"sri_estado": "NO_AUTORIZADA",
+                             "rechazada": True, "sri_mensaje": "x",
+                             "sri_intentos": 1, "sri_secuencial": 1,
+                             "sri_establecimiento": "001",
+                             "sri_punto_emision": "004",
+                             "sri_autorizacion": None,
+                             "sri_fecha_autorizacion": None},
+                contifico={}, correo_disponible=False,
+                tope_consumidor_final=TOPE_CONSUMIDOR_FINAL,
+                sri_activo=True, empleado={"es_admin": True},
+            )
+        revisar("y la pantalla vuelve a ofrecer reemitir",
+                "/reemitir" in html_sri,
+                "si no aparece, la prueba de arriba no mide nada")
+        app.config["FACTURACION_ELECTRONICA"] = antes
+
+
 print(f"\n{'TODO OK' if not fallas else str(len(fallas)) + ' FALLAS: ' + ', '.join(fallas)}")
 sys.exit(1 if fallas else 0)

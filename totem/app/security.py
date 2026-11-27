@@ -89,3 +89,16 @@ def registrar_contexto(app) -> None:
     @app.context_processor
     def _inyectar_empleado():
         return {"empleado": empleado_actual()}
+
+    @app.context_processor
+    def _inyectar_emision():
+        """Si este sistema emite al SRI o lo hace otro.
+
+        Va acá y no en cada ruta porque es lo que decide si se ven los
+        botones que mandan comprobantes al SRI. Olvidarlo en una
+        plantilla deja un botón que emite cuando no debe, y ese botón
+        no se nota hasta que alguien lo pulsa.
+        """
+        from app.services.sri_service import ServicioSri
+
+        return {"sri_activo": ServicioSri().emite_este_sistema()}

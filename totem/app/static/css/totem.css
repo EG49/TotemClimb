@@ -98,6 +98,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 }
 
 .card{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:26px 28px; }
+/* Nueve plantillas escriben class="tarjeta" esperando una tarjeta y la
+   clase nunca existio: salian como bloques planos, sin fondo ni borde.
+   Se define como alias en vez de corregir las 29 apariciones, para que
+   la proxima que se escriba tampoco salga rota. */
+.tarjeta{ background:#fff; border:1px solid var(--gray-light); border-radius:14px; padding:26px 28px; }
 
 table{ width:100%; border-collapse:collapse; }
 th{
