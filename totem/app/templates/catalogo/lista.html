@@ -5,6 +5,7 @@
 {% macro boton_estado(url, activo, nombre) %}
   <form method="post" action="{{ url }}" style="display:inline"
         onsubmit="return confirm({{ ('¿Reactivar ' ~ nombre ~ '?') if not activo else ('¿Desactivar ' ~ nombre ~ '? Dejará de aparecer al cobrar, pero las facturas anteriores no se tocan.') | tojson }});">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="activo" value="{{ '1' if not activo else '0' }}">
     <button type="submit" class="btn-quieto chico">{{ 'Reactivar' if not activo else 'Desactivar' }}</button>
   </form>

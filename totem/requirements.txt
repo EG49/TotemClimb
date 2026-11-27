@@ -10,6 +10,11 @@ gunicorn==23.0.0
 # abre. Puro Python, con rueda para Windows.
 openpyxl>=3.1
 
+# El token que distingue un formulario de este sistema de uno que
+# llego de otro lado. Sin esto, una pagina cualquiera puede mandar un
+# cobro o una anulacion con la sesion de quien la abra.
+Flask-WTF>=1.2
+
 # ─── Facturación electrónica (SRI) ─────────────────────────────────
 # La firma XAdES-BES está escrita en app/services/sri/firma.py y solo
 # necesita estas dos. Las dos vienen de PyPI con rueda precompilada

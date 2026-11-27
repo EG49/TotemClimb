@@ -30,6 +30,7 @@
 </div>
 
 <form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="tipo_item" id="tipo_item" value="{{ tipo_item }}">
 
   {% if not editando %}

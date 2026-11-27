@@ -89,6 +89,7 @@
         {{ 'Administrador' if empleado.es_admin else 'Vendedor' }}
       </div>
       <form method="post" action="{{ url_for('auth.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-salir">Cerrar sesión</button>
       </form>
       {% endif %}

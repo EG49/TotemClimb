@@ -43,6 +43,7 @@
 {% endif %}
 
 <form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="rejilla">
     <div class="campo ancho">
       <label for="concepto">Concepto</label>

@@ -16,6 +16,7 @@
 
 <div class="disposicion-evento">
   <form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="rejilla">
       <div class="campo ancho">
         <label for="titulo">Título</label>
@@ -131,11 +132,13 @@
           {% if i.id_posible and i.asistio is none %}
             <form method="post" style="display:inline"
                   action="{{ url_for('posibles.asistencia', id_posible=i.id_posible) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="asistio" value="si">
               <button type="submit" class="btn-quieto chico">Vino</button>
             </form>
             <form method="post" style="display:inline"
                   action="{{ url_for('posibles.asistencia', id_posible=i.id_posible) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="asistio" value="no">
               <button type="submit" class="btn-quieto chico">No vino</button>
             </form>
@@ -147,6 +150,7 @@
           <form method="post" style="display:inline"
                 action="{% if i.id_posible %}{{ url_for('calendario.quitar_posible', id_evento=evento.id_evento, id_posible=i.id_posible) }}{% else %}{{ url_for('calendario.quitar_inscrito', id_evento=evento.id_evento, id_cliente=i.id_cliente) }}{% endif %}"
                 onsubmit="return confirm('¿Quitar a {{ i.cliente_nombre }} de este evento?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn-quieto chico">Quitar</button>
           </form>
         </div>
@@ -158,6 +162,7 @@
       {% if not evento.cupo_lleno %}
       <form method="post" action="{{ url_for('calendario.inscribir', id_evento=evento.id_evento) }}"
             id="form-inscribir" style="margin-top:14px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="id_cliente" id="id_cliente_inscribir">
         <div class="picker">
           <input type="text" id="buscar-inscribir" placeholder="Inscribir a alguien más..." autocomplete="off">
@@ -184,6 +189,7 @@
       {% if con_correo %}
       <form method="post" action="{{ url_for('calendario.avisar', id_evento=evento.id_evento) }}"
             onsubmit="return confirm('¿Mandar este aviso a {{ con_correo|length }} persona(s)?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="campo" style="margin-top:12px;">
           <label for="mensaje">Mensaje para los inscritos</label>
           <textarea id="mensaje" name="mensaje" rows="3" required minlength="10"
@@ -207,6 +213,7 @@
       </div>
       <form method="post" action="{{ url_for('calendario.eliminar_evento', id_evento=evento.id_evento) }}"
             onsubmit="return confirm('¿Eliminar «{{ evento.titulo }}» y sus {{ evento.inscritos }} inscripciones?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-quieto">Eliminar evento</button>
       </form>
     </div>

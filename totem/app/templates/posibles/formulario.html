@@ -35,6 +35,7 @@
 
 <div class="disposicion-evento">
   <form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="seccion">Datos de contacto</div>
     <div class="seccion-nota">
       El correo es obligatorio: es con lo que el sistema reconoce después
@@ -141,10 +142,12 @@
       </div>
       <div class="acciones">
         <form method="post" action="{{ url_for('posibles.asistencia', id_posible=ficha.id_posible) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="asistio" value="si">
           <button type="submit" class="btn-primary">Sí, vino</button>
         </form>
         <form method="post" action="{{ url_for('posibles.asistencia', id_posible=ficha.id_posible) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="asistio" value="no">
           <button type="submit" class="btn-quieto">No vino</button>
         </form>
@@ -167,6 +170,7 @@
       <form method="post" style="margin-top:10px;"
             action="{{ url_for('posibles.deshacer_conversion', id_posible=ficha.id_posible) }}"
             onsubmit="return confirm('¿Deshacer el enlace? Dejará de contar como conversión de su coach.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-quieto ancho">No es la misma persona</button>
       </form>
     </div>

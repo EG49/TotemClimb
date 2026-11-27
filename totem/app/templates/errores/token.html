@@ -1,0 +1,25 @@
+{# El formulario llego sin un token valido. Casi siempre es alguien
+   que dejo la pantalla abierta y se le vencio la sesion, no un
+   ataque: por eso el texto explica en vez de acusar. #}
+{% extends "base.html" %}
+{% block titulo %}La sesión venció — Totem Climb Gym{% endblock %}
+
+{% block contenido %}
+<div class="pagina-error">
+  <div class="error-codigo">400</div>
+  <div class="page-title">Este formulario ya no era válido</div>
+  <p class="error-texto">
+    Pasa cuando la pantalla estuvo abierta mucho rato y la sesión se
+    venció mientras tanto. <b>No se guardó nada</b>, así que lo que
+    haya escrito hay que volver a escribirlo.
+  </p>
+  <p class="error-texto">
+    Inicie sesión de nuevo y repita la operación. Si acaba de entrar y
+    le sigue apareciendo esto, avísele a quien administra el sistema.
+  </p>
+  <div class="error-acciones">
+    <a class="btn-primary" href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+    <a class="btn-ghost" href="{{ url_for('main.panel') }}">Ir al panel general</a>
+  </div>
+</div>
+{% endblock %}

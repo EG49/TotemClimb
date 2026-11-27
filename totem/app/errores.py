@@ -61,6 +61,26 @@ def _que_migracion_falta(error) -> tuple[str, str] | None:
 def registrar(app) -> None:
     """Conecta los manejadores. Se llama una vez, al crear la app."""
 
+    from flask_wtf.csrf import CSRFError
+
+    @app.errorhandler(CSRFError)
+    def _token_vencido(error):
+        """El formulario se mandó sin un token válido.
+
+        Casi siempre no es un ataque: es alguien que dejó la pantalla
+        abierta, se le venció la sesión y le dio a guardar. Un 400
+        pelado en esa situación parece que el sistema se rompió, y lo
+        que hace falta es decirle qué pasó y cómo seguir.
+
+        Se registra igual, porque la otra posibilidad -- que sí lo
+        sea -- conviene que quede anotada.
+        """
+        app.logger.warning(
+            "Formulario rechazado por token invalido en %s %s: %s",
+            request.method, request.path, error.description,
+        )
+        return render_template("errores/token.html"), 400
+
     @app.errorhandler(404)
     def _no_encontrado(error):
         # Un 404 es normal: alguien escribió mal una dirección o siguió

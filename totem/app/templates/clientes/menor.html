@@ -41,6 +41,7 @@
 {% endif %}
 
 <form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="seccion">Datos del menor</div>
   <div class="seccion-nota">
     El contacto se hace a través del representante, por eso no se le piden
@@ -81,6 +82,7 @@
     </p>
     <form method="post" action="{{ url_for('clientes.quitar_representante', id_cliente=cliente.id_cliente) }}"
           onsubmit="return confirm('¿Quitar a {{ cliente.representante_nombre }} como representante de {{ cliente.nombre_completo }}?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-quieto">Quitar representante</button>
     </form>
   </details>

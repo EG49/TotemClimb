@@ -9,6 +9,7 @@ import atexit
 from datetime import timedelta
 
 from flask import Flask
+from flask_wtf.csrf import CSRFProtect
 
 from app import errores, registro
 from app.db import cerrar_pool, init_pool
@@ -37,6 +38,20 @@ def crear_app(config_clase=Config) -> Flask:
     app.permanent_session_lifetime = timedelta(
         seconds=app.config["PERMANENT_SESSION_LIFETIME"]
     )
+
+    # Sin esto, cualquier pagina que alguien abra con la sesion
+    # iniciada puede mandar un cobro, un gasto o una anulacion a este
+    # sistema: el navegador adjunta la cookie de sesion igual, venga
+    # el formulario de donde venga, y para el servidor es
+    # indistinguible de la persona pulsando el boton.
+    #
+    # En el PC del gimnasio, en su red local, el riesgo es chico. En
+    # internet no: basta un enlace en un correo.
+    #
+    # Protege TODO lo que llegue por POST, incluido el login: un
+    # atacante que puede hacerle iniciar sesion con SU cuenta ve
+    # despues lo que la persona haga creyendo que es la suya.
+    CSRFProtect(app)
 
     # Lo primero que se configura, para que cualquier fallo posterior
     # (incluido el de la base) quede registrado.
