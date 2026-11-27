@@ -2,13 +2,55 @@
 {% block titulo %}Cargar en Contífico — Totem Climb Gym{% endblock %}
 {% block nav_facturas %}active{% endblock %}
 
+{% macro bloque_carga(tipo, titulo, descripcion, facturas, resumen, extra) %}
+<div class="tarjeta" style="margin-bottom:18px;">
+  <h2 class="titulo-seccion">{{ titulo }}</h2>
+  <div class="meta" style="margin:6px 0 12px;">{{ descripcion }}</div>
+
+  {% if not facturas %}
+    <p class="pista">Nada pendiente entre esas fechas.</p>
+  {% else %}
+    <div class="meta" style="margin-bottom:12px;">
+      {{ resumen.facturas }} venta{{ 's' if resumen.facturas != 1 }}
+      por <b>${{ '%.2f'|format(resumen.total) }}</b>
+      {% if resumen.por_pago %}
+        ·
+        {% for pago, monto in resumen.por_pago.items() %}
+          {{ pago|capitalize }} ${{ '%.2f'|format(monto) }}{{ ', ' if not loop.last }}
+        {% endfor %}
+      {% endif %}
+    </div>
+    {{ extra }}
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+      <form method="post">
+        <input type="hidden" name="desde" value="{{ desde }}">
+        <input type="hidden" name="hasta" value="{{ hasta }}">
+        <input type="hidden" name="accion" value="excel_{{ tipo }}">
+        <button type="submit" class="btn-primary">Descargar Excel</button>
+      </form>
+      <form method="post"
+            onsubmit="return confirm('¿Ya registró en Contífico estas {{ resumen.facturas }} ventas de {{ titulo|lower }}?\n\nAl confirmar dejan de aparecer. Si todavía no las cargó, cancele.');">
+        <input type="hidden" name="desde" value="{{ desde }}">
+        <input type="hidden" name="hasta" value="{{ hasta }}">
+        <input type="hidden" name="accion" value="confirmar_{{ tipo }}">
+        {% for f in facturas %}
+          <input type="hidden" name="id_factura" value="{{ f.id_factura }}">
+        {% endfor %}
+        <button type="submit" class="btn-ghost">Confirmar carga</button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
 {% block contenido %}
 <div class="encabezado">
   <div>
-    <div class="page-title">Ventas para cargar en Contífico</div>
+    <div class="page-title">Cargar en Contífico</div>
     <div class="page-sub">
-      Los comprobantes electrónicos los emite Contífico. Acá se exporta
-      lo vendido y se confirma la carga.
+      Los comprobantes los emite Contífico. Acá se exporta lo vendido
+      y se confirma la carga.
     </div>
   </div>
   <a class="btn-ghost" href="{{ url_for('facturas.lista') }}">Volver</a>
@@ -28,112 +70,69 @@
   </form>
 </div>
 
-{% if not facturas %}
-  <div class="tarjeta vacio">
-    <p>No hay ventas pendientes de cargar entre esas fechas.</p>
-    <p class="pista">
-      Si ya las cargó, aparecen más abajo en el historial.
-    </p>
-  </div>
-{% else %}
-  <div class="tarjeta">
-    <h2 class="titulo-seccion">Pendiente de cargar</h2>
+{# Dos archivos y dos confirmaciones, porque son dos facturaciones
+   distintas: el plan va a nombre del cliente y la bebida en bloque a
+   consumidor final. Una venta puede llevar las dos cosas, y entonces
+   se parte entre los dos archivos. #}
+{{ bloque_carga(
+     'planes', 'Membresías y pases',
+     'Una factura por venta, a nombre del cliente con su cédula.',
+     planes, resumen_planes, '') }}
 
-    <div class="meta" style="margin:8px 0 14px;">
-      {{ resumen.facturas }} venta{{ 's' if resumen.facturas != 1 }}
-      por <b>${{ '%.2f'|format(resumen.total) }}</b>
-      {% if resumen.por_pago %}
-        ·
-        {% for pago, monto in resumen.por_pago.items() %}
-          {{ pago|capitalize }} ${{ '%.2f'|format(monto) }}{{ ', ' if not loop.last }}
-        {% endfor %}
-      {% endif %}
-    </div>
+{{ bloque_carga(
+     'productos', 'Productos sueltos',
+     'Van a consumidor final, agrupados en facturas que no pasen del tope.',
+     productos, resumen_productos,
+     '<div class="meta" style="margin-bottom:12px;">Se agrupan en <b>'
+     ~ bloques|length ~ '</b> factura' ~ ('s' if bloques|length != 1 else '')
+     ~ ' de consumidor final.</div>') }}
 
-    <table class="tabla-items" style="display:table;">
-      <thead>
-        <tr>
-          <th>N° venta</th><th>Fecha</th><th>Comprador</th>
-          <th>Identificación</th><th style="text-align:right;">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for f in facturas[:60] %}
-          <tr>
-            <td>{{ f.numero_factura }}</td>
-            <td class="meta">{{ f.fecha.strftime('%d/%m/%Y') }}</td>
-            <td>
-              {{ f.comprador }}
-              {% if f.id_representante %}
-                <div class="meta">representante de {{ f.nombre }} {{ f.apellido }}</div>
-              {% endif %}
-            </td>
-            <td class="meta">
-              {% if f.tipo_identificacion == '07' %}
-                Consumidor final
-              {% else %}
-                {{ f.identificacion }}
-              {% endif %}
-            </td>
-            <td style="text-align:right;">${{ '%.2f'|format(f.total) }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% if facturas|length > 60 %}
-      <div class="meta nota" style="margin-top:10px;">
-        Se muestran las primeras 60. El Excel las trae todas.
+{% if planes and productos %}
+  {% set mezcladas = planes|map(attribute='numero_factura')|list|select('in', productos|map(attribute='numero_factura')|list)|list %}
+  {% if mezcladas %}
+    <div class="tarjeta" style="margin-bottom:18px;">
+      <div class="meta nota">
+        <b>{{ mezcladas|length }}</b> venta{{ 's' if mezcladas|length != 1 }}
+        llevan plan y producto a la vez, así que están en los dos
+        archivos con montos distintos: en cada uno solo lo que le
+        corresponde. Los dos juntos suman lo que se vendió.
       </div>
-    {% endif %}
-
-    {# Los dos pasos, en orden y separados: primero se descarga y se
-       carga en Contífico; recién después se confirma. Confirmar sin
-       haber cargado deja esas ventas sin factura y sin que vuelvan a
-       aparecer. #}
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;">
-      <form method="post">
-        <input type="hidden" name="desde" value="{{ desde }}">
-        <input type="hidden" name="hasta" value="{{ hasta }}">
-        <input type="hidden" name="accion" value="exportar">
-        <button type="submit" class="btn-primary">Descargar Excel</button>
-      </form>
-
-      <form method="post"
-            onsubmit="return confirm('¿Ya registró estas {{ resumen.facturas }} ventas en Contífico?\n\nAl confirmar dejan de aparecer acá. Si todavía no las cargó, cancele.');">
-        <input type="hidden" name="desde" value="{{ desde }}">
-        <input type="hidden" name="hasta" value="{{ hasta }}">
-        <input type="hidden" name="accion" value="confirmar">
-        {% for f in facturas %}
-          <input type="hidden" name="id_factura" value="{{ f.id_factura }}">
-        {% endfor %}
-        <button type="submit" class="btn-ghost">Confirmar carga</button>
-      </form>
     </div>
-
-    <div class="meta nota" style="margin-top:12px;">
-      Confirme solo después de haberlas registrado en Contífico.
-      Mientras no confirme, vuelven a salir acá: eso es lo que evita
-      que una venta se quede sin facturar.
-    </div>
-  </div>
+  {% endif %}
 {% endif %}
 
+<div class="tarjeta" style="margin-bottom:18px;">
+  <h2 class="titulo-seccion">Por cobrar</h2>
+  <div class="meta" style="margin:6px 0 12px;">
+    Quién debe plata. Esto no se carga en Contífico: es para cobrar.
+  </div>
+  {% if not por_cobrar %}
+    <p class="pista">No hay saldos pendientes.</p>
+  {% else %}
+    <div class="meta" style="margin-bottom:12px;">
+      {{ por_cobrar|length }} factura{{ 's' if por_cobrar|length != 1 }}
+      por <b>${{ '%.2f'|format(por_cobrar|sum(attribute='saldo_pendiente')) }}</b>
+    </div>
+    <form method="post">
+      <input type="hidden" name="accion" value="por_cobrar">
+      <button type="submit" class="btn-ghost">Descargar Excel</button>
+    </form>
+  {% endif %}
+</div>
+
 {% if historial %}
-  <div class="tarjeta" style="margin-top:22px;">
+  <div class="tarjeta">
     <h2 class="titulo-seccion">Cargas confirmadas</h2>
     <table class="tabla-items" style="display:table; margin-top:12px;">
       <thead>
-        <tr>
-          <th>Día</th><th>Ventas</th>
-          <th style="text-align:right;">Total</th><th>Quién</th>
-        </tr>
+        <tr><th>Día</th><th>Qué</th><th>Ventas</th><th>Quién</th></tr>
       </thead>
       <tbody>
         {% for h in historial %}
           <tr>
             <td>{{ h.dia.strftime('%d/%m/%Y') }}</td>
+            <td>{{ h.tipo }}</td>
             <td>{{ h.facturas }}</td>
-            <td style="text-align:right;">${{ '%.2f'|format(h.total) }}</td>
             <td class="meta">{{ h.quien or '—' }}</td>
           </tr>
         {% endfor %}

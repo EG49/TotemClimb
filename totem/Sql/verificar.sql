@@ -264,14 +264,15 @@ SELECT CASE WHEN COUNT(*) = 2
    AND column_name IN ('correo_rebotado_en', 'correo_rebote_motivo');
 
 -- Marca de lo ya cargado en Contifico.
-SELECT CASE WHEN COUNT(*) = 2
+SELECT CASE WHEN COUNT(*) = 4
             THEN 'OK    se puede marcar lo ya cargado en Contifico'
             ELSE 'FALTA correr alter-contifico.sql (sin esto no hay como'
                  || ' saber que ventas ya se registraron, y se cargan dos'
                  || ' veces o ninguna)' END
   FROM information_schema.columns
  WHERE table_name = 'facturas'
-   AND column_name IN ('contifico_cargada_en', 'contifico_cargada_por');
+   AND column_name IN ('contifico_planes_en', 'contifico_planes_por',
+                       'contifico_productos_en', 'contifico_productos_por');
 
 -- La factura de un menor va a nombre de su representante, asi que
 -- el que necesita cedula es el adulto. Si no la tiene, esa factura
@@ -353,7 +354,7 @@ SELECT (
                    AND column_name = 'sri_tipo_identificacion')
  OR NOT EXISTS (SELECT 1 FROM information_schema.columns
                  WHERE table_name = 'facturas'
-                   AND column_name = 'contifico_cargada_en')
+                   AND column_name = 'contifico_planes_en')
 ) AS falta_migracion
 \gset
 

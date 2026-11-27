@@ -1,27 +1,34 @@
-"""El Excel diario de ventas, para cargarlas en Contífico.
+"""Los Excel diarios de ventas, para cargarlas en Contífico.
 
 Los comprobantes electrónicos los emite Contífico. Este sistema cobra,
 guarda la venta y entrega el comprobante interno en el momento; al
-cerrar el día alguien exporta lo vendido y lo registra allá.
+cerrar el día se exporta lo vendido y alguien lo registra allá.
 
-Es una tarea semimanual, y las tareas semimanuales fallan de dos
-formas: una venta cargada dos veces deja dos comprobantes autorizados
-de la misma venta, y una que no se carga nunca es una venta sin
-factura. Ninguna de las dos se nota al día siguiente.
+Son TRES archivos, y la separación no es de orden sino de fondo:
 
-Por eso esto no es solo "generar un archivo":
+  * PLANES Y PASES van a nombre del cliente, con su cédula. Una
+    factura por venta.
+  * PRODUCTOS SUELTOS van en bloque a consumidor final: son decenas
+    de personas distintas que compraron un agua, no hay a quién
+    identificar. Por eso se agrupan en facturas que no pasen del tope.
+  * POR COBRAR no es para facturar: es quién debe plata. Se exporta
+    para cobrar, no para registrar en ningún lado.
 
-  * la exportación trae lo que todavía NO se ha cargado, no un rango
-    de fechas a secas
-  * cuando se confirma la carga, esas facturas quedan marcadas y no
-    vuelven a salir
-  * el resumen permite cuadrar: si el total del Excel y el de
-    Contífico no coinciden, algo quedó afuera
+Una venta puede llevar las dos cosas -- en esta base, una de cada
+cuatro --, y entonces se parte: el plan en un archivo y la bebida en
+el otro. Por eso cada tipo tiene su propia marca de cargado. Con una
+sola marca, cargar los planes del día daría por cargadas también las
+bebidas de esas ventas, que nadie registró.
+
+Es una tarea semimanual, y las semimanuales fallan de dos formas: una
+venta cargada dos veces deja dos comprobantes de la misma venta, y
+una que no se carga nunca es una venta sin factura. Ninguna se nota
+al día siguiente. De ahí el ciclo: sale lo que todavía NO se cargó,
+se marca exactamente lo que se exportó, y lo no confirmado vuelve.
 
 A quién se le factura sale de la misma función que usaba el SRI
-(_comprador_de), y no de una copia: si el cliente es un menor, la
-factura va a su representante. Dos reglas distintas para lo mismo es
-como terminan dos sistemas discrepando.
+(_comprador_de) y no de una copia: si el cliente es un menor, la
+factura va a su representante.
 """
 
 from __future__ import annotations
@@ -33,12 +40,11 @@ from io import BytesIO
 from app.db import obtener_cursor
 from app.services import bitacora_service as bit
 from app.services.bitacora_service import BitacoraService
+from app.services.bloque_service import (
+    TOPE_CONSUMIDOR_FINAL, LineaBloque, ServicioBloque,
+)
 from app.services.sri_service import ServicioSri
 
-# Cómo se llama cada tipo de identificación en Contífico (campo
-# `tipo` del cliente): N natural, J jurídica, I pasaporte/extranjero.
-# Lo que se muestra es el nombre legible; quien carga lo elige en una
-# lista, no escribe el código.
 ETIQUETA_IDENTIFICACION = {
     "04": "RUC",
     "05": "Cédula",
@@ -54,6 +60,12 @@ CONSUMIDOR_FINAL = "9999999999999"
 # contaba: cuadraba por arriba y mentía por dentro.
 SIN_FORMA_DE_PAGO = "SIN ESPECIFICAR"
 
+# Los dos tipos de carga, con las columnas que marcan cada uno.
+TIPOS = {
+    "planes": ("contifico_planes_en", "contifico_planes_por"),
+    "productos": ("contifico_productos_en", "contifico_productos_por"),
+}
+
 
 class ContificoService:
     """Lo vendido, listo para registrarlo en Contífico."""
@@ -63,18 +75,25 @@ class ContificoService:
 
     # --- Qué falta cargar -------------------------------------------
 
-    def pendientes(self, desde: date, hasta: date) -> list[dict]:
-        """Las ventas del período que todavía no están en Contífico.
+    def pendientes(self, tipo: str, desde: date, hasta: date) -> list[dict]:
+        """Las ventas del período de ese tipo que faltan cargar.
 
-        Se excluyen las anuladas: no hay nada que facturar de una
-        venta que se deshizo.
+        Una venta aparece solo si tiene líneas del tipo pedido: una
+        membresía sola no sale en el archivo de productos.
         """
+        if tipo not in TIPOS:
+            raise ValueError(f"Tipo desconocido: {tipo}")
+        columna = TIPOS[tipo][0]
+        # Las líneas del otro tipo no se traen: el archivo de planes
+        # no debe mostrar la bebida que iba en la misma venta.
+        condicion = ("d.id_plan IS NOT NULL" if tipo == "planes"
+                     else "d.id_producto IS NOT NULL")
+
         with obtener_cursor() as cursor:
             cursor.execute(
-                """
+                f"""
                 SELECT f.id_factura, f.numero_factura, f.fecha,
-                       f.metodo_pago, f.subtotal, f.iva, f.total,
-                       f.descuento_porcentaje,
+                       f.metodo_pago, f.saldo_pendiente,
                        c.nombre, c.apellido, c.cedula, c.correo,
                        c.telefono, c.id_representante,
                        r.nombre   AS rep_nombre,
@@ -85,8 +104,11 @@ class ContificoService:
                   JOIN clientes c ON c.id_cliente = f.id_cliente
                   LEFT JOIN clientes r ON r.id_cliente = c.id_representante
                  WHERE f.estado <> 'ANULADA'
-                   AND f.contifico_cargada_en IS NULL
+                   AND f.{columna} IS NULL
                    AND f.fecha::date BETWEEN %s AND %s
+                   AND EXISTS (SELECT 1 FROM detalle_factura d
+                                WHERE d.id_factura = f.id_factura
+                                  AND {condicion})
                  ORDER BY f.fecha, f.id_factura
                 """,
                 (desde, hasta),
@@ -97,14 +119,14 @@ class ContificoService:
                 return []
 
             cursor.execute(
-                """
-                SELECT d.id_factura, d.cantidad, d.precio_unitario,
-                       d.subtotal,
+                f"""
+                SELECT d.id_factura, d.id_producto, d.cantidad,
+                       d.precio_unitario, d.subtotal,
                        COALESCE(p.nombre, pr.nombre, 'Ítem') AS item
                   FROM detalle_factura d
                   LEFT JOIN planes_membresia p ON p.id_plan = d.id_plan
                   LEFT JOIN productos pr ON pr.id_producto = d.id_producto
-                 WHERE d.id_factura = ANY(%s)
+                 WHERE d.id_factura = ANY(%s) AND {condicion}
                  ORDER BY d.id_factura, d.id_detalle
                 """,
                 ([f["id_factura"] for f in facturas],),
@@ -114,14 +136,18 @@ class ContificoService:
                 lineas.setdefault(fila["id_factura"], []).append(dict(fila))
 
         for factura in facturas:
-            factura["lineas"] = lineas.get(factura["id_factura"], [])
-            # Los ítems en la misma fila de la venta: quien carga ve
-            # qué compró esa persona sin saltar a la otra hoja. El
-            # desglose con precios sigue estando en «Detalle».
+            propias = lineas.get(factura["id_factura"], [])
+            factura["lineas"] = propias
+            # El total es el de ESTAS líneas y no el de la venta: si
+            # la venta llevaba también una bebida, ese monto va en el
+            # otro archivo. Sumar el total de la factura acá haría que
+            # los dos archivos juntos facturen de más.
+            factura["total"] = sum(
+                (Decimal(str(l["subtotal"])) for l in propias), Decimal("0")
+            )
             factura["items"] = "; ".join(
                 f"{l['item']} x{l['cantidad']}" if l["cantidad"] != 1
-                else l["item"]
-                for l in factura["lineas"]
+                else l["item"] for l in propias
             )
             nombre, cedula, correo = ServicioSri._comprador_de(factura)
             factura["comprador"] = nombre
@@ -157,11 +183,37 @@ class ContificoService:
             "por_pago": dict(sorted(por_pago.items())),
         }
 
+    def agrupar_productos(self, facturas: list[dict]) -> list:
+        """Reparte los productos en facturas que no pasen del tope.
+
+        Van a consumidor final -- son muchas personas distintas, no
+        hay a quién identificar -- y una factura a consumidor final no
+        puede pasar del tope. Se reutiliza el reparto del servicio de
+        bloques y no se escribe otro: aquel trabaja por unidades, que
+        es lo que hace falta cuando una sola línea pasa el tope por sí
+        misma.
+        """
+        juntas: dict[tuple, LineaBloque] = {}
+        for factura in facturas:
+            for linea in factura["lineas"]:
+                clave = (linea["id_producto"], str(linea["precio_unitario"]))
+                if clave in juntas:
+                    juntas[clave].cantidad += linea["cantidad"]
+                else:
+                    juntas[clave] = LineaBloque(
+                        id_producto=linea["id_producto"],
+                        nombre=linea["item"],
+                        precio_unitario=Decimal(str(linea["precio_unitario"])),
+                        cantidad=linea["cantidad"],
+                    )
+        if not juntas:
+            return []
+        return ServicioBloque().repartir(list(juntas.values()))
+
     # --- Confirmar la carga -----------------------------------------
 
-    def marcar_cargadas(
-        self, ids: list[int], id_empleado: int, desde=None, hasta=None
-    ) -> int:
+    def marcar_cargadas(self, tipo: str, ids: list[int], id_empleado: int,
+                        desde=None, hasta=None) -> int:
         """Esas ventas ya están en Contífico: no vuelven a salir.
 
         Se marca por lista de identificadores y no por rango de
@@ -169,16 +221,16 @@ class ContificoService:
         exportó. Si alguien cobra mientras el otro carga, esa venta
         nueva queda pendiente para la próxima, que es lo correcto.
         """
+        if tipo not in TIPOS:
+            raise ValueError(f"Tipo desconocido: {tipo}")
         if not ids:
             return 0
+        cuando, quien = TIPOS[tipo]
 
         with obtener_cursor(commit=True) as cursor:
             cursor.execute(
-                "UPDATE facturas "
-                "   SET contifico_cargada_en = NOW(), "
-                "       contifico_cargada_por = %s "
-                " WHERE id_factura = ANY(%s) "
-                "   AND contifico_cargada_en IS NULL",
+                f"UPDATE facturas SET {cuando} = NOW(), {quien} = %s "
+                f" WHERE id_factura = ANY(%s) AND {cuando} IS NULL",
                 (id_empleado, ids),
             )
             marcadas = cursor.rowcount
@@ -186,7 +238,7 @@ class ContificoService:
         try:
             self.bitacora.registrar(
                 id_empleado, bit.CONTIFICO_CARGADO, bit.FACTURA, None,
-                {"facturas": marcadas,
+                {"tipo": tipo, "facturas": marcadas,
                  "desde": str(desde) if desde else None,
                  "hasta": str(hasta) if hasta else None},
             )
@@ -196,169 +248,285 @@ class ContificoService:
         return marcadas
 
     def historial(self, limite: int = 30) -> list[dict]:
-        """Las últimas cargas confirmadas, por día."""
+        """Las últimas cargas confirmadas, por día y tipo."""
         with obtener_cursor() as cursor:
             cursor.execute(
                 """
-                SELECT contifico_cargada_en::date AS dia,
-                       COUNT(*) AS facturas,
-                       SUM(total) AS total,
-                       MAX(e.nombre || ' ' || e.apellido) AS quien
-                  FROM facturas f
-                  LEFT JOIN empleados e
-                         ON e.id_empleado = f.contifico_cargada_por
-                 WHERE f.contifico_cargada_en IS NOT NULL
-                 GROUP BY contifico_cargada_en::date
-                 ORDER BY dia DESC
+                SELECT dia, tipo, COUNT(*) AS facturas, MAX(quien) AS quien
+                  FROM (
+                    SELECT contifico_planes_en::date AS dia,
+                           'Planes' AS tipo,
+                           e.nombre || ' ' || e.apellido AS quien
+                      FROM facturas f
+                      LEFT JOIN empleados e
+                             ON e.id_empleado = f.contifico_planes_por
+                     WHERE f.contifico_planes_en IS NOT NULL
+                    UNION ALL
+                    SELECT contifico_productos_en::date, 'Productos',
+                           e.nombre || ' ' || e.apellido
+                      FROM facturas f
+                      LEFT JOIN empleados e
+                             ON e.id_empleado = f.contifico_productos_por
+                     WHERE f.contifico_productos_en IS NOT NULL
+                  ) AS cargas
+                 GROUP BY dia, tipo
+                 ORDER BY dia DESC, tipo
                  LIMIT %s
                 """,
                 (limite,),
             )
             return [dict(f) for f in cursor.fetchall()]
 
-    # --- El archivo --------------------------------------------------
+    # --- Por cobrar ---------------------------------------------------
 
-    def construir_excel(self, facturas: list[dict], desde: date,
-                        hasta: date) -> bytes:
-        """El libro con lo vendido, listo para registrar en Contífico."""
-        from openpyxl import Workbook
-        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    def por_cobrar(self) -> list[dict]:
+        """Quién debe plata, de más viejo a más nuevo.
 
-        libro = Workbook()
-        titulo = Font(name="Arial", size=14, bold=True)
-        cabecera = Font(name="Arial", size=10, bold=True, color="FFFFFF")
-        normal = Font(name="Arial", size=10)
-        fuerte = Font(name="Arial", size=10, bold=True)
-        fondo = PatternFill("solid", fgColor="27737C")
-        borde = Border(bottom=Side(style="thin", color="C9D6D8"))
-        money = '"$"#,##0.00'
-
-        def encabezar(hoja, columnas):
-            for col, (texto, ancho) in enumerate(columnas, start=1):
-                celda = hoja.cell(row=1, column=col, value=texto)
-                celda.font = cabecera
-                celda.fill = fondo
-                celda.alignment = Alignment(vertical="center")
-                hoja.column_dimensions[
-                    celda.column_letter].width = ancho
-            hoja.freeze_panes = "A2"
-            hoja.row_dimensions[1].height = 20
-
-        # ── Resumen ────────────────────────────────────────────────
-        resumen = libro.active
-        resumen.title = "Resumen"
-        resumen["A1"] = "Ventas para cargar en Contífico"
-        resumen["A1"].font = titulo
-        resumen["A2"] = f"Del {desde.strftime('%d/%m/%Y')} al {hasta.strftime('%d/%m/%Y')}"
-        resumen["A2"].font = normal
-
-        instrucciones = [
-            "",
-            "Cómo se usa este archivo:",
-            "1. En la hoja «Facturas» está una línea por cada venta, con los datos del comprador.",
-            "2. En «Detalle» están los ítems de cada una, buscando por el número de factura.",
-            "3. Registre cada factura en Contífico.",
-            "4. Cuando termine, vuelva al sistema y pulse «Confirmar carga».",
-            "",
-            "Mientras no confirme, estas ventas vuelven a salir en la próxima exportación.",
-            "Eso es a propósito: es lo que evita que una venta se quede sin facturar.",
-            "",
-            "Antes de confirmar, cuadre el total de abajo con el de Contífico.",
-            "Si no coinciden, algo quedó afuera o se cargó dos veces.",
-        ]
-        fila = 3
-        for texto in instrucciones:
-            resumen.cell(row=fila, column=1, value=texto).font = normal
-            fila += 1
-
-        fila += 1
-        resumen.cell(row=fila, column=1, value="Forma de pago").font = fuerte
-        resumen.cell(row=fila, column=2, value="Total").font = fuerte
-        datos = self.resumen(facturas)
-        for pago, monto in datos["por_pago"].items():
-            fila += 1
-            resumen.cell(row=fila, column=1, value=pago).font = normal
-            # Suma desde la hoja Facturas y no el número calculado en
-            # Python: si alguien corrige una fila, el total la sigue.
-            celda = resumen.cell(
-                row=fila, column=2,
-                value=f'=SUMIF(Facturas!I:I,A{fila},Facturas!M:M)',
+        Esto no se carga en ningún lado: es para cobrar. Va ordenado
+        por antigüedad porque una deuda de hace tres meses importa más
+        que una de ayer.
+        """
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT f.numero_factura, f.fecha, f.total,
+                       f.saldo_pendiente,
+                       (f.total - f.saldo_pendiente) AS abonado,
+                       (CURRENT_DATE - f.fecha::date) AS dias,
+                       c.nombre, c.apellido, c.cedula, c.correo, c.telefono
+                  FROM facturas f
+                  JOIN clientes c ON c.id_cliente = f.id_cliente
+                 WHERE f.estado <> 'ANULADA' AND f.saldo_pendiente > 0
+                 ORDER BY f.fecha
+                """
             )
-            celda.font = normal
-            celda.number_format = money
+            return [dict(f) for f in cursor.fetchall()]
 
+    # --- Los archivos --------------------------------------------------
+
+    @staticmethod
+    def _estilos():
+        from openpyxl.styles import Border, Font, PatternFill, Side
+        return {
+            "titulo": Font(name="Arial", size=14, bold=True),
+            "cabecera": Font(name="Arial", size=10, bold=True, color="FFFFFF"),
+            "normal": Font(name="Arial", size=10),
+            "fuerte": Font(name="Arial", size=10, bold=True),
+            "fondo": PatternFill("solid", fgColor="27737C"),
+            "borde": Border(bottom=Side(style="thin", color="C9D6D8")),
+            "money": '"$"#,##0.00',
+        }
+
+    @staticmethod
+    def _encabezar(hoja, columnas, e):
+        from openpyxl.styles import Alignment
+        for col, (texto, ancho) in enumerate(columnas, start=1):
+            celda = hoja.cell(row=1, column=col, value=texto)
+            celda.font = e["cabecera"]
+            celda.fill = e["fondo"]
+            celda.alignment = Alignment(vertical="center")
+            hoja.column_dimensions[celda.column_letter].width = ancho
+        hoja.freeze_panes = "A2"
+        hoja.row_dimensions[1].height = 20
+
+    @staticmethod
+    def _fila(hoja, n, valores, e, fechas=(), texto=(), dinero=()):
+        for col, valor in enumerate(valores, start=1):
+            celda = hoja.cell(row=n, column=col, value=valor)
+            celda.font = e["normal"]
+            celda.border = e["borde"]
+            if col in fechas:
+                celda.number_format = "DD/MM/YYYY"
+            elif col in texto:
+                # Una cédula que empieza en 0 pierde el cero si Excel
+                # la toma por número, y deja de ser una cédula.
+                celda.number_format = "@"
+            elif col in dinero:
+                celda.number_format = e["money"]
+
+    @staticmethod
+    def _portada(hoja, e, titulo, desde, hasta, lineas):
+        hoja["A1"] = titulo
+        hoja["A1"].font = e["titulo"]
+        hoja["A2"] = (f"Del {desde.strftime('%d/%m/%Y')} "
+                      f"al {hasta.strftime('%d/%m/%Y')}")
+        hoja["A2"].font = e["normal"]
+        fila = 4
+        for texto in lineas:
+            hoja.cell(row=fila, column=1, value=texto).font = e["normal"]
+            fila += 1
+        hoja.column_dimensions["A"].width = 54
+        hoja.column_dimensions["B"].width = 16
+        return fila + 1
+
+    def _totales(self, hoja, e, fila, facturas, nombre, col_pago, col_total):
+        hoja.cell(row=fila, column=1, value="Forma de pago").font = e["fuerte"]
+        hoja.cell(row=fila, column=2, value="Total").font = e["fuerte"]
+        for pago in self.resumen(facturas)["por_pago"]:
+            fila += 1
+            hoja.cell(row=fila, column=1, value=pago).font = e["normal"]
+            # Suma desde la hoja de ventas y no el número calculado en
+            # Python: si alguien corrige una fila, el total la sigue.
+            celda = hoja.cell(
+                row=fila, column=2,
+                value=f"=SUMIF({nombre}!{col_pago}:{col_pago},A{fila},"
+                      f"{nombre}!{col_total}:{col_total})",
+            )
+            celda.font = e["normal"]
+            celda.number_format = e["money"]
         fila += 1
-        resumen.cell(row=fila, column=1, value="TOTAL").font = fuerte
-        celda = resumen.cell(row=fila, column=2, value="=SUM(Facturas!M:M)")
-        celda.font = fuerte
-        celda.number_format = money
-
+        hoja.cell(row=fila, column=1, value="TOTAL").font = e["fuerte"]
+        celda = hoja.cell(row=fila, column=2,
+                          value=f"=SUM({nombre}!{col_total}:{col_total})")
+        celda.font = e["fuerte"]
+        celda.number_format = e["money"]
         fila += 1
-        resumen.cell(row=fila, column=1, value="Facturas").font = fuerte
-        celda = resumen.cell(row=fila, column=2,
-                             value="=COUNTA(Facturas!A:A)-1")
-        celda.font = fuerte
+        hoja.cell(row=fila, column=1, value="Ventas").font = e["fuerte"]
+        hoja.cell(row=fila, column=2,
+                  value=f"=COUNTA({nombre}!A:A)-1").font = e["fuerte"]
+        return fila
 
-        resumen.column_dimensions["A"].width = 46
-        resumen.column_dimensions["B"].width = 16
-
-        # ── Facturas ───────────────────────────────────────────────
-        hoja = libro.create_sheet("Facturas")
-        encabezar(hoja, [
-            ("N° venta", 13), ("Fecha", 11), ("Tipo ident.", 16),
-            ("Identificación", 16), ("Comprador", 30), ("Correo", 28),
-            ("Teléfono", 13), ("Qué compró", 40), ("Forma de pago", 15),
-            ("Subtotal", 12), ("Descuento %", 12), ("IVA", 11),
-            ("Total", 12),
-        ])
-        for n, f in enumerate(facturas, start=2):
-            valores = [
-                f["numero_factura"],
-                f["fecha"].date() if hasattr(f["fecha"], "date") else f["fecha"],
-                ETIQUETA_IDENTIFICACION.get(f["tipo_identificacion"], ""),
-                f["identificacion"],
-                f["comprador"],
-                f["correo_comprador"] or "",
-                f["telefono"] or "",
-                f["items"],
-                f["metodo_pago"] or SIN_FORMA_DE_PAGO,
-                f["subtotal"], f["descuento_porcentaje"], f["iva"], f["total"],
-            ]
-            for col, valor in enumerate(valores, start=1):
-                celda = hoja.cell(row=n, column=col, value=valor)
-                celda.font = normal
-                celda.border = borde
-                if col == 2:
-                    celda.number_format = "DD/MM/YYYY"
-                elif col == 4:
-                    # Como texto: una cédula que empieza en 0 pierde
-                    # el cero si Excel la toma por número.
-                    celda.number_format = "@"
-                elif col in (10, 12, 13):
-                    celda.number_format = money
-                elif col == 11:
-                    celda.number_format = "0.00"
-
-        # ── Detalle ────────────────────────────────────────────────
-        hoja = libro.create_sheet("Detalle")
-        encabezar(hoja, [
-            ("N° venta", 13), ("Ítem", 34), ("Cantidad", 10),
-            ("P. unitario", 13), ("Subtotal", 12),
-        ])
-        n = 2
-        for f in facturas:
-            for linea in f["lineas"]:
-                valores = [f["numero_factura"], linea["item"],
-                           linea["cantidad"], linea["precio_unitario"],
-                           linea["subtotal"]]
-                for col, valor in enumerate(valores, start=1):
-                    celda = hoja.cell(row=n, column=col, value=valor)
-                    celda.font = normal
-                    celda.border = borde
-                    if col in (4, 5):
-                        celda.number_format = money
-                n += 1
-
+    @staticmethod
+    def _guardar(libro) -> bytes:
         memoria = BytesIO()
         libro.save(memoria)
         return memoria.getvalue()
+
+    def excel_planes(self, facturas, desde: date, hasta: date) -> bytes:
+        """Una factura por venta, a nombre del cliente."""
+        from openpyxl import Workbook
+
+        e = self._estilos()
+        libro = Workbook()
+        resumen = libro.active
+        resumen.title = "Resumen"
+        fila = self._portada(resumen, e, "Membresías y pases", desde, hasta, [
+            "Una factura por venta, a nombre del cliente.",
+            "",
+            "1. En «Ventas» hay una línea por cada una, con la cédula del",
+            "   comprador y qué compró.",
+            "2. Regístrelas en Contífico.",
+            "3. Vuelva al sistema y pulse «Confirmar carga de planes».",
+            "",
+            "Mientras no confirme, vuelven a salir. Eso es a propósito:",
+            "es lo que evita que una venta se quede sin facturar.",
+            "",
+            "Los productos sueltos van en SU PROPIO archivo, aparte. Si",
+            "una venta llevaba también una bebida, acá está solo el plan:",
+            "el monto de la bebida está en el otro archivo.",
+            "",
+            "Antes de confirmar, cuadre el total con el de Contífico.",
+        ])
+        self._totales(resumen, e, fila, facturas, "Ventas", "I", "K")
+
+        hoja = libro.create_sheet("Ventas")
+        self._encabezar(hoja, [
+            ("N° venta", 13), ("Fecha", 11), ("Tipo ident.", 16),
+            ("Identificación", 16), ("Comprador", 30), ("Correo", 28),
+            ("Teléfono", 13), ("Qué compró", 38), ("Forma de pago", 15),
+            ("Por cobrar", 12), ("Total", 12),
+        ], e)
+        for n, f in enumerate(facturas, start=2):
+            self._fila(hoja, n, [
+                f["numero_factura"],
+                f["fecha"].date() if hasattr(f["fecha"], "date") else f["fecha"],
+                ETIQUETA_IDENTIFICACION.get(f["tipo_identificacion"], ""),
+                f["identificacion"], f["comprador"],
+                f["correo_comprador"] or "", f["telefono"] or "",
+                f["items"], f["metodo_pago"] or SIN_FORMA_DE_PAGO,
+                f["saldo_pendiente"], f["total"],
+            ], e, fechas=(2,), texto=(4,), dinero=(10, 11))
+        return self._guardar(libro)
+
+    def excel_productos(self, facturas, bloques, desde, hasta) -> bytes:
+        """Los productos sueltos, agrupados para consumidor final."""
+        from openpyxl import Workbook
+
+        e = self._estilos()
+        libro = Workbook()
+        resumen = libro.active
+        resumen.title = "Resumen"
+        tope = f"${TOPE_CONSUMIDOR_FINAL:.0f}"
+        fila = self._portada(resumen, e, "Productos sueltos", desde, hasta, [
+            "Van a CONSUMIDOR FINAL: son muchas personas distintas que",
+            "compraron una bebida, no hay a quién identificar.",
+            "",
+            f"Una factura a consumidor final no puede pasar de {tope}, así",
+            "que en «Agrupado» ya están repartidos en facturas que no lo",
+            "pasan. Registre una factura por cada grupo.",
+            "",
+            "En «Ventas» está de qué venta salió cada unidad, por si hay",
+            "que revisar algo. Eso NO se carga: es respaldo.",
+            "",
+            "Cuando termine, vuelva al sistema y pulse «Confirmar carga",
+            "de productos».",
+        ])
+        resumen.cell(row=fila, column=1, value="Facturas a crear").font = e["fuerte"]
+        resumen.cell(row=fila, column=2, value=len(bloques)).font = e["fuerte"]
+        fila += 1
+        resumen.cell(row=fila, column=1, value="TOTAL").font = e["fuerte"]
+        celda = resumen.cell(row=fila, column=2, value="=SUM(Agrupado!E:E)")
+        celda.font = e["fuerte"]
+        celda.number_format = e["money"]
+
+        hoja = libro.create_sheet("Agrupado")
+        self._encabezar(hoja, [
+            ("Factura", 10), ("Producto", 34), ("Cantidad", 10),
+            ("P. unitario", 13), ("Total", 12),
+        ], e)
+        n = 2
+        for numero, bloque in enumerate(bloques, start=1):
+            for linea in bloque.lineas:
+                self._fila(hoja, n, [
+                    f"#{numero}", linea.nombre, linea.cantidad,
+                    linea.precio_unitario, linea.total,
+                ], e, dinero=(4, 5))
+                n += 1
+
+        hoja = libro.create_sheet("Ventas")
+        self._encabezar(hoja, [
+            ("N° venta", 13), ("Fecha", 11), ("Cliente", 28),
+            ("Producto", 30), ("Cantidad", 10), ("Total", 12),
+        ], e)
+        n = 2
+        for f in facturas:
+            for linea in f["lineas"]:
+                self._fila(hoja, n, [
+                    f["numero_factura"],
+                    f["fecha"].date() if hasattr(f["fecha"], "date") else f["fecha"],
+                    f"{f['nombre']} {f['apellido']}",
+                    linea["item"], linea["cantidad"], linea["subtotal"],
+                ], e, fechas=(2,), dinero=(6,))
+                n += 1
+        return self._guardar(libro)
+
+    def excel_por_cobrar(self, deudas) -> bytes:
+        """Quién debe plata. No se carga en ningún lado: se cobra."""
+        from openpyxl import Workbook
+
+        e = self._estilos()
+        libro = Workbook()
+        hoja = libro.active
+        hoja.title = "Por cobrar"
+        self._encabezar(hoja, [
+            ("N° venta", 13), ("Fecha", 11), ("Días", 8), ("Cliente", 30),
+            ("Cédula", 14), ("Teléfono", 13), ("Correo", 28),
+            ("Total", 12), ("Abonado", 12), ("Debe", 12),
+        ], e)
+        for n, d in enumerate(deudas, start=2):
+            self._fila(hoja, n, [
+                d["numero_factura"],
+                d["fecha"].date() if hasattr(d["fecha"], "date") else d["fecha"],
+                d["dias"], f"{d['nombre']} {d['apellido']}",
+                d["cedula"] or "", d["telefono"] or "", d["correo"] or "",
+                d["total"], d["abonado"], d["saldo_pendiente"],
+            ], e, fechas=(2,), texto=(5,), dinero=(8, 9, 10))
+
+        if deudas:
+            fila = len(deudas) + 2
+            hoja.cell(row=fila, column=7, value="TOTAL").font = e["fuerte"]
+            celda = hoja.cell(row=fila, column=10,
+                              value=f"=SUM(J2:J{fila - 1})")
+            celda.font = e["fuerte"]
+            celda.number_format = e["money"]
+        return self._guardar(libro)

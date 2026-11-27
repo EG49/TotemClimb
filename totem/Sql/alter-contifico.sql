@@ -22,15 +22,25 @@
 
 BEGIN;
 
+-- Dos marcas y no una, porque los planes y los productos se cargan
+-- por separado: los planes van a nombre del cliente y los productos
+-- en bloque a consumidor final. En esta base, una de cada cuatro
+-- ventas lleva las dos cosas, así que con una sola marca cargar los
+-- planes del día daría por cargadas también las bebidas de esas
+-- ventas, que nadie registró.
 ALTER TABLE facturas
-    ADD COLUMN IF NOT EXISTS contifico_cargada_en TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS contifico_cargada_por INTEGER
+    ADD COLUMN IF NOT EXISTS contifico_planes_en TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS contifico_planes_por INTEGER
+        REFERENCES empleados(id_empleado),
+    ADD COLUMN IF NOT EXISTS contifico_productos_en TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS contifico_productos_por INTEGER
         REFERENCES empleados(id_empleado);
 
--- Para buscar rápido lo que falta cargar.
-CREATE INDEX IF NOT EXISTS idx_facturas_contifico_pendientes
-    ON facturas (fecha)
- WHERE contifico_cargada_en IS NULL;
+-- Para buscar rápido lo que falta cargar, de cada tipo.
+CREATE INDEX IF NOT EXISTS idx_facturas_contifico_planes
+    ON facturas (fecha) WHERE contifico_planes_en IS NULL;
+CREATE INDEX IF NOT EXISTS idx_facturas_contifico_productos
+    ON facturas (fecha) WHERE contifico_productos_en IS NULL;
 
 -- La bitácora: quién confirmó la carga y de qué período.
 ALTER TABLE bitacora DROP CONSTRAINT IF EXISTS chk_bitacora_accion;

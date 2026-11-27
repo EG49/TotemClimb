@@ -433,18 +433,17 @@ def corregir_cedula(id_factura):
 @bp.route("/contifico", methods=["GET", "POST"])
 @admin_requerido
 def contifico():
-    """El Excel del día para registrar las ventas en Contífico.
+    """Los Excel del día para registrar las ventas en Contífico.
 
-    Los comprobantes electrónicos los emite Contífico; este sistema
-    cobra y entrega el comprobante interno. Acá se exporta lo vendido
-    y se confirma la carga.
+    Tres archivos: planes y pases a nombre del cliente, productos
+    sueltos agrupados a consumidor final, y por cobrar.
 
-    La confirmación no es un trámite: mientras no se confirme, esas
-    ventas vuelven a salir en la próxima exportación, que es lo que
-    evita que una se quede sin facturar. Y una vez confirmadas no
-    vuelven a salir, que es lo que evita cargarlas dos veces.
+    Planes y productos se confirman por separado porque una venta
+    puede llevar las dos cosas. Con una sola confirmación, cargar los
+    planes del día daría por cargadas también las bebidas de esas
+    ventas, que nadie registró.
     """
-    from datetime import date, timedelta
+    from datetime import date
 
     from app.services.contifico_service import ContificoService
 
@@ -463,46 +462,65 @@ def contifico():
     if desde > hasta:
         desde, hasta = hasta, desde
 
-    if request.method == "POST":
-        accion = request.form.get("accion")
-        facturas = servicio.pendientes(desde, hasta)
-
-        if accion == "confirmar":
-            # Se marcan exactamente las que se exportaron. Si alguien
-            # cobró mientras el otro cargaba, esa venta queda
-            # pendiente para la próxima, que es lo correcto.
-            ids = [int(x) for x in request.form.getlist("id_factura")]
-            marcadas = servicio.marcar_cargadas(
-                ids, g.empleado["id_empleado"], desde, hasta
-            )
-            flash(
-                f"{marcadas} venta{'s' if marcadas != 1 else ''} "
-                f"marcada{'s' if marcadas != 1 else ''} como cargada"
-                f"{'s' if marcadas != 1 else ''} en Contífico.", "ok",
-            )
-            return redirect(url_for("facturas.contifico",
-                                    desde=desde, hasta=hasta))
-
-        if not facturas:
-            flash("No hay ventas pendientes en ese período.", "aviso")
-            return redirect(url_for("facturas.contifico",
-                                    desde=desde, hasta=hasta))
-
-        libro = servicio.construir_excel(facturas, desde, hasta)
-        nombre = f"ventas-{desde:%Y%m%d}-{hasta:%Y%m%d}.xlsx"
+    def archivo(datos, nombre):
         return Response(
-            libro,
+            datos,
             mimetype="application/vnd.openxmlformats-officedocument."
                      "spreadsheetml.sheet",
             headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
         )
 
-    facturas = servicio.pendientes(desde, hasta)
+    if request.method == "POST":
+        accion = request.form.get("accion", "")
+        periodo = f"{desde:%Y%m%d}-{hasta:%Y%m%d}"
+
+        if accion == "por_cobrar":
+            deudas = servicio.por_cobrar()
+            if not deudas:
+                flash("No hay nada por cobrar.", "aviso")
+                return redirect(url_for("facturas.contifico",
+                                        desde=desde, hasta=hasta))
+            return archivo(servicio.excel_por_cobrar(deudas),
+                           f"por-cobrar-{hoy:%Y%m%d}.xlsx")
+
+        tipo = "productos" if "productos" in accion else "planes"
+        facturas = servicio.pendientes(tipo, desde, hasta)
+
+        if accion.startswith("confirmar"):
+            ids = [int(x) for x in request.form.getlist("id_factura")]
+            marcadas = servicio.marcar_cargadas(
+                tipo, ids, g.empleado["id_empleado"], desde, hasta
+            )
+            flash(
+                f"{marcadas} venta{'s' if marcadas != 1 else ''} de "
+                f"{tipo} marcada{'s' if marcadas != 1 else ''} como "
+                "cargada" + ("s" if marcadas != 1 else "") + ".", "ok",
+            )
+            return redirect(url_for("facturas.contifico",
+                                    desde=desde, hasta=hasta))
+
+        if not facturas:
+            flash(f"No hay {tipo} pendientes en ese período.", "aviso")
+            return redirect(url_for("facturas.contifico",
+                                    desde=desde, hasta=hasta))
+
+        if tipo == "productos":
+            datos = servicio.excel_productos(
+                facturas, servicio.agrupar_productos(facturas), desde, hasta
+            )
+        else:
+            datos = servicio.excel_planes(facturas, desde, hasta)
+        return archivo(datos, f"{tipo}-{periodo}.xlsx")
+
+    planes = servicio.pendientes("planes", desde, hasta)
+    productos = servicio.pendientes("productos", desde, hasta)
     return render_template(
         "facturas/contifico.html",
-        desde=desde,
-        hasta=hasta,
-        facturas=facturas,
-        resumen=servicio.resumen(facturas),
+        desde=desde, hasta=hasta,
+        planes=planes, productos=productos,
+        resumen_planes=servicio.resumen(planes),
+        resumen_productos=servicio.resumen(productos),
+        bloques=servicio.agrupar_productos(productos),
+        por_cobrar=servicio.por_cobrar(),
         historial=servicio.historial(),
     )

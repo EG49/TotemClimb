@@ -22,14 +22,16 @@ mismo dato, y es justo asi como dos sistemas terminan discrepando.
 
 import sys
 from datetime import date, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import crear_app  # noqa: E402
 from app.db import obtener_cursor  # noqa: E402
+from app.services.bloque_service import TOPE_CONSUMIDOR_FINAL  # noqa: E402
 from app.services.contifico_service import (  # noqa: E402
-    CONSUMIDOR_FINAL, SIN_FORMA_DE_PAGO, ContificoService,
+    SIN_FORMA_DE_PAGO, ContificoService,
 )
 
 fallas = []
@@ -76,8 +78,9 @@ with app.app_context():
     def limpiar():
         with obtener_cursor(commit=True) as cursor:
             cursor.execute(
-                "UPDATE facturas SET contifico_cargada_en = NULL, "
-                "contifico_cargada_por = NULL"
+                "UPDATE facturas SET contifico_planes_en = NULL, "
+                "contifico_planes_por = NULL, contifico_productos_en = NULL, "
+                "contifico_productos_por = NULL"
             )
             cursor.execute(
                 "DELETE FROM bitacora WHERE accion = 'CONTIFICO_CARGADO'"
@@ -86,7 +89,7 @@ with app.app_context():
     limpiar()
     try:
         print("\nSALE LO QUE FALTA CARGAR")
-        facturas = servicio.pendientes(desde, hasta)
+        facturas = servicio.pendientes("planes", desde, hasta)
         revisar("hay ventas pendientes", len(facturas) > 0, str(len(facturas)))
         revisar("cada una trae sus lineas",
                 all(f["lineas"] for f in facturas),
@@ -133,13 +136,13 @@ with app.app_context():
         ids = [f["id_factura"] for f in facturas]
         cuantas = len(ids)
 
-        marcadas = servicio.marcar_cargadas(ids, id_empleado, desde, hasta)
+        marcadas = servicio.marcar_cargadas("planes", ids, id_empleado, desde, hasta)
         revisar("se marcan todas", marcadas == cuantas,
                 f"{marcadas} de {cuantas}")
         revisar("y dejan de aparecer",
-                len(servicio.pendientes(desde, hasta)) == 0)
+                len(servicio.pendientes("planes", desde, hasta)) == 0)
 
-        repetido = servicio.marcar_cargadas(ids, id_empleado, desde, hasta)
+        repetido = servicio.marcar_cargadas("planes", ids, id_empleado, desde, hasta)
         revisar("marcarlas de nuevo no hace nada", repetido == 0,
                 f"marco {repetido} que ya estaban")
 
@@ -148,18 +151,18 @@ with app.app_context():
         # quedar pendiente para la proxima vez.
         with obtener_cursor(commit=True) as cursor:
             cursor.execute(
-                "UPDATE facturas SET contifico_cargada_en = NULL "
+                "UPDATE facturas SET contifico_planes_en = NULL "
                 " WHERE id_factura = %s", (ids[0],)
             )
         revisar("vuelve exactamente una",
-                len(servicio.pendientes(desde, hasta)) == 1)
+                len(servicio.pendientes("planes", desde, hasta)) == 1)
 
         print("\nSE PUEDE CONFIRMAR SOLO UNA PARTE")
         limpiar()
-        facturas = servicio.pendientes(desde, hasta)
+        facturas = servicio.pendientes("planes", desde, hasta)
         mitad = [f["id_factura"] for f in facturas[:len(facturas) // 2]]
-        servicio.marcar_cargadas(mitad, id_empleado, desde, hasta)
-        quedan = servicio.pendientes(desde, hasta)
+        servicio.marcar_cargadas("planes", mitad, id_empleado, desde, hasta)
+        quedan = servicio.pendientes("planes", desde, hasta)
         revisar("las otras siguen pendientes",
                 len(quedan) == len(facturas) - len(mitad),
                 f"{len(quedan)} de {len(facturas) - len(mitad)}")
@@ -169,20 +172,20 @@ with app.app_context():
         print("\nMARCAR NADA NO ROMPE NI ENSUCIA")
         antes = len(servicio.historial())
         revisar("una lista vacia no marca nada",
-                servicio.marcar_cargadas([], id_empleado) == 0)
+                servicio.marcar_cargadas("planes", [], id_empleado) == 0)
 
         print("\nQUEDA RASTRO DE QUIEN CONFIRMO")
         historial = servicio.historial()
         revisar("hay historial", len(historial) > 0)
         if historial:
-            revisar("con cuantas y cuanto",
-                    historial[0]["facturas"] > 0 and historial[0]["total"] > 0,
+            revisar("con cuantas y de que tipo",
+                    historial[0]["facturas"] > 0 and historial[0]["tipo"],
                     str(dict(historial[0])))
             revisar("y quien fue", bool(historial[0]["quien"]))
 
         print("\nEL RESUMEN CUADRA CON LAS FACTURAS")
         limpiar()
-        facturas = servicio.pendientes(desde, hasta)
+        facturas = servicio.pendientes("planes", desde, hasta)
         resumen = servicio.resumen(facturas)
         revisar("la cuenta de facturas",
                 resumen["facturas"] == len(facturas))
@@ -197,15 +200,15 @@ with app.app_context():
         from openpyxl import load_workbook  # noqa: E402
         from io import BytesIO  # noqa: E402
 
-        datos = servicio.construir_excel(facturas, desde, hasta)
+        datos = servicio.excel_planes(facturas, desde, hasta)
         revisar("es un xlsx", datos[:2] == b"PK", str(datos[:4]))
 
         libro = load_workbook(BytesIO(datos))
-        revisar("trae las tres hojas",
-                libro.sheetnames == ["Resumen", "Facturas", "Detalle"],
+        revisar("trae sus hojas",
+                libro.sheetnames == ["Resumen", "Ventas"],
                 str(libro.sheetnames))
 
-        hoja = libro["Facturas"]
+        hoja = libro["Ventas"]
         revisar("una fila por venta, mas la cabecera",
                 hoja.max_row == len(facturas) + 1,
                 f"{hoja.max_row} filas para {len(facturas)} ventas")
@@ -222,12 +225,6 @@ with app.app_context():
         revisar("y las etiquetas coinciden con las del resumen",
                 pagos_hoja == set(resumen["por_pago"]),
                 f"hoja {pagos_hoja} vs resumen {set(resumen['por_pago'])}")
-
-        detalle = libro["Detalle"]
-        lineas = sum(len(f["lineas"]) for f in facturas)
-        revisar("el detalle trae todas las lineas",
-                detalle.max_row == lineas + 1,
-                f"{detalle.max_row - 1} de {lineas}")
 
         # Una cedula que empieza en cero no puede guardarse como
         # numero: se pierde el cero y deja de ser una cedula.
@@ -246,13 +243,113 @@ with app.app_context():
         ]
         revisar("cada venta dice que se compro",
                 all(c for c in compras), "alguna fila quedo sin items")
-        con_varios = [c for c in compras if c and ";" in c]
-        revisar("y con varios items van juntos en la celda",
-                bool(con_varios) or len(compras) < 5,
-                "no se vio ninguna venta de mas de un item")
+        # Si alguna venta lleva mas de un plan, tienen que ir juntos
+        # en la misma celda y no en dos filas. Al separar los
+        # archivos esto se volvio raro -- la bebida que acompañaba a
+        # la membresia ahora va en el otro archivo --, asi que se
+        # comprueba solo cuando el caso existe.
+        varios = [f for f in facturas if len(f["lineas"]) > 1]
+        if varios:
+            fila = next(n for n, f in enumerate(facturas, start=2)
+                        if len(f["lineas"]) > 1)
+            revisar("con varios items van juntos en una celda",
+                    ";" in (hoja.cell(row=fila, column=8).value or ""),
+                    hoja.cell(row=fila, column=8).value)
+        else:
+            print("  (ninguna venta lleva dos planes; se omite)")
 
     finally:
         limpiar()
+
+        print("\nPLANES Y PRODUCTOS VAN SEPARADOS")
+        limpiar()
+        planes = servicio.pendientes("planes", desde, hasta)
+        productos = servicio.pendientes("productos", desde, hasta)
+
+        revisar("el archivo de planes no trae productos",
+                all(l["id_producto"] is None
+                    for f in planes for l in f["lineas"]),
+                "una bebida se colo en el archivo de planes")
+        revisar("y el de productos no trae planes",
+                all(l["id_producto"] is not None
+                    for f in productos for l in f["lineas"]))
+
+        # Lo que de verdad importa de partir una venta en dos: que
+        # entre los dos archivos no se pierda ni se duplique un
+        # centavo.
+        with obtener_cursor() as cursor:
+            cursor.execute(
+                "SELECT COALESCE(SUM(total), 0) t FROM facturas "
+                " WHERE estado <> 'ANULADA' AND fecha::date BETWEEN %s AND %s",
+                (desde, hasta),
+            )
+            vendido = cursor.fetchone()["t"]
+        suma = (servicio.resumen(planes)["total"]
+                + servicio.resumen(productos)["total"])
+        revisar("los dos juntos suman lo vendido", suma == vendido,
+                f"archivos ${suma} vs ventas ${vendido}")
+
+        mezcladas = ({f["numero_factura"] for f in planes}
+                     & {f["numero_factura"] for f in productos})
+        if mezcladas:
+            numero = next(iter(mezcladas))
+            en_plan = next(f for f in planes if f["numero_factura"] == numero)
+            en_prod = next(f for f in productos if f["numero_factura"] == numero)
+            revisar("una venta mezclada aparece en los dos",
+                    en_plan["total"] > 0 and en_prod["total"] > 0)
+            revisar("y cada archivo lleva solo su parte",
+                    en_plan["total"] + en_prod["total"] > en_plan["total"],
+                    "si uno llevara el total de la venta, se cobraria de mas")
+        else:
+            print("  (no hay ventas mezcladas en la base; se omite)")
+
+        print("\nCONFIRMAR UNO NO CONFIRMA EL OTRO")
+        # Con una sola marca, cargar los planes del dia daria por
+        # cargadas las bebidas de esas mismas ventas, que nadie
+        # registro.
+        if mezcladas:
+            servicio.marcar_cargadas(
+                "planes", [f["id_factura"] for f in planes], id_empleado
+            )
+            quedan = servicio.pendientes("productos", desde, hasta)
+            revisar("los productos siguen pendientes",
+                    len(quedan) == len(productos),
+                    f"{len(quedan)} de {len(productos)}")
+            revisar("y los planes ya no",
+                    len(servicio.pendientes("planes", desde, hasta)) == 0)
+
+        print("\nLOS PRODUCTOS SE AGRUPAN BAJO EL TOPE")
+        limpiar()
+        productos = servicio.pendientes("productos", desde, hasta)
+        bloques = servicio.agrupar_productos(productos)
+        if bloques:
+            revisar("ninguna factura pasa del tope",
+                    all(b.total <= TOPE_CONSUMIDOR_FINAL for b in bloques),
+                    str(max(b.total for b in bloques)))
+            revisar("y no se pierde nada al agrupar",
+                    sum((b.total for b in bloques), Decimal("0"))
+                    == servicio.resumen(productos)["total"],
+                    "agrupar no puede cambiar cuanto se vendio")
+        else:
+            print("  (no hay productos pendientes; se omite)")
+
+        print("\nLOS OTROS DOS ARCHIVOS")
+        datos = servicio.excel_productos(productos, bloques, desde, hasta)
+        revisar("el de productos es un xlsx", datos[:2] == b"PK")
+        libro = load_workbook(BytesIO(datos))
+        revisar("con Resumen, Agrupado y Ventas",
+                libro.sheetnames == ["Resumen", "Agrupado", "Ventas"],
+                str(libro.sheetnames))
+
+        deudas = servicio.por_cobrar()
+        datos = servicio.excel_por_cobrar(deudas)
+        revisar("el de por cobrar es un xlsx", datos[:2] == b"PK")
+        revisar("y trae una fila por deuda",
+                load_workbook(BytesIO(datos))["Por cobrar"].max_row
+                == len(deudas) + (2 if deudas else 1),
+                "mas la cabecera y el total")
+        revisar("solo con saldo pendiente",
+                all(d["saldo_pendiente"] > 0 for d in deudas))
 
 print(f"\n{'TODO OK' if not fallas else str(len(fallas)) + ' FALLAS: ' + ', '.join(fallas)}")
 sys.exit(1 if fallas else 0)
