@@ -8,6 +8,7 @@ representante, y facturas fiadas sin saldar.
 from datetime import date
 
 from app.db import obtener_cursor
+from app.repositories.contabilidad_repo import MOVIMIENTOS
 
 DIAS_AVISO = 7
 
@@ -17,7 +18,7 @@ class PanelRepositorio:
     def estadisticas(self) -> dict:
         with obtener_cursor() as cursor:
             cursor.execute(
-                """
+                f"""
                 SELECT
                   (SELECT count(DISTINCT id_cliente) FROM membresias
                     WHERE estado = 'ACTIVA' AND fecha_fin >= CURRENT_DATE)
@@ -26,11 +27,19 @@ class PanelRepositorio:
                     WHERE estado = 'ACTIVA'
                       AND fecha_fin BETWEEN CURRENT_DATE AND CURRENT_DATE + %s)
                     AS vencen_pronto,
-                  (SELECT COALESCE(SUM(total), 0) FROM facturas
-                    WHERE estado = 'EMITIDA' AND fecha::date = CURRENT_DATE)
+                  -- Lo que entró HOY a la caja, con el mismo criterio
+                  -- que Contabilidad: las ventas cobradas en el
+                  -- momento, más los abonos de fiadas recibidos hoy
+                  -- aunque la factura sea de otro día. Si el panel y
+                  -- el reporte contaran distinto, quien cuadra la caja
+                  -- no sabría a cuál creerle.
+                  (SELECT COALESCE(SUM(m.monto), 0)
+                     FROM ({MOVIMIENTOS}) m
+                    WHERE m.fecha = CURRENT_DATE)
                     AS ingreso_hoy,
-                  (SELECT count(*) FROM facturas
-                    WHERE estado = 'EMITIDA' AND fecha::date = CURRENT_DATE)
+                  (SELECT count(*)
+                     FROM ({MOVIMIENTOS}) m
+                    WHERE m.fecha = CURRENT_DATE)
                     AS facturas_hoy,
                   (SELECT COALESCE(SUM(saldo_pendiente), 0) FROM facturas
                     WHERE estado = 'PENDIENTE') AS por_cobrar,

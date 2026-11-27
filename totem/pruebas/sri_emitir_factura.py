@@ -15,7 +15,7 @@ Todo lo que escribe queda deshecho al terminar.
 import sys, io, contextlib, os
 from pathlib import Path
 from tempfile import TemporaryDirectory
-sys.path.insert(0, "/home/claude/totemclimb/totem")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # ANTES de importar la app: el script crea la suya y la configuracion
 # sale del entorno, que config.py lee al importarse. Es exactamente
@@ -25,6 +25,11 @@ P12 = Path("/tmp/prueba_emitir.p12")
 from pruebas.ayudas_sri import CLAVE_P12, SriDeMentira, certificado_de_prueba
 certificado_de_prueba(P12)
 os.environ.update({
+    # Esta prueba es del emisor del SRI, asi que lo enciende ella
+    # misma. Va en el entorno y no en app.config porque el script crea
+    # su propia aplicacion: lo que se ponga en este proceso no llega
+    # al suyo.
+    "FACTURACION_ELECTRONICA": "sri",
     "SRI_AMBIENTE": "1", "SRI_RUC": "1790012345001",
     "SRI_RAZON_SOCIAL": "TOTEM", "SRI_DIR_MATRIZ": "Av 123",
     "SRI_DIR_ESTABLECIMIENTO": "Av 123", "SRI_ESTABLECIMIENTO": "001",

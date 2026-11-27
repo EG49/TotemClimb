@@ -1,0 +1,65 @@
+/* Las tipografias, servidas desde el propio sistema.
+ *
+ * Antes se pedian a Google en cada pantalla. En el PC del mostrador
+ * eso significa que, sin internet o con la red lenta, el sistema se
+ * ve con la tipografia que le toque y los titulos se descuadran; y
+ * con internet, cada pantalla que alguien abre le avisa a Google.
+ *
+ * Son 128 KB en total y se quedan en la cache del navegador: se
+ * bajan una vez y no se vuelven a pedir.
+ *
+ * Vienen de los paquetes @fontsource, que son las mismas fuentes de
+ * Google Fonts empaquetadas. Solo el juego latino y solo los pesos
+ * que el sistema usa; cargar el resto seria peso muerto.
+ */
+
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  /* swap: el texto se ve enseguida con la tipografia del sistema y
+     cambia cuando llega la buena, en vez de dejar la pantalla en
+     blanco mientras tanto. */
+  font-display: swap;
+  src: url('../fuentes/bebas-neue-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Shadows Into Light Two';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fuentes/shadows-into-light-two-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Work Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fuentes/work-sans-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Work Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../fuentes/work-sans-latin-500-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Work Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fuentes/work-sans-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Work Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fuentes/work-sans-latin-700-normal.woff2') format('woff2');
+}

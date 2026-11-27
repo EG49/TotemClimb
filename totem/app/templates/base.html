@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block titulo %}Totem Climb Gym{% endblock %}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Shadows+Into+Light+Two&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+{# Las tipografias se sirven desde el propio sistema y no desde
+   Google: el PC del mostrador no deberia necesitar internet para
+   verse bien. Ver app/static/css/fuentes.css. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fuentes.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/totem.css') }}">
 </head>
 <body>
