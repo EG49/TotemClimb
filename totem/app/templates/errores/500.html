@@ -9,6 +9,28 @@
     No es culpa tuya y no se perdió nada de lo que ya estaba guardado.
     El error quedó anotado con todos sus detalles para poder revisarlo.
   </p>
+
+  {# Falta una migracion. Se dice cual, porque es lo que pasa cada vez
+     que se baja una version nueva y es trivial de arreglar; sin esto
+     hay que leer la traza en la consola, y en la maquina del gimnasio
+     nadie mira la consola. #}
+  {% if falta_migracion %}
+  <div class="flash aviso" style="text-align:left; margin:18px auto; max-width:620px;">
+    <b>La base de datos está desactualizada.</b>
+    <div style="margin-top:8px; font-size:13px;">
+      Falta «{{ falta_migracion }}» en la base, así que esta versión del
+      sistema no puede funcionar completa.
+      {% if archivo_sql %}
+        Lo crea <b>{{ archivo_sql }}</b>. Desde la carpeta <code>Sql</code>:
+        <div style="margin-top:8px; font-family:monospace; font-size:12px;">
+          psql -U postgres -d totem -f {{ archivo_sql }}
+        </div>
+      {% else %}
+        Revise las migraciones pendientes en la carpeta <code>Sql</code>.
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
   <p class="error-texto">
     Si estaba cobrando, <b>revise en Facturas antes de volver a
     cobrar</b>: puede que la venta sí se haya registrado.
