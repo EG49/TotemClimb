@@ -183,29 +183,87 @@ class ContificoService:
             "por_pago": dict(sorted(por_pago.items())),
         }
 
-    def agrupar_productos(self, facturas: list[dict]) -> list:
-        """Reparte los productos en facturas que no pasen del tope.
+    def separar_productos(self, facturas: list[dict],
+                          minimo: int | None = None) -> dict:
+        """Parte los productos en dos: por cliente y agrupado.
 
-        Van a consumidor final -- son muchas personas distintas, no
-        hay a quién identificar -- y una factura a consumidor final no
-        puede pasar del tope. Se reutiliza el reparto del servicio de
-        bloques y no se escribe otro: aquel trabaja por unidades, que
-        es lo que hace falta cuando una sola línea pasa el tope por sí
-        misma.
+        Quien compró muchas unidades del mismo producto probablemente
+        quiera su factura a nombre propio; quien compró un agua, no.
+        El umbral lo pone el gimnasio en Configuración.
+
+        Lo que llega al mínimo sale a nombre del cliente, sumado por
+        cliente y producto en todo el período: tres aguas el lunes y
+        dos el miércoles son cinco, y por eso se cuenta sobre el
+        período y no venta por venta.
+
+        El resto va al bloque anónimo de consumidor final, como antes.
+
+        Con el mínimo en 0 no se separa nada: todo al bloque, que es
+        como funcionaba antes de esto.
         """
-        juntas: dict[tuple, LineaBloque] = {}
+        if minimo is None:
+            from app.services.configuracion_service import ConfiguracionService
+            minimo = ConfiguracionService().minimo_por_cliente()
+
+        # Por cliente y producto, acumulando todo el período.
+        por_cliente: dict[tuple, dict] = {}
         for factura in facturas:
             for linea in factura["lineas"]:
-                clave = (linea["id_producto"], str(linea["precio_unitario"]))
-                if clave in juntas:
-                    juntas[clave].cantidad += linea["cantidad"]
-                else:
-                    juntas[clave] = LineaBloque(
-                        id_producto=linea["id_producto"],
-                        nombre=linea["item"],
-                        precio_unitario=Decimal(str(linea["precio_unitario"])),
-                        cantidad=linea["cantidad"],
-                    )
+                clave = (factura["comprador"], factura["identificacion"],
+                         linea["id_producto"], str(linea["precio_unitario"]))
+                entrada = por_cliente.setdefault(clave, {
+                    "cliente": factura["comprador"],
+                    "identificacion": factura["identificacion"],
+                    "tipo_identificacion": factura["tipo_identificacion"],
+                    "correo": factura["correo_comprador"],
+                    "telefono": factura["telefono"],
+                    "id_producto": linea["id_producto"],
+                    "producto": linea["item"],
+                    "precio_unitario": Decimal(str(linea["precio_unitario"])),
+                    "cantidad": 0,
+                })
+                entrada["cantidad"] += linea["cantidad"]
+
+        separados, al_bloque = [], []
+        for entrada in por_cliente.values():
+            entrada["total"] = (
+                entrada["precio_unitario"] * entrada["cantidad"]
+            ).quantize(Decimal("0.01"))
+            # Sin identificación no hay a quién facturarle, por mucho
+            # que haya comprado: eso va al bloque igual.
+            if (minimo > 0 and entrada["cantidad"] >= minimo
+                    and entrada["tipo_identificacion"] != "07"):
+                separados.append(entrada)
+            else:
+                al_bloque.append(entrada)
+
+        separados.sort(key=lambda e: (e["cliente"], e["producto"]))
+        return {
+            "minimo": minimo,
+            "por_cliente": separados,
+            "bloques": self._repartir(al_bloque),
+        }
+
+    @staticmethod
+    def _repartir(entradas: list[dict]) -> list:
+        """Reparte lo anónimo en facturas que no pasen del tope.
+
+        Se reutiliza el reparto del servicio de bloques y no se
+        escribe otro: aquel trabaja por unidades, que es lo que hace
+        falta cuando una sola línea pasa el tope por sí misma.
+        """
+        juntas: dict[tuple, LineaBloque] = {}
+        for entrada in entradas:
+            clave = (entrada["id_producto"], str(entrada["precio_unitario"]))
+            if clave in juntas:
+                juntas[clave].cantidad += entrada["cantidad"]
+            else:
+                juntas[clave] = LineaBloque(
+                    id_producto=entrada["id_producto"],
+                    nombre=entrada["producto"],
+                    precio_unitario=entrada["precio_unitario"],
+                    cantidad=entrada["cantidad"],
+                )
         if not juntas:
             return []
         return ServicioBloque().repartir(list(juntas.values()))
@@ -438,7 +496,7 @@ class ContificoService:
             ], e, fechas=(2,), texto=(4,), dinero=(10, 11))
         return self._guardar(libro)
 
-    def excel_productos(self, facturas, bloques, desde, hasta) -> bytes:
+    def excel_productos(self, facturas, separacion, desde, hasta) -> bytes:
         """Los productos sueltos, agrupados para consumidor final."""
         from openpyxl import Workbook
 
@@ -447,27 +505,72 @@ class ContificoService:
         resumen = libro.active
         resumen.title = "Resumen"
         tope = f"${TOPE_CONSUMIDOR_FINAL:.0f}"
+        bloques = separacion["bloques"]
+        por_cliente = separacion["por_cliente"]
+        minimo = separacion["minimo"]
+
         fila = self._portada(resumen, e, "Productos sueltos", desde, hasta, [
-            "Van a CONSUMIDOR FINAL: son muchas personas distintas que",
-            "compraron una bebida, no hay a quién identificar.",
+            "Dos cosas distintas, en dos hojas:",
             "",
-            f"Una factura a consumidor final no puede pasar de {tope}, así",
-            "que en «Agrupado» ya están repartidos en facturas que no lo",
-            "pasan. Registre una factura por cada grupo.",
+            f"«Por cliente»: quien compró {minimo} o más unidades del mismo",
+            "producto. Esas van a nombre suyo, con su cédula: una factura",
+            "por cliente. Se suma todo el período, no venta por venta.",
             "",
-            "En «Ventas» está de qué venta salió cada unidad, por si hay",
-            "que revisar algo. Eso NO se carga: es respaldo.",
+            "«Agrupado»: todo lo demás, a CONSUMIDOR FINAL. Son muchas",
+            "personas que compraron una bebida y no hay a quién",
+            f"identificar. Una factura a consumidor final no puede pasar de",
+            f"{tope}, así que ya están repartidas: una factura por grupo.",
+            "",
+            f"El mínimo de {minimo} se cambia en Configuración.",
+            "",
+            "«Ventas» es de qué venta salió cada unidad, por si hay que",
+            "revisar algo. Eso NO se carga: es respaldo.",
             "",
             "Cuando termine, vuelva al sistema y pulse «Confirmar carga",
             "de productos».",
         ])
-        resumen.cell(row=fila, column=1, value="Facturas a crear").font = e["fuerte"]
+        resumen.cell(row=fila, column=1,
+                     value="Facturas a nombre del cliente").font = e["fuerte"]
+        resumen.cell(row=fila, column=2,
+                     value=len({(c["cliente"], c["identificacion"])
+                                for c in por_cliente})).font = e["fuerte"]
+        fila += 1
+        resumen.cell(row=fila, column=1,
+                     value="Facturas a consumidor final").font = e["fuerte"]
         resumen.cell(row=fila, column=2, value=len(bloques)).font = e["fuerte"]
+        fila += 2
+        resumen.cell(row=fila, column=1, value="Por cliente").font = e["normal"]
+        celda = resumen.cell(row=fila, column=2, value="=SUM('Por cliente'!F:F)")
+        celda.font = e["normal"]
+        celda.number_format = e["money"]
+        fila += 1
+        resumen.cell(row=fila, column=1,
+                     value="Consumidor final").font = e["normal"]
+        celda = resumen.cell(row=fila, column=2, value="=SUM(Agrupado!E:E)")
+        celda.font = e["normal"]
+        celda.number_format = e["money"]
         fila += 1
         resumen.cell(row=fila, column=1, value="TOTAL").font = e["fuerte"]
-        celda = resumen.cell(row=fila, column=2, value="=SUM(Agrupado!E:E)")
+        celda = resumen.cell(
+            row=fila, column=2,
+            value="=SUM('Por cliente'!F:F)+SUM(Agrupado!E:E)",
+        )
         celda.font = e["fuerte"]
         celda.number_format = e["money"]
+
+        # ── Por cliente ────────────────────────────────────────────
+        hoja = libro.create_sheet("Por cliente")
+        self._encabezar(hoja, [
+            ("Cliente", 30), ("Identificación", 16), ("Producto", 30),
+            ("Cantidad", 10), ("P. unitario", 13), ("Total", 12),
+            ("Correo", 26), ("Teléfono", 13),
+        ], e)
+        for n, c in enumerate(por_cliente, start=2):
+            self._fila(hoja, n, [
+                c["cliente"], c["identificacion"], c["producto"],
+                c["cantidad"], c["precio_unitario"], c["total"],
+                c["correo"] or "", c["telefono"] or "",
+            ], e, texto=(2,), dinero=(5, 6))
 
         hoja = libro.create_sheet("Agrupado")
         self._encabezar(hoja, [

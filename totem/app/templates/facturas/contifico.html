@@ -2,7 +2,7 @@
 {% block titulo %}Cargar en Contífico — Totem Climb Gym{% endblock %}
 {% block nav_facturas %}active{% endblock %}
 
-{% macro bloque_carga(tipo, titulo, descripcion, facturas, resumen, extra) %}
+{% macro bloque_carga(tipo, titulo, descripcion, facturas, resumen, sep=None) %}
 <div class="tarjeta" style="margin-bottom:18px;">
   <h2 class="titulo-seccion">{{ titulo }}</h2>
   <div class="meta" style="margin:6px 0 12px;">{{ descripcion }}</div>
@@ -20,7 +20,20 @@
         {% endfor %}
       {% endif %}
     </div>
-    {{ extra }}
+    {# Cuántas facturas salen de aquí. En productos son dos clases:
+       las que van a nombre del cliente porque compró varias unidades
+       del mismo producto, y el resto en bloque a consumidor final. #}
+    {% if sep %}
+      <div class="meta" style="margin-bottom:12px;">
+        {% if sep.por_cliente %}
+          <b>{{ sep.por_cliente|length }}</b>
+          a nombre del cliente (compraron {{ sep.minimo }} o más del
+          mismo producto) y
+        {% endif %}
+        <b>{{ sep.bloques|length }}</b>
+        factura{{ 's' if sep.bloques|length != 1 }} de consumidor final.
+      </div>
+    {% endif %}
 
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
       <form method="post">
@@ -77,15 +90,12 @@
 {{ bloque_carga(
      'planes', 'Membresías y pases',
      'Una factura por venta, a nombre del cliente con su cédula.',
-     planes, resumen_planes, '') }}
+     planes, resumen_planes) }}
 
 {{ bloque_carga(
      'productos', 'Productos sueltos',
      'Van a consumidor final, agrupados en facturas que no pasen del tope.',
-     productos, resumen_productos,
-     '<div class="meta" style="margin-bottom:12px;">Se agrupan en <b>'
-     ~ bloques|length ~ '</b> factura' ~ ('s' if bloques|length != 1 else '')
-     ~ ' de consumidor final.</div>') }}
+     productos, resumen_productos, separacion) }}
 
 {% if planes and productos %}
   {% set mezcladas = planes|map(attribute='numero_factura')|list|select('in', productos|map(attribute='numero_factura')|list)|list %}

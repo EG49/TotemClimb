@@ -506,7 +506,7 @@ def contifico():
 
         if tipo == "productos":
             datos = servicio.excel_productos(
-                facturas, servicio.agrupar_productos(facturas), desde, hasta
+                facturas, servicio.separar_productos(facturas), desde, hasta
             )
         else:
             datos = servicio.excel_planes(facturas, desde, hasta)
@@ -520,7 +520,7 @@ def contifico():
         planes=planes, productos=productos,
         resumen_planes=servicio.resumen(planes),
         resumen_productos=servicio.resumen(productos),
-        bloques=servicio.agrupar_productos(productos),
+        separacion=servicio.separar_productos(productos),
         por_cobrar=servicio.por_cobrar(),
         historial=servicio.historial(),
     )

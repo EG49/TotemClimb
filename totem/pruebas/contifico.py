@@ -321,25 +321,54 @@ with app.app_context():
         print("\nLOS PRODUCTOS SE AGRUPAN BAJO EL TOPE")
         limpiar()
         productos = servicio.pendientes("productos", desde, hasta)
-        bloques = servicio.agrupar_productos(productos)
+        separacion = servicio.separar_productos(productos)
+        bloques = separacion["bloques"]
+        vendido = servicio.resumen(productos)["total"]
         if bloques:
             revisar("ninguna factura pasa del tope",
                     all(b.total <= TOPE_CONSUMIDOR_FINAL for b in bloques),
                     str(max(b.total for b in bloques)))
-            revisar("y no se pierde nada al agrupar",
-                    sum((b.total for b in bloques), Decimal("0"))
-                    == servicio.resumen(productos)["total"],
-                    "agrupar no puede cambiar cuanto se vendio")
         else:
             print("  (no hay productos pendientes; se omite)")
 
+        print("\nSEPARAR POR CLIENTE NO CAMBIA CUANTO SE VENDIO")
+        # Lo que se le factura al cliente mas lo que queda en bloque
+        # tiene que dar lo vendido, sea cual sea el minimo. Si no
+        # cuadra, o se factura dos veces o se deja de facturar.
+        for minimo in (0, 1, 3, 5, 50):
+            sep = servicio.separar_productos(productos, minimo=minimo)
+            por_cliente = sum((c["total"] for c in sep["por_cliente"]),
+                              Decimal("0"))
+            en_bloque = sum((b.total for b in sep["bloques"]), Decimal("0"))
+            revisar(f"con minimo {minimo} cuadra",
+                    por_cliente + en_bloque == vendido,
+                    f"{por_cliente} + {en_bloque} != {vendido}")
+            revisar(f"con minimo {minimo} nadie baja del minimo",
+                    all(c["cantidad"] >= minimo
+                        for c in sep["por_cliente"]) if minimo else True)
+            revisar(f"con minimo {minimo} nadie va sin cedula",
+                    all(c["identificacion"] and
+                        c["tipo_identificacion"] != "07"
+                        for c in sep["por_cliente"]),
+                    "sin identificacion no hay a quien facturarle")
+
+        sep0 = servicio.separar_productos(productos, minimo=0)
+        revisar("con minimo 0 no se separa nada",
+                not sep0["por_cliente"],
+                "es el comportamiento de antes de esto")
+
         print("\nLOS OTROS DOS ARCHIVOS")
-        datos = servicio.excel_productos(productos, bloques, desde, hasta)
+        datos = servicio.excel_productos(productos, separacion, desde, hasta)
         revisar("el de productos es un xlsx", datos[:2] == b"PK")
         libro = load_workbook(BytesIO(datos))
-        revisar("con Resumen, Agrupado y Ventas",
-                libro.sheetnames == ["Resumen", "Agrupado", "Ventas"],
+        revisar("con Resumen, Por cliente, Agrupado y Ventas",
+                libro.sheetnames == ["Resumen", "Por cliente", "Agrupado",
+                                     "Ventas"],
                 str(libro.sheetnames))
+        revisar("y una fila por cliente y producto",
+                libro["Por cliente"].max_row
+                == len(separacion["por_cliente"]) + 1,
+                "mas la cabecera")
 
         deudas = servicio.por_cobrar()
         datos = servicio.excel_por_cobrar(deudas)

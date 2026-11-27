@@ -33,6 +33,7 @@
     </div>
   </form>
 
+
   <aside class="card">
     <div class="seccion">Cambios anteriores</div>
     <div class="seccion-nota">Últimas modificaciones del IVA.</div>
@@ -46,6 +47,34 @@
     {% endfor %}
   </aside>
 </div>
+
+{# Cuántas unidades del mismo producto hacen que la venta se facture a
+   nombre del cliente en vez de sumarse al bloque anónimo. #}
+<form method="post" class="card" style="margin-top:18px;max-width:640px;">
+  <input type="hidden" name="seccion" value="productos">
+  <div class="seccion">Productos por cliente</div>
+  <div class="seccion-nota">
+    Quien compra varias unidades del mismo producto probablemente quiera
+    su factura a nombre propio. Desde esta cantidad, el producto se le
+    factura a él; por debajo, se suma al bloque de consumidor final.
+  </div>
+
+  <div class="campo" style="max-width:220px;">
+    <label for="minimo_por_cliente">Mínimo para facturar al cliente</label>
+    <input id="minimo_por_cliente" name="minimo_por_cliente" type="number"
+           step="1" min="0" value="{{ minimo_por_cliente }}">
+  </div>
+
+  <div class="aviso-bloqueo" style="margin-top:14px;">
+    Se cuenta sobre todo el período que se exporte, no venta por venta:
+    tres aguas el lunes y dos el miércoles son cinco. Con 0 no se separa
+    nada y todo va al bloque.
+  </div>
+
+  <div class="acciones-formulario">
+    <button type="submit" class="btn-primary">Guardar mínimo</button>
+  </div>
+</form>
 
 {# Datos del gimnasio. Salen en los correos de clases y eventos, por
    eso viven aquí y no escritos en el código. #}
